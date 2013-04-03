@@ -28,6 +28,15 @@
  * @version date: 2012-07-27
  */
 
+
+// credits: user76888, The Digital Gabeg (http://stackoverflow.com/questions/1539367)
+$.fn.cleanWhitespace = function() {
+	textNodes = this.contents().filter(	function() { 
+		return (this.nodeType == 3 && !/\S/.test(this.nodeValue)); 
+	}).remove();
+	return this;
+};
+
 var GeoTemConfig = {
 
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
@@ -539,6 +548,9 @@ GeoTemConfig.loadKml = function(kml) {
 		return [];
 	}
 	var index = 0;
+	var descriptionTableHeaders = [];
+	var xmlSerializer = new XMLSerializer();	
+	
 	for (var i = 0; i < elements.length; i++) {
 		var placemark = elements[i];
 		var name, description, place, granularity, lon, lat, tableContent = [], time = [], location = [];
@@ -553,6 +565,58 @@ GeoTemConfig.loadKml = function(kml) {
 
 		try {
 			description = placemark.getElementsByTagName("description")[0].childNodes[0].nodeValue;
+			
+			//cleanWhitespace removes non-sense text-nodes (space, tab)
+			//and is an addition to jquery defined above
+			var descriptionDocument = $($.parseXML(description)).cleanWhitespace();
+			
+			//check whether the description element contains a table
+			//if yes, this data will be loaded as separate columns
+			$(descriptionDocument).find("table").each(function(){
+				$(this).find("tr").each(
+					function() {
+						var isHeader = true;
+						var lastHeader = "";
+						
+						$(this).find("td").each(
+							function() {
+								if (isHeader) {
+									lastHeader = $(this).text();
+									isHeader = false;
+								} else {
+									var value = "";
+
+									//if this td contains HTML, serialize all
+									//it's children (the "content"!)
+									$(this).children().each(
+										function() {
+											value += xmlSerializer.serializeToString(this);
+										}
+									);
+									
+									//no HTML content (or no content at all)
+									if (value.length == 0)
+										value = $(this).text();
+									if (typeof value === "undefined")
+										value = "";
+									
+									if ($.inArray(lastHeader, descriptionTableHeaders) === -1)
+										descriptionTableHeaders.push(lastHeader);
+
+									if (tableContent[lastHeader] != null)
+										//append if a field occures more than once 
+										tableContent[lastHeader] += "\n" + value;
+									else
+										tableContent[lastHeader] = value;
+
+									isHeader = true;
+								}
+							}
+						);
+					}
+				);
+			});
+			
 			tableContent["description"] = description;
 		} catch(e) {
 			description = "";
@@ -616,5 +680,17 @@ GeoTemConfig.loadKml = function(kml) {
 		index++;
 		mapObjects.push(object);
 	}
+	
+	//make sure that all "description table" columns exists in all rows
+	if (descriptionTableHeaders.length > 0){
+		$(mapObjects).each(function(){
+			var object = this;
+			$(descriptionTableHeaders).each(function(){
+				if (typeof object.tableContent[this] === "undefined")
+					object.tableContent[this] = "";
+			});
+		});
+	}
+	
 	return mapObjects;
 };
