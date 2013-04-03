@@ -20,6 +20,9 @@
 	<fieldset id="dataloaderContainerDiv" style="position:relative;">
 		<legend>Load Data</legend>
 	</fieldset>
+	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+		<legend>Load Overlay</legend>
+	</fieldset>
     <div id="mapContainerDiv" style="position:relative;"></div>
     <div id="plotContainerDiv" style="position:relative;"></div>
     <div id="tableContainerDiv" style="position:relative;"></div>
@@ -48,6 +51,11 @@
 		dataloaderWidget.attachWidget(timeWidget);
 		dataloaderWidget.attachWidget(tableWidget);
 
+		var overlayloaderDiv = document.getElementById("overlayloaderContainerDiv");
+		var overlayloader = new WidgetWrapper();
+		var overlayloaderWidget = new OverlayloaderWidget(overlayloader,overlayloaderDiv);
+		overlayloaderWidget.attachMapWidget(mapWidget);
+		
 		var kml1 = GeoTemConfig.getKml('data/heine.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
 		var kml2 = GeoTemConfig.getKml('data/kafka.kml');
