@@ -172,6 +172,34 @@ Table.prototype = {
 				this.selectByText($(this.selectByTextInput).val());
 			},this));
 		}		
+		
+		if (table.options.tableCreateNewFromSelected) {
+			this.createNewFromSelected = document.createElement('div');
+			//TODO: add real image
+			this.createNewFromSelected.setAttribute('class', 'smallButton showSelected');
+			//TODO: add help
+			this.createNewFromSelected.title = GeoTemConfig.getString('createNewFromSelectedHelp');
+			selectors.appendChild(this.createNewFromSelected);
+			this.createNewFromSelected.onclick = function() {
+				var copyID = table.id;
+				var tableWidget = table.parent;
+
+				var newObjects = [];
+				$(table.elements).each(function(){
+					if (this.selected)
+						newObjects.push(this.object);
+				});
+				
+				var newDataset = new Dataset();
+				newDataset.label = tableWidget.datasets[copyID].label + " refined";
+				newDataset.objects = newObjects;
+				
+				tableWidget.datasets.push(newDataset);
+				
+				tableWidget.core.triggerRefining(tableWidget.datasets);
+			};
+		}		
+		
 		this.selectors = selectors;
 
 		//		selectors.style.width = (this.filter.offsetWidth + this.selectAll.offsetWidth + this.selectPage.offsetWidth)+"px";
