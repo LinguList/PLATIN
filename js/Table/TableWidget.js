@@ -72,6 +72,8 @@ TableWidget.prototype = {
 			tableTab.innerHTML = name;
 			return tableTab;
 		}
+		tableWidget.addTab = addTab;
+		
 		for (var i in data ) {
 			this.tableHash.push([]);
 			var tableTab = addTab(data[i].label, i);
