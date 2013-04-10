@@ -164,7 +164,7 @@ TableWidget.prototype = {
 
 	triggerHighlight : function(item) {
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		if ( typeof item != 'undefined') {
@@ -175,7 +175,7 @@ TableWidget.prototype = {
 
 	tableSelection : function() {
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		var valid = false;
@@ -211,7 +211,7 @@ TableWidget.prototype = {
 
 	inverseFiltering : function() {
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		var valid = false;
