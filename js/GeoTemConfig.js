@@ -206,6 +206,16 @@ GeoTemConfig.mergeObjects = function(set1, set2) {
 
 GeoTemConfig.datasets = [];
 
+GeoTemConfig.addDataset = function(newDataset){
+	GeoTemConfig.datasets.push(newDataset);
+	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+};
+
+GeoTemConfig.removeDataset = function(index){
+	GeoTemConfig.datasets.splice(index,1);
+	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+};
+
 /**
  * converts the csv-file to a kml-file
  * taken unchanged from GeoBrowser-GWT project
