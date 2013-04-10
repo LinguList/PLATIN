@@ -194,9 +194,7 @@ Table.prototype = {
 				newDataset.label = tableWidget.datasets[copyID].label + " refined";
 				newDataset.objects = newObjects;
 				
-				tableWidget.datasets.push(newDataset);
-				
-				tableWidget.core.triggerRefining(tableWidget.datasets);
+				GeoTemConfig.addDataset(newDataset);
 			};
 		}		
 		
