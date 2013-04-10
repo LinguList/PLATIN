@@ -64,12 +64,23 @@ TableWidget.prototype = {
 		var tableWidget = this;
 		var addTab = function(name, index) {
 			var tableTab = document.createElement('div');
+			var removeTabLink = document.createElement('a');
+			removeTabLink.innerHTML = ' (x)';
+			removeTabLink.setAttribute('href','');
+			removeTabLink.onclick = $.proxy(function(e) {
+				GeoTemConfig.removeDataset(index);
+				//don't let the event propagate to the DIV				
+				e.stopPropagation();
+				//discard link click
+				return(false);
+			},{index:index});
 			tableTab.setAttribute('class', 'tableTab');
 			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
 			tableTab.onclick = function() {
 				tableWidget.selectTable(index);
 			}
 			tableTab.innerHTML = name;
+			$(tableTab).append(removeTabLink);
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
