@@ -39,7 +39,7 @@ function WidgetWrapper() {
 
 	this.display = function(data) {
 		if ( data instanceof Array) {
-			GeoTemConfig.datasets = data.length;
+			GeoTemConfig.datasets = data;
 			if ( typeof wrapper.widget != 'undefined') {
 				this.widget.initWidget(data);
 			}

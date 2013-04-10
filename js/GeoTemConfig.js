@@ -213,6 +213,8 @@ GeoTemConfig.mergeObjects = function(set1, set2) {
 	return newSet;
 };
 
+GeoTemConfig.datasets = [];
+
 /**
  * converts the csv-file to a kml-file
  * taken unchanged from GeoBrowser-GWT project
