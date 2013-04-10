@@ -36,8 +36,6 @@ function DataloaderWidget(core, div, options) {
 	this.options = (new DataloaderConfig(options)).options;
 	this.gui = new DataloaderGui(this, div, this.options);
 	
-	this.attachedWidgets = new Array();
-	
 	this.dataLoader = new Dataloader(this);
 }
 
@@ -79,10 +77,6 @@ DataloaderWidget.prototype = {
 	},
 
 	reset : function() {
-	},
-	
-	attachWidget : function(widget) {
-		this.attachedWidgets.push(widget);
 	},
 	
 	loadFromURL : function() {

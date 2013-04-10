@@ -32,7 +32,6 @@ function Dataloader(parent) {
 	
 	this.parent = parent;
 	this.options = parent.options;
-	this.attachedWidgets = parent.attachedWidgets;
 
 	this.initialize();
 }
@@ -61,13 +60,7 @@ Dataloader.prototype = {
 	},
 	
 	distributeDataset : function(dataSet) {
-		$(this.attachedWidgets).each(function(){
-			if (!(this.datasets instanceof Array))
-				this.datasets = new Array();
-			if ($.inArray(dataSet, this.datasets) == -1)
-					this.datasets.push(dataSet);
-			this.core.display(this.datasets);
-		});
+		GeoTemConfig.addDataset(dataSet);
 	},
 	
 	addKMLLoader : function() {
