@@ -1187,7 +1187,7 @@ TimeWidget.prototype = {
 			}
 		}
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		for (var i = 0; i < slices.length; i++) {
@@ -1231,7 +1231,7 @@ TimeWidget.prototype = {
 			}
 		}
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		for (var i = 0; i < slices.length; i++) {
