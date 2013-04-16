@@ -64,6 +64,13 @@ TableWidget.prototype = {
 		var tableWidget = this;
 		var addTab = function(name, index) {
 			var tableTab = document.createElement('div');
+			tableTab.setAttribute('class', 'tableTab');
+			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
+			tableTab.onclick = function() {
+				tableWidget.selectTable(index);
+			}
+			tableTab.innerHTML = name;
+			
 			var removeTabLink = document.createElement('a');
 			removeTabLink.innerHTML = ' (x)';
 			removeTabLink.setAttribute('href','');
@@ -74,12 +81,6 @@ TableWidget.prototype = {
 				//discard link click
 				return(false);
 			},{index:index});
-			tableTab.setAttribute('class', 'tableTab');
-			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
-			tableTab.onclick = function() {
-				tableWidget.selectTable(index);
-			}
-			tableTab.innerHTML = name;
 			$(tableTab).append(removeTabLink);
 			return tableTab;
 		}
