@@ -46,6 +46,7 @@ var GeoTemConfig = {
 	allowFilter : true, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
+	tableExportDataset : true, // export dataset to KML
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,

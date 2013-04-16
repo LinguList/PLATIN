@@ -82,6 +82,30 @@ TableWidget.prototype = {
 				return(false);
 			},{index:index});
 			$(tableTab).append(removeTabLink);
+			
+			if (GeoTemConfig.tableExportDataset){
+				var exportTabForm = document.createElement('form');
+				//TODO: make this configurable
+				exportTabForm.action = 'php/download.php';
+				exportTabForm.method = 'post';
+				var exportTabHiddenValue = document.createElement('input');
+				exportTabHiddenValue.name = 'file';
+				exportTabHiddenValue.type = 'hidden';
+				exportTabForm.appendChild(exportTabHiddenValue);
+				var exportTabButton = document.createElement('button');
+				exportTabButton.innerHTML = 'export';
+				exportTabButton.onclick = $.proxy(function(e) {
+					$(exportTabHiddenValue).val(GeoTemConfig.createKMLfromDataset(index));
+					$(exportTabForm).submit();
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index});
+				exportTabForm.appendChild(exportTabButton);
+				$(tableTab).append(exportTabForm);
+			}
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
