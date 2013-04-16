@@ -225,6 +225,38 @@ GeoTemConfig.removeDataset = function(index){
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
 };
 
+GeoTemConfig.createKMLfromDataset = function(index){
+	var kmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document>";
+
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		
+			var name = this.name;
+			var description = this.description;
+			//TODO: allow multiple time/date
+			var place = this.getPlace(0,0);
+			var lat = this.getLatitude(0);
+			var lon = this.getLongitude(0);
+			var timeStamp = this.getDate(0);
+			
+			var kmlEntry = "<Placemark>";
+
+			kmlEntry += "<name><![CDATA[" + name + "]]></name>";
+			kmlEntry += "<address><![CDATA[" + place + "]]></address>";
+			kmlEntry += "<description><![CDATA[" + description + "]]></description>";
+			kmlEntry += "<Point><coordinates>" + lon + "," + lat + "</coordinates></Point>";
+			
+			kmlEntry += "<TimeStamp><when>" + timeStamp + "</when></TimeStamp>";
+
+			kmlEntry += "</Placemark>";
+			
+			kmlContent += kmlEntry;
+	});
+	
+	kmlContent += "</Document></kml>";
+	
+	return(kmlContent);
+};
+
 /**
  * converts the csv-file to a kml-file
  * taken unchanged from GeoBrowser-GWT project
