@@ -255,42 +255,52 @@ GeoTemConfig.convertCsv = function(text){
 		var longitude = "";
 		var latitude = "";
 	   	/* loop inner array */
+		var descriptionOrig="";
+		var descriptionTable="<table>";
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
 			if (usedHeaders[j] == expectedHeaders[0]) {
 				kmlString += '\t\t\t<name><![CDATA[' + innerArray[j] + ']]></name>\n';
 			}
 			/* Address */
-			if (usedHeaders[j] == expectedHeaders[1]) {
+			else if (usedHeaders[j] == expectedHeaders[1]) {
 				kmlString += '\t\t\t<address><![CDATA[' + innerArray[j] + ']]></address>\n';
 			}
 			/* Description */
-			if (usedHeaders[j] == expectedHeaders[2]) {
-				kmlString += '\t\t\t<description><![CDATA[' + innerArray[j] + ']]></description>\n';
+			else if (usedHeaders[j] == expectedHeaders[2]) {
+				descriptionOrig = innerArray[j];
 			}
 			/* TimeStamp */
-			if (usedHeaders[j] == expectedHeaders[5]) {
+			else if (usedHeaders[j] == expectedHeaders[5]) {
 				kmlString += '\t\t\t<TimeStamp>\n' +
 					'\t\t\t\t<when>' + innerArray[j] + '</when>\n' +
 					'\t\t\t</TimeStamp>\n';
 			}
 			/* TimeSpan:begin */
-			if (usedHeaders[j] == expectedHeaders[6]) {
+			else if (usedHeaders[j] == expectedHeaders[6]) {
 				timespanBegin = innerArray[j];
 			}
 			/* TimeSpan:end */
-			if (usedHeaders[j] == expectedHeaders[7]) {
+			else if (usedHeaders[j] == expectedHeaders[7]) {
 				timespanEnd = innerArray[j];
 			}   						
 			/* Longitude */                                                          
-			if (usedHeaders[j] == expectedHeaders[3]) {                              
+			else if (usedHeaders[j] == expectedHeaders[3]) {                              
 				longitude = innerArray[j];                                           
 			}                                                                        
 			/* Latitude */                                                           
-			if (usedHeaders[j] == expectedHeaders[4]) {                              
+			else if (usedHeaders[j] == expectedHeaders[4]) {                              
 				latitude = innerArray[j];
 			}
+			else {
+				descriptionTable += "<tr><td>"+usedHeaders[j]+"</td><td>"+innerArray[j]+"</td></tr>";
+			}
 		}
+		descriptionTable += "</table>";
+		if (descriptionTable.length > 0)
+			descriptionOrig = descriptionTable;
+		kmlString += '\t\t\t<description><![CDATA[' + descriptionOrig + ']]></description>\n';
+		
 		/* set timespan:begin und timespan:end */
 		kmlString += '\t\t\t<TimeSpan>\n' +
 			'\t\t\t\t<begin>' + timespanBegin + '</begin>\n' +
