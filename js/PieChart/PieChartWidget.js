@@ -41,6 +41,7 @@ function PieChartWidget(core, div, options) {
 	
 	this.watchedDataset = 0;
 	this.watchColumn = "objekt";
+	//default selectionFunction returns value (creates "distinct" piechart)
 	this.selectionFunction = function(columnData){return columnData;};
 }
 
