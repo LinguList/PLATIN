@@ -48,61 +48,67 @@ PieChartWidget.prototype = {
 	
 	getElementsByValue : function(columnElement) {
 		var elements = [];
-		pieChartWidget = this;
-		$(this.datasets[this.watchedDataset].objects).each(function(){
-			var columnData = this[pieChartWidget.watchColumn];
-			if (typeof columnData === "undefined"){
-				columnData = this.tableContent[pieChartWidget.watchColumn];
-			};
-			
-			columnData = pieChartWidget.selectionFunction(columnData);
-			
-			if (columnData === columnElement)
-				elements.push(this);
-		});
+		
+		if (watchedDataset >= 0){
+			pieChartWidget = this;
+			$(this.datasets[this.watchedDataset].objects).each(function(){
+				var columnData = this[pieChartWidget.watchColumn];
+				if (typeof columnData === "undefined"){
+					columnData = this.tableContent[pieChartWidget.watchColumn];
+				};
+				
+				columnData = pieChartWidget.selectionFunction(columnData);
+				
+				if (columnData === columnElement)
+					elements.push(this);
+			});
+		}
 		
 		return elements;
 	},
 	
 	redrawPieChart : function(objects) {
-		var chartDataCounter = new Object;
-		var pieChartWidget = this;
-		$(objects).each(function(){
-			var columnData = this[pieChartWidget.watchColumn];
-			if (typeof columnData === "undefined"){
-				columnData = this.tableContent[pieChartWidget.watchColumn];
-			};
-			
-			columnData = this.selectionFunction(columnData);
-			
-			if (typeof chartDataCounter[columnData] === "undefined")
-				chartDataCounter[columnData] = 1;
-			else
-				chartDataCounter[columnData]++;
-		});
 		
-		var chartData = [];
-		$.each(chartDataCounter, function(name,val){
-			chartData.push([name,val]);
-		});
-		
-		if (chartData.length>0){
-			$(this.gui.pieChartDiv).empty();
-
-			$.jqplot (this.gui.pieChartDiv.id, [chartData],
-				{
-					seriesDefaults: {
-						// Make this a pie chart.
-						renderer: $.jqplot.PieRenderer,
-						rendererOptions: {
-							// Put data labels on the pie slices.
-							// By default, labels show the percentage of the slice.
-							showDataLabels: true
-						}
-					},
-					legend: { show:true, location: 'e' }
-				}
-			);
+		if (watchedDataset >= 0){
+			var chartDataCounter = new Object;
+			var pieChartWidget = this;
+			$(objects).each(function(){
+				var columnData = this[pieChartWidget.watchColumn];
+				if (typeof columnData === "undefined"){
+					columnData = this.tableContent[pieChartWidget.watchColumn];
+				};
+				
+				columnData = this.selectionFunction(columnData);
+				
+				if (typeof chartDataCounter[columnData] === "undefined")
+					chartDataCounter[columnData] = 1;
+				else
+					chartDataCounter[columnData]++;
+			});
+			
+			var chartData = [];
+			$.each(chartDataCounter, function(name,val){
+				chartData.push([name,val]);
+			});
+			
+			if (chartData.length>0){
+				$(this.gui.pieChartDiv).empty();
+	
+				$.jqplot (this.gui.pieChartDiv.id, [chartData],
+					{
+						seriesDefaults: {
+							// Make this a pie chart.
+							renderer: $.jqplot.PieRenderer,
+							rendererOptions: {
+								// Put data labels on the pie slices.
+								// By default, labels show the percentage of the slice.
+								showDataLabels: true
+							}
+						},
+						legend: { show:true, location: 'e' }
+					}
+				);
+			}
 		}
 	},
 
