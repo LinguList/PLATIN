@@ -133,6 +133,11 @@ PieChartWidget.prototype = {
 			pieChartWidget.triggerHighlight(data[0]);                              
         }); 
 		
+		$(this.gui.pieChartDiv).bind('jqplotDataUnhighlight', function(ev, seriesIndex, pointIndex, data) {
+			//data[0] contains the column element
+			pieChartWidget.triggerHighlight();                              
+        }); 
+		
 		$(this.gui.pieChartDiv).bind('jqplotDataClick', function(ev, seriesIndex, pointIndex, data) {
 			//data[0] contains the column element
 			pieChartWidget.triggerSelection(data[0]);                              
