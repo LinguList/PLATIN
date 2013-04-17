@@ -39,13 +39,23 @@ function PieChartWidget(core, div, options) {
 	
 	this.pieChart = new PieChart(this);
 	
-	this.watchedDataset = 0;
-	this.watchColumn = "objekt";
+	this.watchedDataset = -1;
+	this.watchColumn = "";
 	//default selectionFunction returns value (creates "distinct" piechart)
 	this.selectionFunction = function(columnData){return columnData;};
 }
 
 PieChartWidget.prototype = {
+	
+	setWatched : function(watchedDataset, watchedColumn, selectionFunction){
+		this.watchedDataset = watchedDataset;
+		this.watchColumn = watchedColumn;
+		
+		if (typeof selectionFunction !== "undefined")
+			this.selectionFunction = selectionFunction;
+		
+		redrawPieChart(this.datasets);
+	},
 	
 	getElementsByValue : function(columnElement) {
 		var elements = [];
