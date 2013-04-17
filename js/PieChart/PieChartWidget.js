@@ -87,6 +87,19 @@ PieChartWidget.prototype = {
 
 	initWidget : function(data) {
 		this.datasets = data;
+		
+		var pieChartWidget = this;
+		
+		$(this.gui.pieChartDiv).bind('jqplotDataHighlight', function(ev, seriesIndex, pointIndex, data) {
+			//data[0] contains the column element
+			pieChartWidget.triggerHighlight(data[0]);                              
+        }); 
+		
+		$(this.gui.pieChartDiv).bind('jqplotDataClick', function(ev, seriesIndex, pointIndex, data) {
+			//data[0] contains the column element
+			pieChartWidget.triggerSelection(data[0]);                              
+        });
+		
 		this.redrawPieChart(data[this.watchedDataset].objects);
 	},
 
@@ -104,10 +117,49 @@ PieChartWidget.prototype = {
 		this.redrawPieChart(selection.objects[this.watchedDataset]);
 	},
 
-	triggerHighlight : function(item) {
+	triggerHighlight : function(columnElement) {
+		var highlightedObjectsInDataset = [];
+		var pieChartWidget = this;
+		$(this.datasets[this.watchedDataset].objects).each(function(){
+			var columnData = this[pieChartWidget.watchColumn];
+			if (typeof columnData === "undefined"){
+				columnData = this.tableContent[pieChartWidget.watchColumn];
+			};
+			
+			if (columnData === columnElement)
+				highlightedObjectsInDataset.push(this);
+		});
+		
+		var highlightedObjects = [];
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+			highlightedObjects.push([]);
+		
+		highlightedObjects[this.watchedDataset] = highlightedObjectsInDataset;
+		
+		this.core.triggerHighlight(highlightedObjects);
 	},
 
-	tableSelection : function() {
+	triggerSelection : function(columnElement) {
+		var selectedObjectsInDataset = [];
+		var pieChartWidget = this;
+		$(this.datasets[this.watchedDataset].objects).each(function(){
+			var columnData = this[pieChartWidget.watchColumn];
+			if (typeof columnData === "undefined"){
+				columnData = this.tableContent[pieChartWidget.watchColumn];
+			};
+			
+			if (columnData === columnElement)
+				selectedObjectsInDataset.push(this);
+		});
+		
+		var selectedObjects = [];
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+			selectedObjects.push([]);
+		
+		selectedObjects[this.watchedDataset] = selectedObjectsInDataset;
+		
+		var selection = new Selection(selectedObjects, this);
+		this.core.triggerSelection(selection);
 	},
 
 	deselection : function() {
