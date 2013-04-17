@@ -31,6 +31,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.index;
 	this.pieChart = this;
 	this.pieChartDiv;
+	this.preHighlightObjects;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -100,6 +101,8 @@ PieChart.prototype = {
 		for (var i = 0; i < dataSets.length; i++)
 			objects.push([]);
 		objects[this.watchedDataset] = dataSets[this.watchedDataset].objects;
+		
+		this.preHighlightObjects = objects;
 		this.redrawPieChart(objects);
 	},
 
@@ -108,6 +111,8 @@ PieChart.prototype = {
 		if (this.watchedDataset >= 0){
 			var chartDataCounter = new Object;
 			var pieChartWidget = this;
+			if (objects[this.watchedDataset].length === 0)
+				objects = this.preHighlightObjects;
 			$(objects[this.watchedDataset]).each(function(){
 				var columnData = this[pieChartWidget.watchColumn];
 				if (typeof columnData === "undefined"){
@@ -178,6 +183,7 @@ PieChart.prototype = {
 		var myIndex = this.index;
 		$(this.parent.pieCharts).each(function(){
 			if (this.index !== myIndex){
+				this.preHighlightObjects = selectedObjects;
 				this.redrawPieChart(selectedObjects);
 			}				
 		});
