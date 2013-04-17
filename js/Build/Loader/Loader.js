@@ -64,6 +64,19 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.min.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/purl.min.js'
+			}],GeoTemCoLoader.loadjqPlot);
+		}
+		else {
+			GeoTemCoLoader.loadjqPlot();
+		}
+	},
+	
+	loadjqPlot : function() {
+		if (typeof $.jqplot == 'undefined') {
+			(new DynaJsLoader()).loadScripts([{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/jquery.jqplot.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/plugins/jqplot.pieRenderer.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
@@ -203,6 +216,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Overlayloader/' + 'OverlayloaderWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Overlayloader/' + 'Overlayloader.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChart.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 

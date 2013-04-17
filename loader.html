@@ -4,6 +4,20 @@
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>GeoTemCo</title>
+
+ 	<script src="lib/jquery/jquery.min.js"></script>
+ 	<script src="lib/jquery/purl.min.js"></script>
+ 	<script src="lib/jqPlot/jquery.jqplot.js"></script>
+ 	<link rel="stylesheet" href="lib/jqPlot/jquery.jqplot.min.css" type="text/css" />
+ 	<style type="text/css">
+		table.jqplot-table-legend {
+			display: block;
+			height: 250px;
+			overflow-y: scroll;
+		}
+	</style>
+ 	<script src="lib/jqPlot/plugins/jqplot.pieRenderer.js"></script>
+
  	<script src="js/Util/Publisher.js"></script>
  	<script src="js/Build/Loader/DynaJsLoader.js"></script>
 	<script src="js/Build/Loader/Loader.js"></script>
@@ -23,7 +37,16 @@
 	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
 		<legend>Load Overlay</legend>
 	</fieldset>
-    <div id="mapContainerDiv" style="position:relative;"></div>
+	<table width=100%>
+		<tr>
+			<td width=50%>
+			    <div id="mapContainerDiv" style="position:relative;"></div>
+			</td>
+			<td width=50%>
+				<div id="piechartContainerDiv" style="position:relative;"></div>
+			</td>
+		</tr>
+	</table>
     <div id="plotContainerDiv" style="position:relative;"></div>
     <div id="tableContainerDiv" style="position:relative;"></div>
 
@@ -53,34 +76,28 @@
 		var overlayloaderWidget = new OverlayloaderWidget(overlayloader,overlayloaderDiv);
 		overlayloaderWidget.attachMapWidget(mapWidget);
 		
+		var piechartDiv = document.getElementById("piechartContainerDiv");
+		var piechart = new WidgetWrapper();
+		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
+		piechartWidget.setWatched(0,"objekt");
+		/*
 		var kml1 = GeoTemConfig.getKml('data/heine.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
 		var kml2 = GeoTemConfig.getKml('data/kafka.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml2),'Franz Kafka'));
 		var kml3 = GeoTemConfig.getKml('data/goethe.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml3),'Johann Wolfgang von Goethe'));
-		map.display(datasets);
-		time.display(datasets);
-		table.display(datasets);
+		*/
+		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(kmlDom){
+			datasets.push(new Dataset(GeoTemConfig.loadKml(kmlDom),'Silber Objekte'));
+			
+			map.display(datasets);
+			time.display(datasets);
+			table.display(datasets);
+			piechart.display(datasets);
+		});
 
 		dataloaderWidget.loadFromURL();
-
-/*
-		$.ajax({
-			url: 'data/test2.json',
-			async: false,
-			dataType: 'json',
-			success: function(json){
-				var data = STIStatic.loadSpatioTemporalJSONData(json);
-				gui.initializeMapGUI("mapContainerDiv");
-				gui.initializePlotGUI("plotContainerDiv");
-				gui.initializeTableGUI("tableContainerDiv");
-				SpaceWrapper.display([data]);
-				TimeWrapper.display([data]);
-				TableWrapper.display([data],['Test']);
-			}
-		});
-*/
 	});
     </script>
 
