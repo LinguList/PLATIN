@@ -51,6 +51,8 @@ Overlayloader.prototype = {
 
 		this.addKMLLoader();
 		this.addArcGISWMSLoader();
+		this.addXYZLoader();
+		this.addRomanEmpireLoader();
 		
 		// trigger change event on the select so 
 		// that only the first loader div will be shown
@@ -92,6 +94,27 @@ Overlayloader.prototype = {
 		});
 	},
 
+	distributeXYZ : function(xyzURL) {
+        var newLayer = new OpenLayers.Layer.XYZ(
+                "XYZ Layer",
+                [
+                  xyzURL
+                ], {
+                sphericalMercator: true,
+                transitionEffect: "resize",
+                buffer: 1,
+                numZoomLevels: 12,
+                transparent : true
+              }
+            );
+
+		newLayer.setIsBaseLayer(false);
+		$(this.attachedMapWidgets).each(function(){
+			this.openlayersMap.addLayer(newLayer);
+			this.openlayersMap.setBaseLayer(newLayer);
+		});
+	},
+	
 	addKMLLoader : function() {
 		$(this.parent.gui.loaderTypeSelect).append("<option value='KMLLoader'>KML File URL</option>");
 		
@@ -147,5 +170,47 @@ Overlayloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.ArcGISWMSLoaderTab);
-	}	
+	},
+	
+	addXYZLoader : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='XYZLoader'>XYZ Layer</option>");
+		
+		this.XYZLoaderTab = document.createElement("div");
+		$(this.XYZLoaderTab).attr("id","XYZLoader");
+		
+		$(this.XYZLoaderTab).append("URL (with x,y,z variables): ");
+		
+		this.xyzURL = document.createElement("input");
+		$(this.xyzURL).attr("type","text");
+		$(this.XYZLoaderTab).append(this.xyzURL);
+		
+		this.loadXYZButton = document.createElement("button");
+		$(this.loadXYZButton).text("load Layer");
+		$(this.XYZLoaderTab).append(this.loadXYZButton);
+
+		$(this.loadXYZButton).click($.proxy(function(){
+			var xyzURL = $(this.xyzURL).val();
+			
+			this.distributeXYZ(xyzURL);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.XYZLoaderTab);
+	},
+	
+	addRomanEmpireLoader : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='RomanEmpireLoader'>Roman Empire</option>");
+		
+		this.RomanEmpireLoaderTab = document.createElement("div");
+		$(this.RomanEmpireLoaderTab).attr("id","RomanEmpireLoader");
+
+		this.loadRomanEmpireButton = document.createElement("button");
+		$(this.loadRomanEmpireButton).text("load Layer");
+		$(this.RomanEmpireLoaderTab).append(this.loadRomanEmpireButton);
+
+		$(this.loadRomanEmpireButton).click($.proxy(function(){
+			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png");
+		},this));
+
+		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
+	}
 };
