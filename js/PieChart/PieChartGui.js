@@ -35,7 +35,7 @@ function PieChartGui(dataloader, div, options) {
 	this.pieChartContainer = div;
 	this.pieChartContainer.style.position = 'relative';
 
-	this.pieChartDiv = document.createElement("div");
-	this.pieChartDiv.id = "pieChartDivID";
-	div.appendChild(this.pieChartDiv);
+	this.pieChartsDiv = document.createElement("div");
+	this.pieChartsDiv.id = "pieChartsDivID";
+	div.appendChild(this.pieChartsDiv);
 };

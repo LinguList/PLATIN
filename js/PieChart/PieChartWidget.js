@@ -37,157 +37,38 @@ function PieChartWidget(core, div, options) {
 	this.options = (new PieChartConfig(options)).options;
 	this.gui = new PieChartGui(this, div, this.options);
 	
-	this.pieChart = new PieChart(this);
-	
-	this.watchedDataset = -1;
-	this.watchColumn = "";
-	//default selectionFunction returns value (creates "distinct" piechart)
-	this.selectionFunction = function(columnData){return columnData;};
+	this.pieCharts = [];
 }
 
 PieChartWidget.prototype = {
 	
-	setWatched : function(watchedDataset, watchedColumn, selectionFunction){
-		this.watchedDataset = watchedDataset;
-		this.watchColumn = watchedColumn;
-		
-		if (typeof selectionFunction !== "undefined")
-			this.selectionFunction = selectionFunction;
-		
-		this.redrawPieChart(this.datasets);
-	},
-	
-	getElementsByValue : function(columnElement) {
-		var elements = [];
-		
-		if (this.watchedDataset >= 0){
-			pieChartWidget = this;
-			$(this.datasets[this.watchedDataset].objects).each(function(){
-				var columnData = this[pieChartWidget.watchColumn];
-				if (typeof columnData === "undefined"){
-					columnData = this.tableContent[pieChartWidget.watchColumn];
-				};
-				
-				columnData = pieChartWidget.selectionFunction(columnData);
-				
-				if (columnData === columnElement)
-					elements.push(this);
-			});
-		}
-		
-		return elements;
-	},
-	
-	redrawPieChart : function(objects) {
-		
-		if (this.watchedDataset >= 0){
-			var chartDataCounter = new Object;
-			var pieChartWidget = this;
-			$(objects).each(function(){
-				var columnData = this[pieChartWidget.watchColumn];
-				if (typeof columnData === "undefined"){
-					columnData = this.tableContent[pieChartWidget.watchColumn];
-				};
-				
-				columnData = pieChartWidget.selectionFunction(columnData);
-				
-				if (typeof chartDataCounter[columnData] === "undefined")
-					chartDataCounter[columnData] = 1;
-				else
-					chartDataCounter[columnData]++;
-			});
-			
-			var chartData = [];
-			$.each(chartDataCounter, function(name,val){
-				chartData.push([name,val]);
-			});
-			
-			if (chartData.length>0){
-				$(this.gui.pieChartDiv).empty();
-	
-				$.jqplot (this.gui.pieChartDiv.id, [chartData],
-					{
-						seriesDefaults: {
-							// Make this a pie chart.
-							renderer: $.jqplot.PieRenderer,
-							rendererOptions: {
-								// Put data labels on the pie slices.
-								// By default, labels show the percentage of the slice.
-								showDataLabels: true
-							}
-						},
-						legend: { show:true, location: 'e' }
-					}
-				);
-			}
-		}
+	addPieChart : function(watchedDataset, watchedColumn, selectionFunction){
+		this.pieCharts.push(new PieChart(this, watchedDataset, watchedColumn, selectionFunction));
 	},
 
 	initWidget : function(data) {
 		this.datasets = data;
 		
-		var pieChartWidget = this;
-		
-		$(this.gui.pieChartDiv).bind('jqplotDataHighlight', function(ev, seriesIndex, pointIndex, data) {
-			//data[0] contains the column element
-			pieChartWidget.triggerHighlight(data[0]);                              
-        }); 
-		
-		$(this.gui.pieChartDiv).bind('jqplotDataClick', function(ev, seriesIndex, pointIndex, data) {
-			//data[0] contains the column element
-			pieChartWidget.triggerSelection(data[0]);                              
-        });
-		
-		this.redrawPieChart(data[this.watchedDataset].objects);
+		$(this.pieCharts).each(function(){
+			this.initPieChart(data);
+		});
 	},
 
 	highlightChanged : function(objects) {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		this.redrawPieChart(objects[this.watchedDataset]);
+		$(this.pieCharts).each(function(){
+			this.redrawPieChart(objects);
+		});
 	},
 
 	selectionChanged : function(selection) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		this.redrawPieChart(selection.objects[this.watchedDataset]);
+		$(this.pieCharts).each(function(){
+			this.redrawPieChart(selection.objects);
+		});
 	},
-
-	triggerHighlight : function(columnElement) {
-		var highlightedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
-			highlightedObjects.push([]);
-		
-		highlightedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
-		
-		this.core.triggerHighlight(highlightedObjects);
-	},
-
-	triggerSelection : function(columnElement) {
-		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
-			selectedObjects.push([]);
-		
-		selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
-		
-		var selection = new Selection(selectedObjects, this);
-		this.core.triggerSelection(selection);
-	},
-
-	deselection : function() {
-	},
-
-	filtering : function() {
-	},
-
-	inverseFiltering : function() {
-	},
-
-	triggerRefining : function() {
-	},
-
-	reset : function() {
-	}
 };
