@@ -54,13 +54,13 @@ PieChartWidget.prototype = {
 		if (typeof selectionFunction !== "undefined")
 			this.selectionFunction = selectionFunction;
 		
-		redrawPieChart(this.datasets);
+		this.redrawPieChart(this.datasets);
 	},
 	
 	getElementsByValue : function(columnElement) {
 		var elements = [];
 		
-		if (watchedDataset >= 0){
+		if (this.watchedDataset >= 0){
 			pieChartWidget = this;
 			$(this.datasets[this.watchedDataset].objects).each(function(){
 				var columnData = this[pieChartWidget.watchColumn];
@@ -80,7 +80,7 @@ PieChartWidget.prototype = {
 	
 	redrawPieChart : function(objects) {
 		
-		if (watchedDataset >= 0){
+		if (this.watchedDataset >= 0){
 			var chartDataCounter = new Object;
 			var pieChartWidget = this;
 			$(objects).each(function(){
@@ -89,7 +89,7 @@ PieChartWidget.prototype = {
 					columnData = this.tableContent[pieChartWidget.watchColumn];
 				};
 				
-				columnData = this.selectionFunction(columnData);
+				columnData = pieChartWidget.selectionFunction(columnData);
 				
 				if (typeof chartDataCounter[columnData] === "undefined")
 					chartDataCounter[columnData] = 1;
@@ -160,7 +160,7 @@ PieChartWidget.prototype = {
 		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 			highlightedObjects.push([]);
 		
-		highlightedObjects[this.watchedDataset] = getElementsByValue(columnElement);
+		highlightedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
 		
 		this.core.triggerHighlight(highlightedObjects);
 	},
@@ -170,7 +170,7 @@ PieChartWidget.prototype = {
 		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 			selectedObjects.push([]);
 		
-		selectedObjects[this.watchedDataset] = getElementsByValue(columnElement);
+		selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
 		
 		var selection = new Selection(selectedObjects, this);
 		this.core.triggerSelection(selection);
