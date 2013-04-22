@@ -50,6 +50,7 @@ Overlayloader.prototype = {
 	initialize : function() {
 
 		this.addKMLLoader();
+		this.addKMZLoader();
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
@@ -74,6 +75,27 @@ Overlayloader.prototype = {
 	        });
 
 			this.openlayersMap.addLayer(newLayer);
+		});
+	},
+	
+	distributeKMZ : function(kmzURL) {
+		$(this.attachedMapWidgets).each(function(){
+			var newLayer = new OpenLayers.Layer.Vector("KML", {
+				projection: this.openlayersMap.displayProjection,
+				strategies: [new OpenLayers.Strategy.Fixed()],
+				format: OpenLayers.Format.KML,
+				extractAttributes: true
+			});
+			
+			var map = this.openlayersMap;
+					
+			GeoTemConfig.getKmz(kmzURL, function(kmlDoms){
+				$(kmlDoms).each(function(){
+					var kml = new OpenLayers.Format.KML().read(this);
+					newLayer.addFeatures(kml);
+					map.addLayer(newLayer);
+				});
+			});
 		});
 	},
 	
@@ -138,6 +160,31 @@ Overlayloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.KMLLoaderTab);
+	},
+	
+	addKMZLoader : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='KMZLoader'>KMZ File URL</option>");
+		
+		this.KMZLoaderTab = document.createElement("div");
+		$(this.KMZLoaderTab).attr("id","KMZLoader");
+		
+		this.kmzURL = document.createElement("input");
+		$(this.kmzURL).attr("type","text");
+		$(this.KMZLoaderTab).append(this.kmzURL);
+		
+		this.loadKMZButton = document.createElement("button");
+		$(this.loadKMZButton).text("load KMZ");
+		$(this.KMZLoaderTab).append(this.loadKMZButton);
+
+		$(this.loadKMZButton).click($.proxy(function(){
+			var kmzURL = $(this.kmzURL).val();
+			if (typeof this.options.proxy != 'undefined')
+				kmzURL = this.options.proxy + kmzURL;
+			
+			this.distributeKMZ(kmzURL);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.KMZLoaderTab);
 	},
 	
 	addArcGISWMSLoader : function() {
