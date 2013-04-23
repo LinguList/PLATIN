@@ -53,6 +53,8 @@ PieChartWidget.prototype = {
 	initWidget : function(data) {
 		this.datasets = data;
 		
+		this.gui.refreshColumnSelector();
+		
 		$(this.pieCharts).each(function(){
 			if (typeof this !== "undefined")
 				this.initPieChart(data);

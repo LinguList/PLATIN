@@ -36,7 +36,49 @@ function PieChartGui(pieChart, div, options) {
 	this.pieChartContainer = div;
 	this.pieChartContainer.style.position = 'relative';
 
+	this.columnSelectorDiv = document.createElement("div");
+	div.appendChild(this.columnSelectorDiv);
+	this.datasetSelect = document.createElement("select");
+	$(this.datasetSelect).select(function(event){
+		if (typeof pieChartGui.parent.datasets !== "undefined"){
+			var dataset = pieChartGui.parent.datasets[$(pieChartGui.datasetSelect).val()];
+			if (dataset.objects.length > 0){
+				var test = dataset.objects[0].tableContent;
+			    for (var attribute in test) {
+			    	$(pieChartGui.columnSelect).append("<option value="+attribute+">"+attribute+"</option>");
+			    }
+			}
+		}
+	});
+	this.columnSelectorDiv.appendChild(this.datasetSelect);
+	this.columnSelect = document.createElement("select");
+	this.columnSelectorDiv.appendChild(this.columnSelect);
+	this.buttonNewPieChart = document.createElement("button");
+	$(this.buttonNewPieChart).text("add");
+	this.columnSelectorDiv.appendChild(this.buttonNewPieChart);
+	$(this.buttonNewPieChart).click(function(){
+		pieChartGui.parent.addPieChart($(pieChartGui.datasetSelect).val(), $(pieChartGui.columnSelect).val());
+	});
+	
+	this.refreshColumnSelector();
+	
 	this.pieChartsDiv = document.createElement("div");
 	this.pieChartsDiv.id = "pieChartsDivID";
 	div.appendChild(this.pieChartsDiv);
+};
+
+PieChartGui.prototype = {
+		
+	refreshColumnSelector : function(){
+		$(this.datasetSelect).empty();
+		$(this.columnSelect).empty();
+		
+		var index = 0;
+		var pieChartGui = this;
+		$(this.parent.datasets).each(function(){
+			$(pieChartGui.datasetSelect).append("<option value="+index+">"+this.label+"</option>");
+			index++;
+		});
+		$(pieChartGui.datasetSelect).select();
+	}
 };
