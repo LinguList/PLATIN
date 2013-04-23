@@ -43,7 +43,11 @@ function PieChartWidget(core, div, options) {
 PieChartWidget.prototype = {
 	
 	addPieChart : function(watchedDataset, watchedColumn, selectionFunction){
-		this.pieCharts.push(new PieChart(this, watchedDataset, watchedColumn, selectionFunction));
+		var newPieChart = new PieChart(this, watchedDataset, watchedColumn, selectionFunction);
+		this.pieCharts.push(newPieChart);
+		if (	(typeof GeoTemConfig.datasets !== "undefined") && 
+				(GeoTemConfig.datasets.length > watchedDataset) )
+			newPieChart.initPieChart(GeoTemConfig.datasets);
 	},
 
 	initWidget : function(data) {
