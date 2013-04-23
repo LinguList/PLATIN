@@ -33,6 +33,8 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.pieChartDiv;
 	this.preHighlightObjects;
 	
+	this.removeButton;
+	
 	this.parent = parent;
 	this.options = parent.options;
 	
@@ -53,6 +55,15 @@ PieChart.prototype = {
 		var pieChart = this;
 		
 		if (typeof this.pieChartDiv === "undefined"){
+			this.removeButton = document.createElement("button");
+			$(this.removeButton).text("remove");
+			$(this.removeButton).click(function(){
+				pieChart.parent.pieCharts[pieChart.index] = null;
+				$(pieChart.pieChartDiv).remove();
+				$(pieChart.removeButton).remove();
+				pieChart.parent.redrawPieCharts();
+			});
+			$(this.parent.gui.pieChartsDiv).append(this.removeButton);
 			this.pieChartDiv = document.createElement("div");
 			this.index = this.parent.pieCharts.length;
 			this.pieChartDiv.id = "PieChart"+this.index;

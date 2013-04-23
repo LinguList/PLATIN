@@ -43,14 +43,28 @@ function PieChartWidget(core, div, options) {
 PieChartWidget.prototype = {
 	
 	addPieChart : function(watchedDataset, watchedColumn, selectionFunction){
-		this.pieCharts.push(new PieChart(this, watchedDataset, watchedColumn, selectionFunction));
+		var newPieChart = new PieChart(this, watchedDataset, watchedColumn, selectionFunction);
+		this.pieCharts.push(newPieChart);
+		if (	(typeof GeoTemConfig.datasets !== "undefined") && 
+				(GeoTemConfig.datasets.length > watchedDataset) )
+			newPieChart.initPieChart(GeoTemConfig.datasets);
 	},
 
 	initWidget : function(data) {
 		this.datasets = data;
 		
+		this.gui.refreshColumnSelector();
+		
 		$(this.pieCharts).each(function(){
-			this.initPieChart(data);
+			if (typeof this !== "undefined")
+				this.initPieChart(data);
+		});
+	},
+	
+	redrawPieCharts : function(objects) {
+		$(this.pieCharts).each(function(){
+			if (typeof this !== "undefined")
+				this.redrawPieChart(objects);
 		});
 	},
 
@@ -58,17 +72,13 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		$(this.pieCharts).each(function(){
-			this.redrawPieChart(objects);
-		});
+		this.redrawPieCharts(objects);
 	},
 
 	selectionChanged : function(selection) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		$(this.pieCharts).each(function(){
-			this.redrawPieChart(selection.objects);
-		});
+		this.redrawPieCharts(selection.objects);
 	},
 };
