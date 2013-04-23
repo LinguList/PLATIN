@@ -50,7 +50,15 @@ PieChartWidget.prototype = {
 		this.datasets = data;
 		
 		$(this.pieCharts).each(function(){
-			this.initPieChart(data);
+			if (typeof this !== "undefined")
+				this.initPieChart(data);
+		});
+	},
+	
+	redrawPieCharts : function(objects) {
+		$(this.pieCharts).each(function(){
+			if (typeof this !== "undefined")
+				this.redrawPieChart(objects);
 		});
 	},
 
@@ -58,17 +66,13 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		$(this.pieCharts).each(function(){
-			this.redrawPieChart(objects);
-		});
+		this.redrawPieCharts(objects);
 	},
 
 	selectionChanged : function(selection) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		$(this.pieCharts).each(function(){
-			this.redrawPieChart(selection.objects);
-		});
+		this.redrawPieCharts(selection.objects);
 	},
 };
