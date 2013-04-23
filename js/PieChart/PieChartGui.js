@@ -24,12 +24,13 @@
  * PieChart GUI Implementation
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  *
- * @param {DataloaderWidget} parent PieChart widget object
+ * @param {PieChartWidget} parent PieChart widget object
  * @param {HTML object} div parent div to append the PieChart gui
  * @param {JSON} options PieChart configuration
  */
-function PieChartGui(dataloader, div, options) {
+function PieChartGui(pieChart, div, options) {
 
+	this.parent = pieChart;
 	var pieChartGui = this;
 	
 	this.pieChartContainer = div;
