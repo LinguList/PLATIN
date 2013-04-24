@@ -174,7 +174,15 @@ PieChart.prototype = {
 								showDataLabels: true
 							}
 						},
-						legend: { show:true, location: 'e' }
+						legend: { show:true, location: 'e' },
+						highlighter: {
+							show: true,
+						    showTooltip: true,
+						    tooltipFade: true,
+						    formatString:'%s', 
+							tooltipLocation:'sw',
+							useAxesFormatters:false
+						}
 					}
 				);
 			}
