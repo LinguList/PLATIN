@@ -175,7 +175,7 @@ PieChart.prototype = {
 		
 		var myIndex = this.index;
 		$(this.parent.pieCharts).each(function(){
-			if (this.index !== myIndex){
+			if (this instanceof PieChart && (this.index !== myIndex)){
 				this.redrawPieChart(highlightedObjects);
 			}				
 		});
@@ -193,7 +193,7 @@ PieChart.prototype = {
 		
 		var myIndex = this.index;
 		$(this.parent.pieCharts).each(function(){
-			if (this.index !== myIndex){
+			if (this instanceof PieChart && (this.index !== myIndex)){
 				this.preHighlightObjects = selectedObjects;
 				this.redrawPieChart(selectedObjects);
 			}				
