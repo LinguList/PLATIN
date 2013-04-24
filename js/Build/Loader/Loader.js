@@ -77,6 +77,8 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/jquery.jqplot.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/plugins/jqplot.pieRenderer.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/plugins/jqplot.highlighter.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
