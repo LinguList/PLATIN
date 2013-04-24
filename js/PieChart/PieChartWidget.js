@@ -62,10 +62,10 @@ PieChartWidget.prototype = {
 	},
 	
 	redrawPieCharts : function(objects) {
-		$(this.pieCharts).each(function(){
-			if (typeof this !== "undefined")
+		$(this.pieCharts).each($.proxy(function(){
+			if (this instanceof PieChart)
 				this.redrawPieChart(objects);
-		});
+		},{objects:objects}));
 	},
 
 	highlightChanged : function(objects) {
