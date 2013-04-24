@@ -73,12 +73,15 @@ PieChartGui.prototype = {
 		$(this.datasetSelect).empty();
 		$(this.columnSelect).empty();
 		
-		var index = 0;
-		var pieChartGui = this;
-		$(this.parent.datasets).each(function(){
-			$(pieChartGui.datasetSelect).append("<option value="+index+">"+this.label+"</option>");
-			index++;
-		});
-		$(pieChartGui.datasetSelect).select();
+		if ( (typeof this.parent.datasets !== "undefined") && (this.parent.datasets.length > 0)) {
+			var index = 0;
+			var pieChartGui = this;
+			$(this.parent.datasets).each(function(){
+				$(pieChartGui.datasetSelect).append("<option value="+index+">"+this.label+"</option>");
+				index++;
+			});
+			
+			$(pieChartGui.datasetSelect).select();
+		}
 	}
 };

@@ -38,6 +38,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.parent = parent;
 	this.options = parent.options;
 	
+	this.watchedDatasetLabel;
 	this.watchedDataset = watchedDataset;
 	this.watchColumn = watchedColumn;
 	if (typeof selectionFunction !== "undefined")
@@ -51,6 +52,13 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 
 PieChart.prototype = {
 
+	remove : function() {
+		this.parent.pieCharts[this.index] = null;
+		$(this.pieChartDiv).remove();
+		$(this.removeButton).remove();
+		this.parent.redrawPieCharts();
+	},
+	
 	initialize : function() {
 		var pieChart = this;
 		
@@ -58,10 +66,7 @@ PieChart.prototype = {
 			this.removeButton = document.createElement("button");
 			$(this.removeButton).text("remove");
 			$(this.removeButton).click(function(){
-				pieChart.parent.pieCharts[pieChart.index] = null;
-				$(pieChart.pieChartDiv).remove();
-				$(pieChart.removeButton).remove();
-				pieChart.parent.redrawPieCharts();
+				pieChart.remove();
 			});
 			$(this.parent.gui.pieChartsDiv).append(this.removeButton);
 			this.pieChartDiv = document.createElement("div");
@@ -108,10 +113,22 @@ PieChart.prototype = {
 	},
 	
 	initPieChart : function(dataSets) {
+		if (typeof this.watchedDatasetLabel !== "undefined"){
+			//check if our data went missing
+			if (	(dataSets.length <= this.watchedDataset) ||
+					(dataSets[this.watchedDataset].label !== this.watchedDatasetLabel) ){
+				// if our dataset went missing, remove this piechart
+				this.remove();
+				return;
+			}
+		}
 		var objects = [];
 		for (var i = 0; i < dataSets.length; i++)
 			objects.push([]);
 		objects[this.watchedDataset] = dataSets[this.watchedDataset].objects;
+		//TODO: this var "remembers" which dataset we are attached to
+		//if it goes missing we delete ourself (in. This could be improved.
+		this.watchedDatasetLabel = GeoTemConfig.datasets[this.watchedDataset].label;
 		
 		this.preHighlightObjects = objects;
 		this.redrawPieChart(objects);
