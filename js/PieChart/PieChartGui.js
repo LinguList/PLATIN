@@ -43,9 +43,18 @@ function PieChartGui(pieChart, div, options) {
 		if (typeof pieChartGui.parent.datasets !== "undefined"){
 			var dataset = pieChartGui.parent.datasets[$(pieChartGui.datasetSelect).val()];
 			if (dataset.objects.length > 0){
-				var test = dataset.objects[0].tableContent;
-			    for (var attribute in test) {
+				//This implies that the dataObjects are homogenous
+				var firstObject = dataset.objects[0];
+				var firstTableContent = firstObject.tableContent;
+			    for (var attribute in firstTableContent) {
 			    	$(pieChartGui.columnSelect).append("<option value="+attribute+">"+attribute+"</option>");
+			    }
+			    
+			    if (firstObject.isTemporal)
+			    	$(pieChartGui.columnSelect).append("<option value='dates[0].date'>date</option>");
+			    if (typeof firstObject.locations[0] !== "undefined"){
+			    	$(pieChartGui.columnSelect).append("<option value='locations[0].latitude'>lat</option>");
+			    	$(pieChartGui.columnSelect).append("<option value='locations[0].longitude'>lon</option>");
 			    }
 			}
 		}
