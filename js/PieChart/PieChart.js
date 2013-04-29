@@ -91,19 +91,42 @@ PieChart.prototype = {
         });
 	},
 
+	getElementData : function(dataObject) {
+		pieChart = this;
+		var columnData;
+		if (pieChart.watchColumn.indexOf("[") === -1){
+			columnData = dataObject[pieChart.watchColumn];
+			if (typeof columnData === "undefined"){
+				columnData = dataObject.tableContent[pieChart.watchColumn];
+			};
+		} else {
+			var columnName = pieChart.watchColumn.split("[")[0];
+			var IndexAndAttribute = pieChart.watchColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				var arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				
+				if (typeof attribute === "undefined")
+					columnData = dataObject[columnName][arrayIndex];
+				else{
+					attribute = attribute.split(".")[1];
+					columnData = dataObject[columnName][arrayIndex][attribute];
+				}
+			}
+		}
+		
+		if (typeof columnData !== undefined)
+			columnData = pieChart.selectionFunction(columnData);
+		
+		return(columnData);
+	},
+	
 	getElementsByValue : function(columnElement) {
 		var elements = [];
-		
+		var pieChart = this;
 		if (this.watchedDataset >= 0){
-			pieChartWidget = this;
 			$(this.parent.datasets[this.watchedDataset].objects).each(function(){
-				var columnData = this[pieChartWidget.watchColumn];
-				if (typeof columnData === "undefined"){
-					columnData = this.tableContent[pieChartWidget.watchColumn];
-				};
-				
-				columnData = pieChartWidget.selectionFunction(columnData);
-				
+				var columnData = pieChart.getElementData(this);
 				if (columnData === columnElement)
 					elements.push(this);
 			});
@@ -138,16 +161,11 @@ PieChart.prototype = {
 		
 		if (this.watchedDataset >= 0){
 			var chartDataCounter = new Object;
-			var pieChartWidget = this;
+			var pieChart = this;
 			if (objects[this.watchedDataset].length === 0)
 				objects = this.preHighlightObjects;
 			$(objects[this.watchedDataset]).each(function(){
-				var columnData = this[pieChartWidget.watchColumn];
-				if (typeof columnData === "undefined"){
-					columnData = this.tableContent[pieChartWidget.watchColumn];
-				};
-				
-				columnData = pieChartWidget.selectionFunction(columnData);
+				var columnData = pieChart.getElementData(this);
 				
 				if (typeof chartDataCounter[columnData] === "undefined")
 					chartDataCounter[columnData] = 1;
