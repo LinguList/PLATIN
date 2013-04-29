@@ -115,7 +115,7 @@ PieChart.prototype = {
 			}
 		}
 		
-		if (typeof columnData !== undefined)
+		if (typeof columnData !== "undefined")
 			columnData = pieChart.selectionFunction(columnData);
 		
 		return(columnData);
