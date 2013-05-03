@@ -90,6 +90,8 @@ PlacetableWidget.prototype = {
 			});
 			
 			$(placetableWidget.gui.placetablesTable).append(row);
+			
+			datasetIndex++;
 		});
 		
 		this.highlightChanged([]);
