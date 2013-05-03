@@ -226,6 +226,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChart.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
