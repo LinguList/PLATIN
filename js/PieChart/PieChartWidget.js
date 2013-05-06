@@ -57,7 +57,7 @@ PieChartWidget.prototype = {
 		this.gui.refreshColumnSelector();
 		
 		$(this.pieCharts).each(function(){
-			if (typeof this !== "undefined")
+			if (this instanceof PieChart)
 				this.initPieChart(data);
 		});
 	},
