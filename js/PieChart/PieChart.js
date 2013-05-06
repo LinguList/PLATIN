@@ -75,22 +75,23 @@ PieChart.prototype = {
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 		}
 		
-		/*
-		$(this.pieChartDiv).bind('jqplotDataHighlight', function(ev, seriesIndex, pointIndex, data) {
-			//data[0] contains the column element
-			pieChart.triggerHighlight(data[0]);                              
-        }); 
+	    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
+	        if (item) {
+				//item.series.label contains the column element
+				pieChart.triggerHighlight(item.series.label);                              
+	        } else {
+	        	pieChart.triggerHighlight();
+	        }
+	    });
 		
-		$(this.pieChartDiv).bind('jqplotDataUnhighlight', function(ev, seriesIndex, pointIndex, data) {
-			//data[0] contains the column element
-			pieChart.triggerHighlight();                              
-        }); 
-		
-		$(this.pieChartDiv).bind('jqplotDataClick', function(ev, seriesIndex, pointIndex, data) {
-			//data[0] contains the column element
-			pieChart.triggerSelection(data[0]);                              
-        });
-        */
+	    $(this.pieChartDiv).bind("plotclick", function (event, pos, item) {
+	        if (item) {
+				//item.series.label contains the column element
+				pieChart.triggerSelection(item.series.label);                              
+	        } else {
+	        	pieChart.triggerSelection();
+	        }
+	    });
 	},
 
 	getElementData : function(dataObject) {
@@ -231,15 +232,11 @@ PieChart.prototype = {
 						grid: {
 				            hoverable: true,
 				            clickable: true
-				        }/*,
-						highlighter: {
-							show: true,
-						    showTooltip: true,
-						    tooltipFade: true,
-						    formatString:'%s', 
-							tooltipLocation:'nw',
-							useAxesFormatters:false
-						}*/
+				        },
+				        tooltip: true,
+				        tooltipOpts: {
+				            content: "%s"
+				        }
 					}
 				);
 			}
