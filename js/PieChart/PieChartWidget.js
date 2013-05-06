@@ -48,6 +48,7 @@ PieChartWidget.prototype = {
 		if (	(typeof GeoTemConfig.datasets !== "undefined") && 
 				(GeoTemConfig.datasets.length > watchedDataset) )
 			newPieChart.initPieChart(GeoTemConfig.datasets);
+		this.redrawPieCharts();
 	},
 
 	initWidget : function(data) {
@@ -56,7 +57,7 @@ PieChartWidget.prototype = {
 		this.gui.refreshColumnSelector();
 		
 		$(this.pieCharts).each(function(){
-			if (typeof this !== "undefined")
+			if (this instanceof PieChart)
 				this.initPieChart(data);
 		});
 	},

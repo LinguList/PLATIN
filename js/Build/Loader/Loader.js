@@ -56,21 +56,27 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.min.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/purl.min.js'
-			}],GeoTemCoLoader.loadjqPlot);
+			}],GeoTemCoLoader.loadFlot);
 		}
 		else {
-			GeoTemCoLoader.loadjqPlot();
+			GeoTemCoLoader.loadFlot();
 		}
 	},
 	
-	loadjqPlot : function() {
-		if (typeof $.jqplot == 'undefined') {
+	loadFlot : function() {
+		if (typeof $.plot == 'undefined') {
 			(new DynaJsLoader()).loadScripts([{
-				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/jquery.jqplot.js'
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.js'
 			},{
-				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/plugins/jqplot.pieRenderer.js'
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.resize.js'
 			},{
-				url : GeoTemCoLoader.urlPrefix + 'lib/jqPlot/plugins/jqplot.highlighter.js'
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.pie.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.selection.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.time.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.tooltip.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
