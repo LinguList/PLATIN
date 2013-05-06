@@ -253,9 +253,11 @@ PieChart.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 		
 		var myIndex = this.index;
+		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
 			if (this instanceof PieChart && (this.index !== myIndex)){
-				this.redrawPieChart(highlightedObjects);
+				if (this.watchedDataset === pieChart.watchedDataset)
+					this.redrawPieChart(highlightedObjects);
 			}				
 		});
 	},
@@ -271,10 +273,13 @@ PieChart.prototype = {
 		this.parent.core.triggerSelection(selection);
 		
 		var myIndex = this.index;
+		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
 			if (this instanceof PieChart && (this.index !== myIndex)){
-				this.preHighlightObjects = selectedObjects;
-				this.redrawPieChart(selectedObjects);
+				if (this.watchedDataset === pieChart.watchedDataset){
+					this.preHighlightObjects = selection.objects;
+					this.redrawPieChart(selection.objects);
+				}
 			}				
 		});
 	},
