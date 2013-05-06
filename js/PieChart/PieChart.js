@@ -266,11 +266,19 @@ PieChart.prototype = {
 		var selectedObjects = [];
 		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 			selectedObjects.push([]);
-		
-		selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
-		
-		var selection = new Selection(selectedObjects, this);
+
+		var selection;
+		if (typeof columnElement !== "undefined"){
+			selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
+			selection = new Selection(selectedObjects, this);
+		} else {
+			selection = new Selection(selectedObjects);
+		}
+
 		this.parent.core.triggerSelection(selection);
+		
+		if (!selection.valid())
+			selection.loadAllObjects();
 		
 		var myIndex = this.index;
 		var pieChart = this;
