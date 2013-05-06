@@ -28,15 +28,7 @@
  */
 
 var arrayIndex = function(array, obj) {
-	if (Array.indexOf) {
-		return array.indexOf(obj);
-	}
-	for (var i = 0; i < array.length; i++) {
-		if (array[i] == obj) {
-			return i;
-		}
-	}
-	return -1;
+	return $.inArray(obj, array);
 }
 GeoTemCoLoader = {
 
