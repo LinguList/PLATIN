@@ -481,6 +481,21 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 	if (timeData[0] && timeData[0] < 100) {
 		date.setFullYear(timeData[0]);
 	}
+
+	//check data validity;
+	var isValidDate = true;
+	if ( date instanceof Date ) {
+		if ( isNaN( date.getTime() ) )
+			isValidDate = false;
+	} else
+		isValidDate = false;
+	
+	if (!isValidDate){
+		if (typeof console !== undefined)
+			console.error(xmlTime + " is no valid time format");
+		return null;
+	}
+	
 	return {
 		date : date,
 		granularity : granularity
