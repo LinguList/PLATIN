@@ -253,9 +253,11 @@ PieChart.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 		
 		var myIndex = this.index;
+		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
 			if (this instanceof PieChart && (this.index !== myIndex)){
-				this.redrawPieChart(highlightedObjects);
+				if (this.watchedDataset === pieChart.watchedDataset)
+					this.redrawPieChart(highlightedObjects);
 			}				
 		});
 	},
@@ -264,17 +266,28 @@ PieChart.prototype = {
 		var selectedObjects = [];
 		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 			selectedObjects.push([]);
-		
-		selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
-		
-		var selection = new Selection(selectedObjects, this);
+
+		var selection;
+		if (typeof columnElement !== "undefined"){
+			selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
+			selection = new Selection(selectedObjects, this);
+		} else {
+			selection = new Selection(selectedObjects);
+		}
+
 		this.parent.core.triggerSelection(selection);
 		
+		if (!selection.valid())
+			selection.loadAllObjects();
+		
 		var myIndex = this.index;
+		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
 			if (this instanceof PieChart && (this.index !== myIndex)){
-				this.preHighlightObjects = selectedObjects;
-				this.redrawPieChart(selectedObjects);
+				if (this.watchedDataset === pieChart.watchedDataset){
+					this.preHighlightObjects = selection.objects;
+					this.redrawPieChart(selection.objects);
+				}
 			}				
 		});
 	},

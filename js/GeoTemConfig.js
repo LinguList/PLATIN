@@ -620,7 +620,7 @@ GeoTemConfig.loadKml = function(kml) {
 						$(this).find("td").each(
 							function() {
 								if (isHeader) {
-									lastHeader = $(this).text();
+									lastHeader = $.trim($(this).text());
 									isHeader = false;
 								} else {
 									var value = "";

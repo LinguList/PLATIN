@@ -62,10 +62,13 @@ PieChartWidget.prototype = {
 		});
 	},
 	
-	redrawPieCharts : function(objects) {
+	redrawPieCharts : function(objects, overwrite) {
 		$(this.pieCharts).each(function(){
-			if (this instanceof PieChart)
+			if (this instanceof PieChart){
+				if ( (typeof overwrite !== "undefined") && overwrite)
+					this.preHighlightObjects = objects;
 				this.redrawPieChart(objects);
+			}
 		});
 	},
 
@@ -73,13 +76,17 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		this.redrawPieCharts(objects);
+		this.redrawPieCharts(objects, false);
 	},
 
 	selectionChanged : function(selection) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		this.redrawPieCharts(selection.objects);
+		var objects = selection.objects;
+		if (!selection.valid()){
+			selection.loadAllObjects();
+		}
+		this.redrawPieCharts(objects, true);
 	},
 };
