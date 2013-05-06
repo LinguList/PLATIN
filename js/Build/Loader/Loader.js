@@ -79,6 +79,12 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.resize.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.pie.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.selection.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.time.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.tooltip.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
