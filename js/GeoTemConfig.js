@@ -548,7 +548,9 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			}
 			var weight = item.weight || 1;
-			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent);
+			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+			var projection = new OpenLayers.Projection("EPSG:4326");
+			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
 		} catch(e) {
@@ -697,7 +699,9 @@ GeoTemConfig.loadKml = function(kml) {
 				}
 			}
 		}
-		var object = new DataObject(name, description, location, time, 1, tableContent);
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		var projection = new OpenLayers.Projection("EPSG:4326");
+		var object = new DataObject(name, description, location, time, 1, tableContent, projection);
 		object.setIndex(index);
 		index++;
 		mapObjects.push(object);

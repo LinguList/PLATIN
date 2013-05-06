@@ -37,9 +37,10 @@
  * @param {Date} timeEnd end time of the data object
  * @param {int} granularity granularity of the given time
  * @param {int} weight weight of the time object
+ * @param {Openlayers.Projection} projection of the coordinates (optional)
  */
 
-function DataObject(name, description, locations, dates, weight, tableContent) {
+function DataObject(name, description, locations, dates, weight, tableContent, projection) {
 
 	this.name = name;
 	this.description = description;
@@ -52,6 +53,27 @@ function DataObject(name, description, locations, dates, weight, tableContent) {
 	}
 
 	this.locations = locations;
+	
+	//Check if locations are valid
+	if (projection instanceof OpenLayers.Projection){	
+		var tempLocations = [];
+		$(this.locations).each(function(){
+			//EPSG:4326 === WGS84
+			if (projection.getCode() === "EPSG:4326"){
+				if (	(this.latitude>=-90) &&
+						(this.latitude<=90) &&
+						(this.longitude>=-180) &&
+						(this.longitude<=180) )
+					tempLocations.push(this);
+				else{
+					if (typeof console !== undefined)
+						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+				}					
+			}
+		});
+		this.locations = tempLocations;
+	}
+	
 	this.isGeospatial = false;
 	if (this.locations.length > 0) {
 		this.isGeospatial = true;
