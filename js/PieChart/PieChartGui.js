@@ -39,13 +39,14 @@ function PieChartGui(pieChart, div, options) {
 	this.columnSelectorDiv = document.createElement("div");
 	div.appendChild(this.columnSelectorDiv);
 	this.datasetSelect = document.createElement("select");
-	$(this.datasetSelect).select(function(event){
+	$(this.datasetSelect).change(function(event){
 		if (typeof pieChartGui.parent.datasets !== "undefined"){
 			var dataset = pieChartGui.parent.datasets[$(pieChartGui.datasetSelect).val()];
 			if (dataset.objects.length > 0){
 				//This implies that the dataObjects are homogenous
 				var firstObject = dataset.objects[0];
 				var firstTableContent = firstObject.tableContent;
+				$(pieChartGui.columnSelect).empty();
 			    for (var attribute in firstTableContent) {
 			    	$(pieChartGui.columnSelect).append("<option value="+attribute+">"+attribute+"</option>");
 			    }
@@ -91,7 +92,7 @@ PieChartGui.prototype = {
 				index++;
 			});
 			
-			$(pieChartGui.datasetSelect).select();
+			$(pieChartGui.datasetSelect).change();
 		}
 	}
 };
