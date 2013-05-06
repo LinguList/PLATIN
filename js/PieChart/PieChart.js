@@ -75,6 +75,7 @@ PieChart.prototype = {
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 		}
 		
+		/*
 		$(this.pieChartDiv).bind('jqplotDataHighlight', function(ev, seriesIndex, pointIndex, data) {
 			//data[0] contains the column element
 			pieChart.triggerHighlight(data[0]);                              
@@ -89,6 +90,7 @@ PieChart.prototype = {
 			//data[0] contains the column element
 			pieChart.triggerSelection(data[0]);                              
         });
+        */
 	},
 
 	getElementData : function(dataObject) {
@@ -135,23 +137,39 @@ PieChart.prototype = {
 		return elements;
 	},
 	
-	initPieChart : function(dataSets) {
+	//check if dataset is still there
+	checkForDataSet : function() {
+		var dataSets = GeoTemConfig.datasets;
+		if (typeof dataSets === "undefined")
+			return false;
 		if (typeof this.watchedDatasetLabel !== "undefined"){
 			//check if our data went missing
 			if (	(dataSets.length <= this.watchedDataset) ||
 					(dataSets[this.watchedDataset].label !== this.watchedDatasetLabel) ){
-				// if our dataset went missing, remove this piechart
+				return false;
+			} else
+				return true;
+			
+		} else
+			return false;
+	},
+	
+	initPieChart : function(dataSets) {
+		//TODO: this var "remembers" which dataset we are attached to
+		//if it goes missing we delete ourself. This could be improved.
+		if (typeof this.watchedDatasetLabel === "undefined")
+			this.watchedDatasetLabel = GeoTemConfig.datasets[this.watchedDataset].label;
+
+		// if our dataset went missing, remove this piechart
+		if (!this.checkForDataSet()){
 				this.remove();
 				return;
-			}
 		}
+		
 		var objects = [];
 		for (var i = 0; i < dataSets.length; i++)
 			objects.push([]);
 		objects[this.watchedDataset] = dataSets[this.watchedDataset].objects;
-		//TODO: this var "remembers" which dataset we are attached to
-		//if it goes missing we delete ourself (in. This could be improved.
-		this.watchedDatasetLabel = GeoTemConfig.datasets[this.watchedDataset].label;
 		
 		this.preHighlightObjects = objects;
 		this.redrawPieChart(objects);
@@ -159,7 +177,10 @@ PieChart.prototype = {
 
 	redrawPieChart : function(objects) {
 		
-		if (this.watchedDataset >= 0){
+		if (typeof objects === "undefined")
+			objects = this.preHighlightObjects;
+		
+		if (this.checkForDataSet(objects)){
 			var chartDataCounter = new Object;
 			var pieChart = this;
 			if (objects[this.watchedDataset].length === 0)
@@ -175,32 +196,43 @@ PieChart.prototype = {
 			
 			var chartData = [];
 			$.each(chartDataCounter, function(name,val){
-				chartData.push([name,val]);
+				chartData.push({label:name,data:val});
 			});
 			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
+				
+				//calculate height (flot NEEDS a height)				
+				var parentHeight = $(this.parent.gui.pieChartsDiv).outerHeight(true) - $(this.parent.gui.columnSelectorDiv).outerHeight(true);
+				var pieChartCount = 0;
+				$(this.parent.pieCharts).each(function(){
+					if (this instanceof PieChart)
+						pieChartCount++;
+				});
+				var height = (parentHeight/pieChartCount) - $(this.removeButton).outerHeight(true);
+				$(this.pieChartDiv).height(height);
 	
-				$.jqplot (this.pieChartDiv.id, [chartData],
+				$.plot($(this.pieChartDiv), chartData,
 					{
-						seriesDefaults: {
+						series: {
 							// Make this a pie chart.
-							renderer: $.jqplot.PieRenderer,
-							rendererOptions: {
-								// Put data labels on the pie slices.
-								// By default, labels show the percentage of the slice.
-								showDataLabels: true
+							pie: {
+								show:true
 							}
 						},
-						legend: { show:true, location: 'e' },
+						legend: { show:true, position: 'se' },
+						grid: {
+				            hoverable: true,
+				            clickable: true
+				        }/*,
 						highlighter: {
 							show: true,
 						    showTooltip: true,
 						    tooltipFade: true,
 						    formatString:'%s', 
-							tooltipLocation:'sw',
+							tooltipLocation:'nw',
 							useAxesFormatters:false
-						}
+						}*/
 					}
 				);
 			}

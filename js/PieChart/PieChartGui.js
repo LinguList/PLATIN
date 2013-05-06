@@ -74,6 +74,7 @@ function PieChartGui(pieChart, div, options) {
 	this.pieChartsDiv = document.createElement("div");
 	this.pieChartsDiv.id = "pieChartsDivID";
 	div.appendChild(this.pieChartsDiv);
+	$(this.pieChartsDiv).height("100%");
 };
 
 PieChartGui.prototype = {

@@ -5,19 +5,13 @@
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>GeoTemCo</title>
 
- 	<script src="lib/jquery/jquery.min.js"></script>
- 	<script src="lib/jquery/purl.min.js"></script>
- 	<script src="lib/jqPlot/jquery.jqplot.js"></script>
- 	<link rel="stylesheet" href="lib/jqPlot/jquery.jqplot.min.css" type="text/css" />
  	<style type="text/css">
-		table.jqplot-table-legend {
+		.legend table, .legend > div {
+		    height: 100px !important;
 			display: block;
-			height: 250px;
-			overflow-y: scroll;
+			overflow-y: scroll;		    
 		}
 	</style>
- 	<script src="lib/jqPlot/plugins/jqplot.pieRenderer.js"></script>
- 	<script src="lib/jqPlot/plugins/jqplot.highlighter.js"></script>
 
  	<script src="js/Util/Publisher.js"></script>
  	<script src="js/Build/Loader/DynaJsLoader.js"></script>
@@ -44,7 +38,7 @@
 			    <div id="mapContainerDiv" style="position:relative;"></div>
 			</td>
 			<td width=50%>
-				<div id="piechartContainerDiv" style="position:relative;"></div>
+				<div id="piechartContainerDiv" style="height:580px; position:relative;"></div>
 			</td>
 		</tr>
 	</table>

@@ -48,6 +48,7 @@ PieChartWidget.prototype = {
 		if (	(typeof GeoTemConfig.datasets !== "undefined") && 
 				(GeoTemConfig.datasets.length > watchedDataset) )
 			newPieChart.initPieChart(GeoTemConfig.datasets);
+		this.redrawPieCharts();
 	},
 
 	initWidget : function(data) {
