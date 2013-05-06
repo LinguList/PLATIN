@@ -256,7 +256,7 @@ GeoTemConfig.convertCsv = function(text){
 		var latitude = "";
 	   	/* loop inner array */
 		var descriptionOrig="";
-		var descriptionTable="<table>";
+		var descriptionTable="";
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
 			if (usedHeaders[j] == expectedHeaders[0]) {
@@ -296,9 +296,8 @@ GeoTemConfig.convertCsv = function(text){
 				descriptionTable += "<tr><td>"+usedHeaders[j]+"</td><td>"+innerArray[j]+"</td></tr>";
 			}
 		}
-		descriptionTable += "</table>";
 		if (descriptionTable.length > 0)
-			descriptionOrig = descriptionTable;
+			descriptionOrig = "<table>" + descriptionTable + "</table>";
 		kmlString += '\t\t\t<description><![CDATA[' + descriptionOrig + ']]></description>\n';
 		
 		/* set timespan:begin und timespan:end */
@@ -607,54 +606,59 @@ GeoTemConfig.loadKml = function(kml) {
 			
 			//cleanWhitespace removes non-sense text-nodes (space, tab)
 			//and is an addition to jquery defined above
-			var descriptionDocument = $($.parseXML(description)).cleanWhitespace();
-			
-			//check whether the description element contains a table
-			//if yes, this data will be loaded as separate columns
-			$(descriptionDocument).find("table").each(function(){
-				$(this).find("tr").each(
-					function() {
-						var isHeader = true;
-						var lastHeader = "";
-						
-						$(this).find("td").each(
-							function() {
-								if (isHeader) {
-									lastHeader = $.trim($(this).text());
-									isHeader = false;
-								} else {
-									var value = "";
-
-									//if this td contains HTML, serialize all
-									//it's children (the "content"!)
-									$(this).children().each(
-										function() {
-											value += xmlSerializer.serializeToString(this);
-										}
-									);
-									
-									//no HTML content (or no content at all)
-									if (value.length == 0)
-										value = $(this).text();
-									if (typeof value === "undefined")
-										value = "";
-									
-									if ($.inArray(lastHeader, descriptionTableHeaders) === -1)
-										descriptionTableHeaders.push(lastHeader);
-
-									if (tableContent[lastHeader] != null)
-										//append if a field occures more than once 
-										tableContent[lastHeader] += "\n" + value;
-									else
-										tableContent[lastHeader] = value;
-
-									isHeader = true;
+			try {
+				var descriptionDocument = $($.parseXML(description)).cleanWhitespace();
+				
+				//check whether the description element contains a table
+				//if yes, this data will be loaded as separate columns
+				$(descriptionDocument).find("table").each(function(){
+					$(this).find("tr").each(
+						function() {
+							var isHeader = true;
+							var lastHeader = "";
+							
+							$(this).find("td").each(
+								function() {
+									if (isHeader) {
+										lastHeader = $.trim($(this).text());
+										isHeader = false;
+									} else {
+										var value = "";
+	
+										//if this td contains HTML, serialize all
+										//it's children (the "content"!)
+										$(this).children().each(
+											function() {
+												value += xmlSerializer.serializeToString(this);
+											}
+										);
+										
+										//no HTML content (or no content at all)
+										if (value.length == 0)
+											value = $(this).text();
+										if (typeof value === "undefined")
+											value = "";
+										
+										if ($.inArray(lastHeader, descriptionTableHeaders) === -1)
+											descriptionTableHeaders.push(lastHeader);
+	
+										if (tableContent[lastHeader] != null)
+											//append if a field occures more than once 
+											tableContent[lastHeader] += "\n" + value;
+										else
+											tableContent[lastHeader] = value;
+	
+										isHeader = true;
+									}
 								}
-							}
-						);
-					}
-				);
-			});
+							);
+						}
+					);
+				});
+			} catch(e) {
+				//couldn't be parsed, so it contains no html table
+				//or is not in valid XHTML syntax
+			}
 			
 			tableContent["description"] = description;
 		} catch(e) {
