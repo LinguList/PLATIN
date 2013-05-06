@@ -102,18 +102,25 @@ PieChart.prototype = {
 				columnData = dataObject.tableContent[pieChart.watchColumn];
 			};
 		} else {
-			var columnName = pieChart.watchColumn.split("[")[0];
-			var IndexAndAttribute = pieChart.watchColumn.split("[")[1];
-			if (IndexAndAttribute.indexOf("]") != -1){
-				var arrayIndex = IndexAndAttribute.split("]")[0];
-				var attribute = IndexAndAttribute.split("]")[1];
-				
-				if (typeof attribute === "undefined")
-					columnData = dataObject[columnName][arrayIndex];
-				else{
-					attribute = attribute.split(".")[1];
-					columnData = dataObject[columnName][arrayIndex][attribute];
+			try {
+				var columnName = pieChart.watchColumn.split("[")[0];
+				var IndexAndAttribute = pieChart.watchColumn.split("[")[1];
+				if (IndexAndAttribute.indexOf("]") != -1){
+					var arrayIndex = IndexAndAttribute.split("]")[0];
+					var attribute = IndexAndAttribute.split("]")[1];
+					
+					if (typeof attribute === "undefined")
+						columnData = dataObject[columnName][arrayIndex];
+					else{
+						attribute = attribute.split(".")[1];
+						columnData = dataObject[columnName][arrayIndex][attribute];
+					}
 				}
+			} catch(e) {
+				if (typeof console !== undefined)
+					console.error(e);
+				
+				columnData = undefined;
 			}
 		}
 		
