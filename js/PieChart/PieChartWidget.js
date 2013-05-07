@@ -86,10 +86,10 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		var objects = selection.objects;
 		if (!selection.valid()){
 			selection.loadAllObjects();
 		}
+		var objects = selection.objects;
 		this.redrawPieCharts(objects, true);
 	},
 };
