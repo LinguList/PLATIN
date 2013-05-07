@@ -76,6 +76,9 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
+		if ( (typeof objects === "undefined") || (objects.length == 0) ){
+			return;
+		}
 		this.redrawPieCharts(objects, false);
 	},
 
@@ -83,10 +86,10 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		var objects = selection.objects;
 		if (!selection.valid()){
 			selection.loadAllObjects();
 		}
+		var objects = selection.objects;
 		this.redrawPieCharts(objects, true);
 	},
 };
