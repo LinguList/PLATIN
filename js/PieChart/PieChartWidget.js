@@ -76,6 +76,9 @@ PieChartWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
+		if ( (typeof objects === "undefined") || (objects.length == 0) ){
+			return;
+		}
 		this.redrawPieCharts(objects, false);
 	},
 
