@@ -77,6 +77,17 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.time.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.tooltip.js'
+			}],GeoTemCoLoader.loadMomentJS);
+		}
+		else {
+			GeoTemCoLoader.loadMomentJS();
+		}
+	},
+	
+	loadMomentJS : function() {
+		if (typeof moment == 'undefined') {
+			(new DynaJsLoader()).loadScripts([{
+				url : GeoTemCoLoader.urlPrefix + 'lib/momentjs/moment.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
