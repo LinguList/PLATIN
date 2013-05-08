@@ -243,6 +243,18 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineDensity.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangePlot.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangePiechart.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
