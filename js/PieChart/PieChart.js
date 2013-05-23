@@ -39,7 +39,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.options = parent.options;
 	
 	this.watchedDatasetLabel;
-	this.watchedDataset = watchedDataset;
+	this.watchedDataset = parseInt(watchedDataset);
 	this.watchColumn = watchedColumn;
 	if (typeof selectionFunction !== "undefined")
 		this.selectionFunction = selectionFunction;
