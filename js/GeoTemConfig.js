@@ -195,9 +195,11 @@ GeoTemConfig.getJson = function(url) {
 GeoTemConfig.mergeObjects = function(set1, set2) {
 	var inside = [];
 	var newSet = [];
-	for (var i = 0; i < set1.length; i++) {
+	for (var i = 0; i < GeoTemConfig.datasets.length; i++){
 		inside.push([]);
 		newSet.push([]);
+	}
+	for (var i = 0; i < set1.length; i++) {
 		for (var j = 0; j < set1[i].length; j++) {
 			inside[i][set1[i][j].index] = true;
 			newSet[i].push(set1[i][j]);
