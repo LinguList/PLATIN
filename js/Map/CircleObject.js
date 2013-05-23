@@ -46,6 +46,7 @@ CircleObject = function(originX, originY, shiftX, shiftY, elements, radius, sear
 	this.search = search;
 	this.weight = weight;
 	this.overlay = 0;
+	this.overlayElements = [];
 	this.smoothness = 0;
 	this.fatherBin = fatherBin;
 
@@ -76,6 +77,7 @@ CircleObject.prototype = {
 
 	reset : function() {
 		this.overlay = 0;
+		this.overlayElements = [];
 		this.smoothness = 0;
 	},
 

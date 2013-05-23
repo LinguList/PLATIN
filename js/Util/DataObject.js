@@ -146,4 +146,18 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		
 		return (allCombined.indexOf(text) != -1);
 	};
+	
+	this.hasColorInformation = false;
+	
+	this.setColor = function(r0,g0,b0,r1,g1,b1) {
+		this.hasColorInformation = true;
+		
+		this.color = new Object();
+		this.color.r0 = r0;
+		this.color.g0 = g0;
+		this.color.b0 = b0;
+		this.color.r1 = r1;
+		this.color.g1 = g1;
+		this.color.b1 = b1;
+	};
 };

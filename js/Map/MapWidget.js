@@ -889,7 +889,7 @@ MapWidget.prototype = {
 						}
 					}
 					else {
-						c = GeoTemConfig.getColor(point.search);
+						c = GeoTemConfig.getAverageDatasetColor(point.search,point.elements);
 						shape = 'circle';
 						rotation = 0;
 					}
@@ -1030,12 +1030,12 @@ MapWidget.prototype = {
 			if( graphic.shape == 'square' ){
 				olRadius *= 0.75;
 			}
-		}		
-		if (olRadius != point.olFeature.style.pointRadius) {
-			point.olFeature.style.pointRadius = olRadius;
-			if (polygon.containsPoint(point.feature.geometry)) {
-				this.objectLayer.drawFeature(point.olFeature);
-			}
+		}
+		point.olFeature.style.pointRadius = olRadius;
+		var c = GeoTemConfig.getAverageDatasetColor(point.search, point.overlayElements);
+		point.olFeature.style.fillColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
+		if (polygon.containsPoint(point.feature.geometry)) {
+			this.objectLayer.drawFeature(point.olFeature);
 		}
 	},
 

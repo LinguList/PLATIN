@@ -153,6 +153,53 @@ GeoTemConfig.getColor = function(id){
 	return GeoTemConfig.colors[id];
 };
 
+GeoTemConfig.getAverageDatasetColor = function(id, objects){
+	var c = new Object();
+	var datasetColor = GeoTemConfig.getColor(id);
+	c.r0 = datasetColor.r0;
+	c.g0 = datasetColor.g0;
+	c.b0 = datasetColor.b0;
+	c.r1 = datasetColor.r1;
+	c.g1 = datasetColor.g1;
+	c.b1 = datasetColor.b1;
+	if (objects.length == 0)
+		return datasetColor;
+	var avgColor = new Object();
+	avgColor.r0 = 0;
+	avgColor.g0 = 0;
+	avgColor.b0 = 0;
+	avgColor.r1 = 0;
+	avgColor.g1 = 0;
+	avgColor.b1 = 0;
+	
+	$(objects).each(function(){
+		if (this.hasColorInformation){
+			avgColor.r0 += this.color.r0;
+			avgColor.g0 += this.color.g0;
+			avgColor.b0 += this.color.b0;
+			avgColor.r1 += this.color.r1;
+			avgColor.g1 += this.color.g1;
+			avgColor.b1 += this.color.b1;
+		} else {
+			avgColor.r0 += datasetColor.r0;
+			avgColor.g0 += datasetColor.g0;
+			avgColor.b0 += datasetColor.b0;
+			avgColor.r1 += datasetColor.r1;
+			avgColor.g1 += datasetColor.g1;
+			avgColor.b1 += datasetColor.b1;
+		}
+	});
+	
+	c.r0 = Math.floor(avgColor.r0/objects.length);
+	c.g0 = Math.floor(avgColor.g0/objects.length);
+	c.b0 = Math.floor(avgColor.b0/objects.length);
+	c.r1 = Math.floor(avgColor.r1/objects.length);
+	c.g1 = Math.floor(avgColor.g1/objects.length);
+	c.b1 = Math.floor(avgColor.b1/objects.length);
+	
+	return c;
+};
+
 GeoTemConfig.getString = function(field) {
 	if ( typeof Tooltips[GeoTemConfig.language] == 'undefined') {
 		GeoTemConfig.language = 'en';
