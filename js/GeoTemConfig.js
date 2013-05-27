@@ -492,7 +492,7 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 		isValidDate = false;
 	
 	if (!isValidDate){
-		if (typeof console !== undefined)
+		if (typeof console !== "undefined")
 			console.error(xmlTime + " is no valid time format");
 		return null;
 	}

@@ -66,7 +66,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== undefined)
+					if (typeof console !== "undefined")
 						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
 				}					
 			}
