@@ -46,8 +46,8 @@ var GeoTemConfig = {
 	allowFilter : true, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
-	allowCustomColoring : true, // if DataObjects can have an own color (useful for weighted coloring)
-	loadColorFromDataset : true, // if DataObject color should be loaded automatically (from column "color")
+	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
