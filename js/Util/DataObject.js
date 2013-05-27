@@ -60,8 +60,10 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			if (projection.getCode() === "EPSG:4326"){
-				if (	(this.latitude>=-90) &&
+				if (	(typeof this.latitude === "number") &&
+						(this.latitude>=-90) &&
 						(this.latitude<=90) &&
+						(typeof this.longitude === "number") &&
 						(this.longitude>=-180) &&
 						(this.longitude<=180) )
 					tempLocations.push(this);
