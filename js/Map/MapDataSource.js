@@ -97,6 +97,7 @@ MapDataSource.prototype = {
 			for (var k in mapObjects[j] ) {
 				var o = mapObjects[j][k];
 				if (o.isGeospatial) {
+					this.hashMapping[zoom][j][o.index].overlayElements.push(o);
 					this.hashMapping[zoom][j][o.index].overlay += o.weight;
 				}
 			}

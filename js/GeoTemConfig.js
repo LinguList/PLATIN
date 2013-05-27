@@ -47,6 +47,8 @@ var GeoTemConfig = {
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
+	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -152,6 +154,55 @@ GeoTemConfig.getColor = function(id){
 		});
 	}
 	return GeoTemConfig.colors[id];
+};
+
+GeoTemConfig.getAverageDatasetColor = function(id, objects){
+	var c = new Object();
+	var datasetColor = GeoTemConfig.getColor(id);
+	c.r0 = datasetColor.r0;
+	c.g0 = datasetColor.g0;
+	c.b0 = datasetColor.b0;
+	c.r1 = datasetColor.r1;
+	c.g1 = datasetColor.g1;
+	c.b1 = datasetColor.b1;
+	if (!GeoTemConfig.allowCustomColoring)
+		return c;
+	if (objects.length == 0)
+		return c;
+	var avgColor = new Object();
+	avgColor.r0 = 0;
+	avgColor.g0 = 0;
+	avgColor.b0 = 0;
+	avgColor.r1 = 0;
+	avgColor.g1 = 0;
+	avgColor.b1 = 0;
+	
+	$(objects).each(function(){
+		if (this.hasColorInformation){
+			avgColor.r0 += this.color.r0;
+			avgColor.g0 += this.color.g0;
+			avgColor.b0 += this.color.b0;
+			avgColor.r1 += this.color.r1;
+			avgColor.g1 += this.color.g1;
+			avgColor.b1 += this.color.b1;
+		} else {
+			avgColor.r0 += datasetColor.r0;
+			avgColor.g0 += datasetColor.g0;
+			avgColor.b0 += datasetColor.b0;
+			avgColor.r1 += datasetColor.r1;
+			avgColor.g1 += datasetColor.g1;
+			avgColor.b1 += datasetColor.b1;
+		}
+	});
+	
+	c.r0 = Math.floor(avgColor.r0/objects.length);
+	c.g0 = Math.floor(avgColor.g0/objects.length);
+	c.b0 = Math.floor(avgColor.b0/objects.length);
+	c.r1 = Math.floor(avgColor.r1/objects.length);
+	c.g1 = Math.floor(avgColor.g1/objects.length);
+	c.b1 = Math.floor(avgColor.b1/objects.length);
+	
+	return c;
 };
 
 GeoTemConfig.getString = function(field) {
@@ -543,6 +594,9 @@ GeoTemConfig.loadJson = function(JSON) {
 		}
 	}
 
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapTimeObjects);
+
 	return mapTimeObjects;
 }
 /**
@@ -707,7 +761,10 @@ GeoTemConfig.loadKml = function(kml) {
 			});
 		});
 	}
-	
+
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapObjects);
+
 	return mapObjects;
 };
 
@@ -740,4 +797,44 @@ GeoTemConfig.createKMLfromDataset = function(index){
 	kmlContent += "</Document></kml>";
 	  
 	return(kmlContent);
-}; 
+};
+
+/**
+ * iterates over Datasets/DataObjects and loads color values
+ * from the "color0" and "color1" elements, which contains RGB
+ * values in hex (CSS style #RRGGBB)
+ * @param {dataObjects} array of DataObjects
+ */
+GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
+	$(dataObjects).each(function(){
+		var r0,g0,b0,r1,g1,b1;
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color0"] !== "undefined") ){
+			var color = this.tableContent["color0"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r0 = parseInt("0x"+color.substr(1,2));
+			    g0 = parseInt("0x"+color.substr(3,2));
+			    b0 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color1"] !== "undefined") ){
+			var color = this.tableContent["color1"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r1 = parseInt("0x"+color.substr(1,2));
+			    g1 = parseInt("0x"+color.substr(3,2));
+			    b1 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		
+		if (	(typeof r0 !== "undefined") && (typeof g0 !== "undefined") && (typeof b0 !== "undefined") &&
+				(typeof r1 !== "undefined") && (typeof g1 !== "undefined") && (typeof b1 !== "undefined") ){
+			this.setColor(r0,g0,b0,r1,g1,b1);
+			delete this.tableContent["color0"];
+			delete this.tableContent["color1"];
+		} else {
+			if (typeof console !== undefined)
+				console.error("Object '" + this.name + "' has invalid color information");
+		}
+	});
+};
