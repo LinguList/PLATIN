@@ -90,8 +90,8 @@
 		var kml3 = GeoTemConfig.getKml('data/goethe.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml3),'Johann Wolfgang von Goethe'));
 		*/
-		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(kmlDom){
-			datasets.push(new Dataset(GeoTemConfig.loadKml(kmlDom),'Silber Objekte'));
+		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(json){
+			datasets.push(new Dataset(GeoTemConfig.loadJson(json),'Silber Objekte'));
 			
 			map.display(datasets);
 			time.display(datasets);
