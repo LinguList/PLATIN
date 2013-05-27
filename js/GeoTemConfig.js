@@ -47,6 +47,7 @@ var GeoTemConfig = {
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
 	allowCustomColoring : true, // if DataObjects can have an own color (useful for weighted coloring)
+	loadColorFromDataset : true, // if DataObject color should be loaded automatically (from column "color")
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -622,6 +623,9 @@ GeoTemConfig.loadJson = function(JSON) {
 		}
 	}
 
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapTimeObjects);
+
 	return mapTimeObjects;
 }
 /**
@@ -786,6 +790,49 @@ GeoTemConfig.loadKml = function(kml) {
 			});
 		});
 	}
-	
+
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapObjects);
+
 	return mapObjects;
+};
+
+/**
+ * iterates over Datasets/DataObjects and loads color values
+ * from the "color0" and "color1" elements, which contains RGB
+ * values in hex (CSS style #RRGGBB)
+ * @param {dataObjects} array of DataObjects
+ */
+GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
+	$(dataObjects).each(function(){
+		var r0,g0,b0,r1,g1,b1;
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color0"] !== "undefined") ){
+			var color = this.tableContent["color0"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r0 = parseInt("0x"+color.substr(1,2));
+			    g0 = parseInt("0x"+color.substr(3,2));
+			    b0 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color1"] !== "undefined") ){
+			var color = this.tableContent["color1"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r1 = parseInt("0x"+color.substr(1,2));
+			    g1 = parseInt("0x"+color.substr(3,2));
+			    b1 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		
+		if (	(typeof r0 !== "undefined") && (typeof g0 !== "undefined") && (typeof b0 !== "undefined") &&
+				(typeof r1 !== "undefined") && (typeof g1 !== "undefined") && (typeof b1 !== "undefined") ){
+			this.setColor(r0,g0,b0,r1,g1,b1);
+			delete this.tableContent["color0"];
+			delete this.tableContent["color1"];
+		} else {
+			if (typeof console !== undefined)
+				console.error("Object '" + this.name + "' has invalid color information");
+		}
+	});
 };
