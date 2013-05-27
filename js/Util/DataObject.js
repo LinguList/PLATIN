@@ -160,4 +160,19 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		this.color.g1 = g1;
 		this.color.b1 = b1;
 	};
+
+	this.getColor = function() {
+		if (!this.hasColorInformation)
+			return;
+		
+		color = new Object();
+		color.r0 = this.r0;
+		color.g0 = this.g0;
+		color.b0 = this.b0;
+		color.r1 = this.r1;
+		color.g1 = this.g1;
+		color.b1 = this.b1;
+		
+		return color;
+	};
 };
