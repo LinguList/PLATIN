@@ -521,9 +521,9 @@ GeoTemConfig.loadJson = function(JSON) {
 			if (item.location instanceof Array) {
 				for (var j = 0; j < item.location.length; j++) {
 					var place = item.location[j].place || "unknown";
-					var lon = item.location[j].lon || "";
-					var lat = item.location[j].lat || "";
-					if ((lon == "" || lat == "" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
+					var lon = item.location[j].lon;
+					var lat = item.location[j].lat;
+					if ((typeof lon === "undefined" || typeof lat === "undefined" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
 						throw "e";
 					}
 					locations.push({
@@ -534,9 +534,9 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			} else {
 				var place = item.place || "unknown";
-				var lon = item.lon || "";
-				var lat = item.lat || "";
-				if ((lon == "" || lat == "" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
+				var lon = item.lon;
+				var lat = item.lat;
+				if ((typeof lon === "undefined" || typeof lat === "undefined" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
 					throw "e";
 				}
 				locations.push({
