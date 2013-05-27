@@ -228,19 +228,14 @@ GeoTemConfig.removeDataset = function(index){
 };
 
 /**
- * converts the csv-file to a kml-file
- * taken unchanged from GeoBrowser-GWT project
- * (https://it-dev.mpiwg-berlin.mpg.de/hg/STI-GWT/)
+ * converts the csv-file into json-format
  * 
  * @param {String}
  *            text
  */
 GeoTemConfig.convertCsv = function(text){
-
-	/* convert here from csv to kml */
-	var kmlString = '<?xml version="1.0" standalone="yes"?>\n';
-		kmlString += '<kml xmlns="http://www.opengis.com/kml/ext/2.2">\n';
-		kmlString += '\t<Folder>\n';
+	/* convert here from CSV to JSON */
+	var json = [];
 	/* define expected csv table headers (first line) */
 	var expectedHeaders = new Array("Name","Address","Description","Longitude","Latitude","TimeStamp","TimeSpan:begin","TimeSpan:end");
 	/* convert csv string to array of arrays using ucsv library */
@@ -250,76 +245,53 @@ GeoTemConfig.convertCsv = function(text){
 	/* loop outer array, begin with second line */
 	for (var i = 1; i < csvArray.length; i++) {
 		var innerArray = csvArray[i];
-		kmlString += '\t\t<Placemark>\n';
-		/* declare few variables */                                   
-		var timespanBegin = "";
-		var timespanEnd = "";
-		var longitude = "";
-		var latitude = "";
+		var dataObject = new Object();
+		var tableContent = new Object(); 
 	   	/* loop inner array */
-		var descriptionOrig="";
-		var descriptionTable="";
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
 			if (usedHeaders[j] == expectedHeaders[0]) {
-				kmlString += '\t\t\t<name><![CDATA[' + innerArray[j] + ']]></name>\n';
+				dataObject["name"] = ""+innerArray[j];
 			}
 			/* Address */
 			else if (usedHeaders[j] == expectedHeaders[1]) {
-				kmlString += '\t\t\t<address><![CDATA[' + innerArray[j] + ']]></address>\n';
+				dataObject["place"] = ""+innerArray[j];
 			}
 			/* Description */
 			else if (usedHeaders[j] == expectedHeaders[2]) {
-				descriptionOrig = innerArray[j];
+				dataObject["description"] = ""+innerArray[j];
 			}
 			/* TimeStamp */
 			else if (usedHeaders[j] == expectedHeaders[5]) {
-				kmlString += '\t\t\t<TimeStamp>\n' +
-					'\t\t\t\t<when>' + innerArray[j] + '</when>\n' +
-					'\t\t\t</TimeStamp>\n';
+				dataObject["time"] = ""+innerArray[j];
 			}
 			/* TimeSpan:begin */
 			else if (usedHeaders[j] == expectedHeaders[6]) {
-				timespanBegin = innerArray[j];
+				tableContent["TimeSpanBegin"] = ""+innerArray[j];
 			}
 			/* TimeSpan:end */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
-				timespanEnd = innerArray[j];
+				tableContent["TimeSpanEnd"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
 			else if (usedHeaders[j] == expectedHeaders[3]) {                              
-				longitude = innerArray[j];                                           
+				dataObject["lon"] = parseInt(innerArray[j]);                                           
 			}                                                                        
 			/* Latitude */                                                           
 			else if (usedHeaders[j] == expectedHeaders[4]) {                              
-				latitude = innerArray[j];
+				dataObject["lat"] = parseInt(innerArray[j]);
 			}
 			else {
-				descriptionTable += "<tr><td>"+usedHeaders[j]+"</td><td>"+innerArray[j]+"</td></tr>";
+				tableContent[usedHeaders[j]] = ""+innerArray[j];
 			}
 		}
-		if (descriptionTable.length > 0)
-			descriptionOrig = "<table>" + descriptionTable + "</table>";
-		kmlString += '\t\t\t<description><![CDATA[' + descriptionOrig + ']]></description>\n';
 		
-		/* set timespan:begin und timespan:end */
-		kmlString += '\t\t\t<TimeSpan>\n' +
-			'\t\t\t\t<begin>' + timespanBegin + '</begin>\n' +
-			'\t\t\t\t<end>' + timespanEnd + '</end>\n' +
-			'\t\t\t</TimeSpan>\n';
-		/* set longitude and latitude */                                                 
-		kmlString += '\t\t\t<Point>\n' +                                                 
-			'\t\t\t\t<coordinates>' +                                                
-			longitude +',' + latitude +                                              
-			'</coordinates>\n' +
-			'\t\t\t</Point>\n';
-		/* end Placemark */
-		kmlString += '\t\t</Placemark>\n';
+		dataObject["tableContent"] = tableContent;
+		
+		json.push(dataObject);
 	}
-	kmlString += '\t</Folder>\n';
-	kmlString += '</kml>\n';
 	
-	return kmlString;
+	return json;
 };
 
 /**
@@ -393,14 +365,12 @@ GeoTemConfig.getKmz = function(url,asyncFunc) {
 };
 
 /**
- * returns the xml dom object of an kml created  
+ * returns the JSON "object"  
  * from the csv file from the given url
  * @param {String} url the url of the file to load
  * @return xml dom object of given file
  */
 GeoTemConfig.getCsv = function(url,asyncFunc) {
-	var kmlDom = new Array();
-
 	var async = false;
 	if( asyncFunc ){
 		async = true;
@@ -412,11 +382,9 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
     req.open("GET",url,async);
     req.responseType = "text";
     req.onload = function() {
-    	var kml = GeoTemConfig.convertCsv(req.response);
-    	kmlDom = $.parseXML(kml);
-    	
+    	var json = GeoTemConfig.convertCsv(req.response);
     	if( asyncFunc )
-    		asyncFunc(kmlDom);
+    		asyncFunc(json);
     };
 	req.send();
 	

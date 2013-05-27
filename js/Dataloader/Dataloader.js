@@ -220,8 +220,8 @@ Dataloader.prototype = {
 				
 				reader.onloadend = ($.proxy(function(theFile) {
 			        return function(e) {
-			        	var kml = GeoTemConfig.convertCsv(reader.result);
-						var dataSet = new Dataset(GeoTemConfig.loadKml($.parseXML(kml)), fileName);
+			        	var json = GeoTemConfig.convertCsv(reader.result);
+						var dataSet = new Dataset(GeoTemConfig.loadJson(json, fileName));
 						if (dataSet != null)
 							this.distributeDataset(dataSet);			
 			        };
