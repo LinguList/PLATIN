@@ -163,7 +163,7 @@ GeoTemConfig.getAverageDatasetColor = function(id, objects){
 	c.g1 = datasetColor.g1;
 	c.b1 = datasetColor.b1;
 	if (objects.length == 0)
-		return datasetColor;
+		return c;
 	var avgColor = new Object();
 	avgColor.r0 = 0;
 	avgColor.g0 = 0;
