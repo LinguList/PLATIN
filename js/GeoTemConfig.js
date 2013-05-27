@@ -46,6 +46,7 @@ var GeoTemConfig = {
 	allowFilter : true, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
+	allowCustomColoring : true, // if DataObjects can have an own color (useful for weighted coloring)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -162,6 +163,8 @@ GeoTemConfig.getAverageDatasetColor = function(id, objects){
 	c.r1 = datasetColor.r1;
 	c.g1 = datasetColor.g1;
 	c.b1 = datasetColor.b1;
+	if (!GeoTemConfig.allowCustomColoring)
+		return c;
 	if (objects.length == 0)
 		return c;
 	var avgColor = new Object();
