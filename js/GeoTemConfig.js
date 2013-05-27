@@ -46,6 +46,7 @@ var GeoTemConfig = {
 	allowFilter : true, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
+	tableExportDataset : true, // export dataset to KML 
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -709,3 +710,34 @@ GeoTemConfig.loadKml = function(kml) {
 	
 	return mapObjects;
 };
+
+GeoTemConfig.createKMLfromDataset = function(index){
+	var kmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document>";
+	
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		var name = this.name;
+		var description = this.description;
+		//TODO: allow multiple time/date
+		var place = this.getPlace(0,0);
+		var lat = this.getLatitude(0);
+		var lon = this.getLongitude(0);
+		var timeStamp = this.getDate(0);
+		  
+		var kmlEntry = "<Placemark>";
+		
+		kmlEntry += "<name><![CDATA[" + name + "]]></name>";
+		kmlEntry += "<address><![CDATA[" + place + "]]></address>";
+		kmlEntry += "<description><![CDATA[" + description + "]]></description>";
+		kmlEntry += "<Point><coordinates>" + lon + "," + lat + "</coordinates></Point>";
+		  
+		kmlEntry += "<TimeStamp><when>" + timeStamp + "</when></TimeStamp>";
+		
+		kmlEntry += "</Placemark>";
+		      
+		kmlContent += kmlEntry;
+	});
+	  
+	kmlContent += "</Document></kml>";
+	  
+	return(kmlContent);
+}; 
