@@ -264,11 +264,11 @@ GeoTemConfig.convertCsv = function(text){
 			}   						
 			/* Longitude */                                                          
 			else if (usedHeaders[j] == expectedHeaders[3]) {                              
-				dataObject["lon"] = parseInt(innerArray[j]);                                           
+				dataObject["lon"] = parseFloat(innerArray[j]);                                           
 			}                                                                        
 			/* Latitude */                                                           
 			else if (usedHeaders[j] == expectedHeaders[4]) {                              
-				dataObject["lat"] = parseInt(innerArray[j]);
+				dataObject["lat"] = parseFloat(innerArray[j]);
 			}
 			else {
 				tableContent[usedHeaders[j]] = ""+innerArray[j];
