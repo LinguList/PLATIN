@@ -59,6 +59,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		var tempLocations = [];
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
+			this.latitude = parseFloat(this.latitude);
+			this.longitude = parseFloat(this.longitude);
 			if (projection.getCode() === "EPSG:4326"){
 				if (	(typeof this.latitude === "number") &&
 						(this.latitude>=-90) &&
