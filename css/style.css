@@ -1387,3 +1387,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 .filterCancelDisabled {
 	background-image: url("../images/filterCancelDisabled.png");
 }
+
+.removeDataset {
+	background-image: url("../images/filterCancel.png");
+}

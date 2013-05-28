@@ -71,17 +71,17 @@ TableWidget.prototype = {
 			}
 			tableTab.innerHTML = name;
 			
-			var removeTabLink = document.createElement('a');
-			removeTabLink.innerHTML = ' (x)';
-			removeTabLink.setAttribute('href','');
-			removeTabLink.onclick = $.proxy(function(e) {
+			var removeTabDiv = document.createElement('div');
+			removeTabDiv.setAttribute('class', 'smallButton removeDataset');
+			removeTabDiv.title = GeoTemConfig.getString('removeDatasetHelp');
+			removeTabDiv.onclick = $.proxy(function(e) {
 				GeoTemConfig.removeDataset(index);
-				//don't let the event propagate to the DIV				
+				//don't let the event propagate to the DIV above			
 				e.stopPropagation();
 				//discard link click
 				return(false);
 			},{index:index});
-			$(tableTab).append(removeTabLink);
+			$(tableTab).append(removeTabDiv);
 			
 			if (GeoTemConfig.tableExportDataset){
 				var exportTabForm = document.createElement('form');
