@@ -115,7 +115,8 @@ var Tooltips = {
 		"linearPlot" : "Linear Value Scale",
 		"logarithmicPlot" : "Logarithmic Value Scale",
 		"playButton" : "Animate Selected Range",
-		"pauseButton" : "Pause Animation"
+		"pauseButton" : "Pause Animation",
+		"createNewFromSelectedHelp" : "Create new dataset from selected values"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -203,6 +204,7 @@ var Tooltips = {
 		"linearPlot" : "Linear Value Scale",
 		"logarithmicPlot" : "Logarithmic Value Scale",
 		"playButton" : "Animate Selected Range",
-		"pauseButton" : "Pause Animation"
+		"pauseButton" : "Pause Animation",
+		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen"
 	}
 }
