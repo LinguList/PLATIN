@@ -1287,6 +1287,10 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/showSelected.png");
 }
 
+.createNewRefined {
+	background-image: url("../images/createNewRefined.png");
+}
+
 .selectPage {
 	background-image: url("../images/selectPage.png");
 }
