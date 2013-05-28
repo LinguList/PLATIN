@@ -84,6 +84,9 @@ TableWidget.prototype = {
 			$(tableTab).append(removeTabDiv);
 			
 			if (GeoTemConfig.tableExportDataset){
+				var exportTabDiv = document.createElement('div');
+				exportTabDiv.setAttribute('class', 'smallButton exportDataset');
+				exportTabDiv.title = GeoTemConfig.getString('exportDatasetHelp');
 				var exportTabForm = document.createElement('form');
 				//TODO: make this configurable
 				exportTabForm.action = 'php/download.php';
@@ -92,9 +95,7 @@ TableWidget.prototype = {
 				exportTabHiddenValue.name = 'file';
 				exportTabHiddenValue.type = 'hidden';
 				exportTabForm.appendChild(exportTabHiddenValue);
-				var exportTabButton = document.createElement('button');
-				exportTabButton.innerHTML = 'export';
-				exportTabButton.onclick = $.proxy(function(e) {
+				exportTabDiv.onclick = $.proxy(function(e) {
 					$(exportTabHiddenValue).val(GeoTemConfig.createKMLfromDataset(index));
 					$(exportTabForm).submit();
 					//don't let the event propagate to the DIV				
@@ -102,8 +103,8 @@ TableWidget.prototype = {
 					//discard link click
 					return(false);
 				},{index:index});
-				exportTabForm.appendChild(exportTabButton);
-				$(tableTab).append(exportTabForm);
+				exportTabDiv.appendChild(exportTabForm);
+				$(tableTab).append(exportTabDiv);
 			}
 			
 			return tableTab;

@@ -1391,3 +1391,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 .removeDataset {
 	background-image: url("../images/filterCancel.png");
 }
+
+.exportDataset {
+	background-image: url("../images/exportDataset.png");
+}

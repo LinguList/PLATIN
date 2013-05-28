@@ -116,7 +116,9 @@ var Tooltips = {
 		"logarithmicPlot" : "Logarithmic Value Scale",
 		"playButton" : "Animate Selected Range",
 		"pauseButton" : "Pause Animation",
-		"removeDatasetHelp" : "Remove this dataset"
+		"createNewFromSelectedHelp" : "Create new dataset from selected values",
+		"removeDatasetHelp" : "Remove this dataset",
+		"exportDatasetHelp" : "Export this dataset to a KML file"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -206,6 +208,7 @@ var Tooltips = {
 		"playButton" : "Animate Selected Range",
 		"pauseButton" : "Pause Animation",
 		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen",
-		"removeDatasetHelp" : "Diesen Datensatz entfernen"
+		"removeDatasetHelp" : "Diesen Datensatz entfernen",
+		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren"
 	}
 }
