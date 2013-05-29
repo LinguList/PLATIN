@@ -64,6 +64,8 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.min.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/purl.min.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.remember.js'
 			}],GeoTemCoLoader.loadFlot);
 		}
 		else {
@@ -116,6 +118,21 @@ GeoTemCoLoader = {
 			var jsZipFiles = [{
 				url : GeoTemCoLoader.urlPrefix + 'lib/ucsv/ucsv-1.1.0-min.js',
 			}];
+			
+			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadJqueryUI);
+		}
+		else {
+			GeoTemCoLoader.loadJqueryUI();
+		}
+	},
+
+	loadJqueryUI : function() {
+		if (typeof jQuery.ui == 'undefined') {
+			var jsZipFiles = [{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery-ui/jquery-ui-1.10.3.custom.js'
+			}];
+			
+			$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/jquery-ui/jquery-ui-1.10.3.custom.css') );
 			
 			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadTimeplot);
 		}
