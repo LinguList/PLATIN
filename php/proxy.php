@@ -23,14 +23,23 @@
 	//Hosts that are allowed to download from. (e.g. "dropbox.com" and "www.dropbox.com")
 	//If this array is empty, all hosts are allowed.
 	$validHosts = array(
-			"localhost"
+/*			"/localhost/",
 	);
 
 	if (isset($_REQUEST['address'])){
 
 		$parsedAddress = parse_url($_REQUEST['address']);
 		
-		if ((count($validHosts)==0) || in_array($parsedAddress["host"], $validHosts))
+		$found = 0;
+		
+		foreach ($validHosts as $host){
+			if (preg_match($host, $parsedAddress["host"])){
+				$found = 1;
+				break;
+			}
+		}
+		
+		if ((count($validHosts)==0) || ($found==1))
 			echo file_get_contents($_REQUEST['address']);
 	}
 ?>
