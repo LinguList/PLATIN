@@ -34,6 +34,8 @@ function Overlayloader(parent) {
 	this.options = parent.options;
 	this.attachedMapWidgets = parent.attachedMapWidgets;
 
+	this.overlays = [];
+
 	this.initialize();
 }
 
@@ -61,6 +63,10 @@ Overlayloader.prototype = {
 	},
 	
 	distributeKML : function(kmlURL) {
+		var newOverlay = new Object();
+		newOverlay.name = kmlURL;
+		newOverlay.layers = [];
+		
 		$(this.attachedMapWidgets).each(function(){
 			var newLayer = new OpenLayers.Layer.Vector("KML", {
 				projection: this.openlayersMap.displayProjection,
@@ -73,12 +79,21 @@ Overlayloader.prototype = {
 	                })
 	            })
 	        });
+			
+			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 
 			this.openlayersMap.addLayer(newLayer);
 		});
+		
+		this.overlays.push(newOverlay);
+		this.parent.gui.refreshOverlayList();
 	},
 	
 	distributeKMZ : function(kmzURL) {
+		var newOverlay = new Object();
+		newOverlay.name = kmzURL;
+		newOverlay.layers = [];
+		
 		$(this.attachedMapWidgets).each(function(){
 			var newLayer = new OpenLayers.Layer.Vector("KML", {
 				projection: this.openlayersMap.displayProjection,
@@ -86,6 +101,8 @@ Overlayloader.prototype = {
 				format: OpenLayers.Format.KML,
 				extractAttributes: true
 			});
+			
+			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 			
 			var map = this.openlayersMap;
 					
@@ -97,9 +114,16 @@ Overlayloader.prototype = {
 				});
 			});
 		});
+		
+		this.overlays.push(newOverlay);
+		this.parent.gui.refreshOverlayList();
 	},
 	
 	distributeArcGISWMS : function(wmsURL, wmsLayer) {
+		var newOverlay = new Object();
+		newOverlay.name = wmsURL + " - " + wmsLayer;
+		newOverlay.layers = [];
+		
 		var newLayer = new OpenLayers.Layer.WMS("ArcGIS WMS label", wmsURL, {
 				layers: wmsLayer,
 				format: "image/png",
@@ -113,10 +137,18 @@ Overlayloader.prototype = {
 		newLayer.setIsBaseLayer(false);
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
+			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});			
 		});
+		
+		this.overlays.push(newOverlay);
+		this.parent.gui.refreshOverlayList();
 	},
 
 	distributeXYZ : function(xyzURL) {
+		var newOverlay = new Object();
+		newOverlay.name = xyzURL;
+		newOverlay.layers = [];
+		
         var newLayer = new OpenLayers.Layer.XYZ(
                 "XYZ Layer",
                 [
@@ -134,7 +166,11 @@ Overlayloader.prototype = {
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
 			this.openlayersMap.setBaseLayer(newLayer);
+			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 		});
+		
+		this.overlays.push(newOverlay);
+		this.parent.gui.refreshOverlayList();
 	},
 	
 	addKMLLoader : function() {
