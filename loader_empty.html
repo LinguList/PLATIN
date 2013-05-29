@@ -74,14 +74,6 @@
 		var piechartDiv = document.getElementById("piechartContainerDiv");
 		var piechart = new WidgetWrapper();
 		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
-		piechartWidget.addPieChart(0,"objekt");
-		piechartWidget.addPieChart(0,"cu_perc",function(data){
-			var value = "Wenig CU";
-			if (data >= 50.0)
-				value = "Viel CU";
-			
-			return value;
-		});
 		
 		dataloaderWidget.loadFromURL();
 	});
