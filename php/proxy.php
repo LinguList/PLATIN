@@ -20,10 +20,10 @@
 * MA 02110-1301  USA
 */
 
-	//Hosts that are allowed to download from. (e.g. "dropbox.com" and "www.dropbox.com")
+	//Hosts that are allowed to download from in RegEx form. (e.g. "/*.dropbox\.com/")
 	//If this array is empty, all hosts are allowed.
 	$validHosts = array(
-/*			"/localhost/",
+			"/localhost/",
 	);
 
 	if (isset($_REQUEST['address'])){
