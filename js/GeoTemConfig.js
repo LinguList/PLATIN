@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
 * GeoTemConfig.js
 *
