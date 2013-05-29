@@ -82,7 +82,7 @@ Dataloader.prototype = {
 			if (typeof this.options.proxy != 'undefined')
 				kmlURL = this.options.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
-			if ((typeof kml !== "undefined") && (kml.length > 0)) {
+			if ((typeof kml !== "undefined") && (kml != null)) {
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kml));
 				
 				if (dataSet != null)
