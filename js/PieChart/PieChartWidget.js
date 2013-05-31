@@ -92,4 +92,53 @@ PieChartWidget.prototype = {
 		var objects = selection.objects;
 		this.redrawPieCharts(objects, true);
 	},
+	
+	getElementData : function(dataObject, watchedColumn, selectionFunction) {
+		var columnData;
+		if (watchedColumn.indexOf("[") === -1){
+			columnData = dataObject[watchedColumn];
+			if (typeof columnData === "undefined"){
+				columnData = dataObject.tableContent[watchedColumn];
+			};
+		} else {
+			try {
+				var columnName = watchedColumn.split("[")[0];
+				var IndexAndAttribute = watchedColumn.split("[")[1];
+				if (IndexAndAttribute.indexOf("]") != -1){
+					var arrayIndex = IndexAndAttribute.split("]")[0];
+					var attribute = IndexAndAttribute.split("]")[1];
+					
+					if (typeof attribute === "undefined")
+						columnData = dataObject[columnName][arrayIndex];
+					else{
+						attribute = attribute.split(".")[1];
+						columnData = dataObject[columnName][arrayIndex][attribute];
+					}
+				}
+			} catch(e) {
+				if (typeof console !== undefined)
+					console.error(e);
+				
+				delete columnData;
+			}
+		}
+		
+		if ( (typeof columnData !== "undefined") && (typeof selectionFunction !== "undefined") )
+			columnData = selectionFunction(columnData);
+		
+		return(columnData);
+	},
+	
+	getElementsByValue : function(columnValue, watchedDataset, watchedColumn, selectionFunction) {
+		var elements = [];
+		var pieChart = this;
+
+		$(this.datasets[watchedDataset].objects).each(function(){
+			var columnData = pieChart.getElementData(this, watchedColumn, selectionFunction);
+			if (columnData === columnValue)
+				elements.push(this);
+		});
+		
+		return elements;
+	},
 };
