@@ -38,7 +38,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.parent = parent;
 	this.options = parent.options;
 	
-	this.watchedDatasetLabel;
+	this.watchedDatasetObject;
 	this.watchedDataset = parseInt(watchedDataset);
 	this.watchColumn = watchedColumn;
 	if (typeof selectionFunction !== "undefined")
@@ -99,10 +99,10 @@ PieChart.prototype = {
 		var dataSets = GeoTemConfig.datasets;
 		if (typeof dataSets === "undefined")
 			return false;
-		if (typeof this.watchedDatasetLabel !== "undefined"){
+		if (typeof this.watchedDatasetObject !== "undefined"){
 			//check if our data went missing
 			if (	(dataSets.length <= this.watchedDataset) ||
-					(dataSets[this.watchedDataset].label !== this.watchedDatasetLabel) ){
+					(dataSets[this.watchedDataset] !== this.watchedDatasetObject) ){
 				return false;
 			} else
 				return true;
@@ -114,8 +114,8 @@ PieChart.prototype = {
 	initPieChart : function(dataSets) {
 		//TODO: this var "remembers" which dataset we are attached to
 		//if it goes missing we delete ourself. This could be improved.
-		if (typeof this.watchedDatasetLabel === "undefined")
-			this.watchedDatasetLabel = GeoTemConfig.datasets[this.watchedDataset].label;
+		if (typeof this.watchedDatasetObject === "undefined")
+			this.watchedDatasetObject = GeoTemConfig.datasets[this.watchedDataset];
 
 		// if our dataset went missing, remove this piechart
 		if (!this.checkForDataSet()){
