@@ -38,7 +38,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.parent = parent;
 	this.options = parent.options;
 	
-	this.watchedDatasetLabel;
+	this.watchedDatasetObject;
 	this.watchedDataset = parseInt(watchedDataset);
 	this.watchColumn = watchedColumn;
 	if (typeof selectionFunction !== "undefined")
@@ -94,66 +94,15 @@ PieChart.prototype = {
 	    });
 	},
 
-	getElementData : function(dataObject) {
-		pieChart = this;
-		var columnData;
-		if (pieChart.watchColumn.indexOf("[") === -1){
-			columnData = dataObject[pieChart.watchColumn];
-			if (typeof columnData === "undefined"){
-				columnData = dataObject.tableContent[pieChart.watchColumn];
-			};
-		} else {
-			try {
-				var columnName = pieChart.watchColumn.split("[")[0];
-				var IndexAndAttribute = pieChart.watchColumn.split("[")[1];
-				if (IndexAndAttribute.indexOf("]") != -1){
-					var arrayIndex = IndexAndAttribute.split("]")[0];
-					var attribute = IndexAndAttribute.split("]")[1];
-					
-					if (typeof attribute === "undefined")
-						columnData = dataObject[columnName][arrayIndex];
-					else{
-						attribute = attribute.split(".")[1];
-						columnData = dataObject[columnName][arrayIndex][attribute];
-					}
-				}
-			} catch(e) {
-				if (typeof console !== undefined)
-					console.error(e);
-				
-				columnData = undefined;
-			}
-		}
-		
-		if (typeof columnData !== "undefined")
-			columnData = pieChart.selectionFunction(columnData);
-		
-		return(columnData);
-	},
-	
-	getElementsByValue : function(columnElement) {
-		var elements = [];
-		var pieChart = this;
-		if (this.watchedDataset >= 0){
-			$(this.parent.datasets[this.watchedDataset].objects).each(function(){
-				var columnData = pieChart.getElementData(this);
-				if (columnData === columnElement)
-					elements.push(this);
-			});
-		}
-		
-		return elements;
-	},
-	
 	//check if dataset is still there
 	checkForDataSet : function() {
 		var dataSets = GeoTemConfig.datasets;
 		if (typeof dataSets === "undefined")
 			return false;
-		if (typeof this.watchedDatasetLabel !== "undefined"){
+		if (typeof this.watchedDatasetObject !== "undefined"){
 			//check if our data went missing
 			if (	(dataSets.length <= this.watchedDataset) ||
-					(dataSets[this.watchedDataset].label !== this.watchedDatasetLabel) ){
+					(dataSets[this.watchedDataset] !== this.watchedDatasetObject) ){
 				return false;
 			} else
 				return true;
@@ -165,8 +114,8 @@ PieChart.prototype = {
 	initPieChart : function(dataSets) {
 		//TODO: this var "remembers" which dataset we are attached to
 		//if it goes missing we delete ourself. This could be improved.
-		if (typeof this.watchedDatasetLabel === "undefined")
-			this.watchedDatasetLabel = GeoTemConfig.datasets[this.watchedDataset].label;
+		if (typeof this.watchedDatasetObject === "undefined")
+			this.watchedDatasetObject = GeoTemConfig.datasets[this.watchedDataset];
 
 		// if our dataset went missing, remove this piechart
 		if (!this.checkForDataSet()){
@@ -194,7 +143,7 @@ PieChart.prototype = {
 			if (objects[this.watchedDataset].length === 0)
 				objects = this.preHighlightObjects;
 			$(objects[this.watchedDataset]).each(function(){
-				var columnData = pieChart.getElementData(this);
+				var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
 				
 				if (typeof chartDataCounter[columnData] === "undefined")
 					chartDataCounter[columnData] = 1;
@@ -248,7 +197,11 @@ PieChart.prototype = {
 		for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 			highlightedObjects.push([]);
 		
-		highlightedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
+		if (this.watchedDataset >= 0)
+			highlightedObjects[this.watchedDataset] = 
+				this.parent.getElementsByValue(columnElement, this.watchedDataset, this.watchColumn, this.selectionFunction);
+		else
+			highlightedObjects[this.watchedDataset] = [];
 		
 		this.parent.core.triggerHighlight(highlightedObjects);
 		
@@ -269,7 +222,8 @@ PieChart.prototype = {
 
 		var selection;
 		if (typeof columnElement !== "undefined"){
-			selectedObjects[this.watchedDataset] = this.getElementsByValue(columnElement);
+			selectedObjects[this.watchedDataset] = 
+				this.parent.getElementsByValue(columnElement, this.watchedDataset, this.watchColumn, this.selectionFunction);
 			selection = new Selection(selectedObjects, this);
 		} else {
 			selection = new Selection(selectedObjects);
