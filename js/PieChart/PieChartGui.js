@@ -48,7 +48,7 @@ function PieChartGui(pieChart, div, options) {
 				var firstTableContent = firstObject.tableContent;
 				$(pieChartGui.columnSelect).empty();
 			    for (var attribute in firstTableContent) {
-			    	$(pieChartGui.columnSelect).append("<option value="+attribute+">"+attribute+"</option>");
+			    	$(pieChartGui.columnSelect).append("<option value='"+attribute+"'>"+attribute+"</option>");
 			    }
 			    
 			    if (firstObject.isTemporal)
