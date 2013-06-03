@@ -271,7 +271,10 @@ GeoTemConfig.convertCsv = function(text){
 				dataObject["lat"] = parseFloat(innerArray[j]);
 			}
 			else {
-				tableContent[usedHeaders[j]] = ""+innerArray[j];
+				var header = new String(usedHeaders[j]);
+				//remove leading and trailing Whitespace
+				header = $.trim(header);
+				tableContent[header] = ""+innerArray[j];
 			}
 		}
 		
