@@ -241,14 +241,17 @@ GeoTemConfig.convertCsv = function(text){
 			/* Name */
 			if (usedHeaders[j] == expectedHeaders[0]) {
 				dataObject["name"] = ""+innerArray[j];
+				tableContent["name"] = ""+innerArray[j];
 			}
 			/* Address */
 			else if (usedHeaders[j] == expectedHeaders[1]) {
 				dataObject["place"] = ""+innerArray[j];
+				tableContent["place"] = ""+innerArray[j];
 			}
 			/* Description */
 			else if (usedHeaders[j] == expectedHeaders[2]) {
 				dataObject["description"] = ""+innerArray[j];
+				tableContent["description"] = ""+innerArray[j];
 			}
 			/* TimeStamp */
 			else if (usedHeaders[j] == expectedHeaders[5]) {
