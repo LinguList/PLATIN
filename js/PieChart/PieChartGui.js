@@ -69,6 +69,15 @@ function PieChartGui(pieChart, div, options) {
 	$(this.buttonNewPieChart).click(function(){
 		pieChartGui.parent.addPieChart($(pieChartGui.datasetSelect).val(), $(pieChartGui.columnSelect).val());
 	});
+	this.buttonPieChartCategoryChooser = document.createElement("button");
+	$(this.buttonPieChartCategoryChooser).text("categorize");
+	this.columnSelectorDiv.appendChild(this.buttonPieChartCategoryChooser);
+	$(this.buttonPieChartCategoryChooser).click(function(){
+		var chooser = new PieChartCategoryChooser(	pieChartGui.parent,
+													pieChartGui.options,
+													$(pieChartGui.datasetSelect).val(),
+													$(pieChartGui.columnSelect).val() );
+	});
 	
 	this.refreshColumnSelector();
 	

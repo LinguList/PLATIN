@@ -242,6 +242,8 @@ GeoTemCoLoader = {
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChart.js',
 		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartCategoryChooser.js',
+		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableConfig.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableGui.js',
