@@ -42,17 +42,29 @@
 
 function DataObject(name, description, locations, dates, weight, tableContent, projection) {
 
-	this.name = name;
-	this.description = description;
+	this.name = $.trim(name);
+	this.description = $.trim(description);
 	this.weight = weight;
-	this.tableContent = tableContent;
+	this.tableContent = new Object();
+	var objectTableContent = this.tableContent;
+	$.each(tableContent,function(key,value){
+		objectTableContent[$.trim(key)]=$.trim(value);
+	});
 
 	this.percentage = 0;
 	this.setPercentage = function(percentage) {
 		this.percentage = percentage;
 	}
 
-	this.locations = locations;
+	this.locations = [];
+	var objectLocations = this.locations;
+	$(locations).each(function(){
+		objectLocations.push({
+			latitude:this.latitude,
+			longitude:this.longitude,
+			place:$.trim(this.place)
+		});
+	});
 	
 	//Check if locations are valid
 	if (projection instanceof OpenLayers.Projection){	
