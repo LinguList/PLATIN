@@ -146,15 +146,20 @@ PieChartCategoryChooser.prototype = {
 			
 			//create selection function for the pie chart
 			var selectionFunction = function(columnData){
-				var categoryLabel = "unknown";
+				var categoryLabel;
 				$(categories).each(function(){
 					if ($.inArray(columnData,this.values) != -1){
 						categoryLabel = this.label;
 						//exit .each
 						return false;
 					}
+					if (typeof categoryLabel !== "undefined")
+						return false;
 				});
 				
+				if (typeof categoryLabel === "undefined")
+					categoryLabel = "unknown";
+
 				return categoryLabel;
 			};
 			
