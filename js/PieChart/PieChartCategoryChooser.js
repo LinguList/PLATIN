@@ -66,6 +66,8 @@ PieChartCategoryChooser.prototype = {
 	},
 	
 	createTextBasedChooser : function(chartData){
+		var pieChartCategoryChooser = this;
+		
 		var table = document.createElement("table");
 		var row = document.createElement("tr");
 		table.appendChild(row);
@@ -80,6 +82,9 @@ PieChartCategoryChooser.prototype = {
 		var addCategoryButton = document.createElement("button");
 		$(addCategoryButton).text("add new category");
 		cell.appendChild(addCategoryButton);
+		var applyCategoryButton = document.createElement("button");
+		$(applyCategoryButton).text("apply");
+		cell.appendChild(applyCategoryButton);
 		
 		row = document.createElement("tr");
 		table.appendChild(row);
@@ -119,6 +124,47 @@ PieChartCategoryChooser.prototype = {
 				connectWith: ".connectedSortable" 
 			}).disableSelection();
 		});
+		
+		$(applyCategoryButton).click(function(){
+			var categories = [];
+			$(cell).children().each(function(){
+				var label = $(this).find("legend").text();
+				var values = [];
+				$(this).find("li").each(function(){
+					values.push($(this).text());
+				});
+				
+				categories.push({label:label,values:values});
+			});
+			
+			var values = [];
+			$(unselected).find("li").each(function(){
+				values.push($(this).text());
+			});
+			
+			categories.push({label:"other",values:values});
+			
+			//create selection function for the pie chart
+			var selectionFunction = function(columnData){
+				var categoryLabel = "unknown";
+				$(categories).each(function(){
+					if ($.inArray(columnData,this.values) != -1){
+						categoryLabel = this.label;
+						//exit .each
+						return false;
+					}
+				});
+				
+				return categoryLabel;
+			};
+			
+			//create pie chart
+			pieChartCategoryChooser.parent.addPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+		
+			//close dialog
+			$(pieChartCategoryChooser.dialog).dialog("close");
+		});	
 		
 		//set dialog size
 	    var wWidth = $(window).width();
