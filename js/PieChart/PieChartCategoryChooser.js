@@ -285,12 +285,15 @@ PieChartCategoryChooser.prototype = {
 					last = ui.values[i];
 				}
 				handles = ui.values;
+				for(var i = 0; i < handles.length; i++){
+					$(categories[i]).parent().find("legend").text("<="+handles[i]);	
+				}				
 				
 				placeValues();
 			});
 
 			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend>"+$(addCategoryName).val()+"</legend>");
+			$(newCategoryContainer).append("<legend>"+max+"</legend>");
 			$(newCategoryContainer).width("188px");
 			$(newCategoryContainer).css("float","left");
 			var newCategory = document.createElement("ul");
