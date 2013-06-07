@@ -272,22 +272,18 @@ PieChartCategoryChooser.prototype = {
 			var placeValues = function(){
 				$(unselected).find("li").remove();
 				$(cell).children().find("li").remove();
-				
-				var chartDataCopy = chartData.slice();
-				
-				for (var j = 0; j < handles.length; j++){
-					for (var i = 0; i < chartDataCopy.length; i++){
-						if (chartDataCopy[i]<=handles[j]){
-							$(categories[j]).append("<li class='ui-state-default'>"+chartDataCopy[i]+"</li>");
-							chartDataCopy.splice(i,i+1);
-							i--;
-						}						
-					}
+
+				var j = 0, i = 0;
+				for (; i < chartData.length; i++){
+					if (chartData[i]>handles[j])
+						j++;
+					if (j == handles.length)
+						break;
+					$(categories[j]).append("<li class='ui-state-default'>"+chartData[i]+"</li>");
 				}
-				
-				$(chartDataCopy).each(function(){
-					$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
-				});
+				for (; i < chartData.length; i++){
+					$(unselected).append("<li class='ui-state-default'>"+chartData[i]+"</li>");
+				}
 			};
 			
 			$(slider).on( "slide", function( event, ui ){
