@@ -321,7 +321,7 @@ PieChartCategoryChooser.prototype = {
 				var categoryLabel;
 				for (var i = 0; i < categorieBoundaries.length; i++){
 					if (parseFloat(columnData)<=categorieBoundaries[i]){
-						categoryLabel = "<=" + categorieBoundaries[i];
+						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categorieBoundaries[i];
 						break;
 					}						
 				}
