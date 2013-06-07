@@ -206,29 +206,19 @@ PieChartCategoryChooser.prototype = {
 		
 		var pieChartCategoryChooser = this;
 		
-		var table = document.createElement("table");
-		var row = document.createElement("tr");
-		table.appendChild(row);
-		var cell = document.createElement("td");
-		row.appendChild(cell);
-		var addCategoryName = document.createElement("input");
-		addCategoryName.type = "text";
-		addCategoryName.value = "category name";
-		cell.appendChild(addCategoryName);
-		row.appendChild(cell);
 		var addCategoryButton = document.createElement("button");
 		$(addCategoryButton).text("add new category");
-		cell.appendChild(addCategoryButton);
+		this.dialog.append(addCategoryButton);
 		var applyCategoryButton = document.createElement("button");
 		$(applyCategoryButton).text("apply");
-		cell.appendChild(applyCategoryButton);
+		this.dialog.append(applyCategoryButton);
 		
+		var table = document.createElement("table");
 		row = document.createElement("tr");
 		table.appendChild(row);
 		cell = document.createElement("td");
 		row.appendChild(cell);
 		cell.colSpan = 2;
-		row.appendChild(cell);
 		var slider = document.createElement("div");
 		cell.appendChild(slider);
 		var handles = [];
