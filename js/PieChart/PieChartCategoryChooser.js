@@ -296,7 +296,7 @@ PieChartCategoryChooser.prototype = {
 			
 			$(slider).on( "slide", function( event, ui ){
 				var last = min;
-				//check whether there is place left for another handler
+				//check whether handle values are increasing
 				for(var i = 0; i < ui.values.length; i++){
 					if (ui.values[i]<last)
 						return false;
