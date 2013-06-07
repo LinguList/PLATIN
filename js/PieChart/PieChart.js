@@ -28,7 +28,6 @@
  */
 function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 
-	this.index;
 	this.pieChart = this;
 	this.pieChartDiv;
 	this.preHighlightObjects;
@@ -53,7 +52,10 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 PieChart.prototype = {
 
 	remove : function() {
-		this.parent.pieCharts[this.index] = null;
+		for (var i = 0; i < this.parent.pieCharts.length; i++){
+			if (this.parent.pieCharts[i] === this)
+				this.parent.pieCharts[i] = null;
+		}			
 		$(this.pieChartDiv).remove();
 		$(this.removeButton).remove();
 		this.parent.redrawPieCharts();
@@ -70,8 +72,6 @@ PieChart.prototype = {
 			});
 			$(this.parent.gui.pieChartsDiv).append(this.removeButton);
 			this.pieChartDiv = document.createElement("div");
-			this.index = this.parent.pieCharts.length;
-			this.pieChartDiv.id = "PieChart"+this.index;
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 		}
 		
@@ -205,10 +205,9 @@ PieChart.prototype = {
 		
 		this.parent.core.triggerHighlight(highlightedObjects);
 		
-		var myIndex = this.index;
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
-			if (this instanceof PieChart && (this.index !== myIndex)){
+			if (this instanceof PieChart && (this !== pieChart)){
 				if (this.watchedDataset === pieChart.watchedDataset)
 					this.redrawPieChart(highlightedObjects);
 			}				
@@ -234,10 +233,9 @@ PieChart.prototype = {
 		if (!selection.valid())
 			selection.loadAllObjects();
 		
-		var myIndex = this.index;
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
-			if (this instanceof PieChart && (this.index !== myIndex)){
+			if (this instanceof PieChart && (this !== pieChart)){
 				if (this.watchedDataset === pieChart.watchedDataset){
 					this.preHighlightObjects = selection.objects;
 					this.redrawPieChart(selection.objects);
