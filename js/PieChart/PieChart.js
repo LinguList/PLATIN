@@ -32,7 +32,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.pieChartDiv;
 	this.preHighlightObjects;
 	
-	this.removeButton;
+	this.informationDIV;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -55,7 +55,7 @@ PieChart.prototype = {
 				this.parent.pieCharts[i] = null;
 		}			
 		$(this.pieChartDiv).remove();
-		$(this.removeButton).remove();
+		$(this.informationDIV).remove();
 		this.parent.redrawPieCharts();
 	},
 	
