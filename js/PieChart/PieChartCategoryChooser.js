@@ -203,6 +203,14 @@ PieChartCategoryChooser.prototype = {
 
 		var min = chartData[0];
 		var max = chartData[chartData.length-1];
+		//find minimum step width that is needed 
+		//(otherwise there could be steps that contain more than one element)
+		var minStep=max-min;
+		for (var i = 1; i < chartData.length; i++){
+			var thisStep = chartData[i]-chartData[i-1];
+			if ((thisStep) < minStep)
+				minStep = thisStep;
+		}
 		
 		var pieChartCategoryChooser = this;
 		
@@ -212,6 +220,7 @@ PieChartCategoryChooser.prototype = {
 		var applyCategoryButton = document.createElement("button");
 		$(applyCategoryButton).text("apply");
 		this.dialog.append(applyCategoryButton);
+		this.dialog.append("tip: use left/right arrow key for finer adjustment");
 		
 		var table = document.createElement("table");
 		row = document.createElement("tr");
@@ -256,6 +265,7 @@ PieChartCategoryChooser.prototype = {
 			$(slider).slider({
 				min:min,
 				max:max,
+				step:minStep,
 				values: handles
 			});
 			
