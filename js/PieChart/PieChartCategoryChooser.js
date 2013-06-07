@@ -319,8 +319,9 @@ PieChartCategoryChooser.prototype = {
 			//create selection function for the pie chart
 			var selectionFunction = function(columnData){
 				var categoryLabel;
+				var columnDataNumeric = parseFloat(columnData);
 				for (var i = 0; i < categorieBoundaries.length; i++){
-					if (parseFloat(columnData)<=categorieBoundaries[i]){
+					if (columnDataNumeric<=categorieBoundaries[i]){
 						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categorieBoundaries[i];
 						break;
 					}						
