@@ -45,8 +45,6 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	else
 		//default selectionFunction returns value (creates "distinct" piechart)
 		this.selectionFunction = function(columnData){return columnData;};	
-
-	this.initialize();
 }
 
 PieChart.prototype = {
@@ -78,25 +76,25 @@ PieChart.prototype = {
 			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
+
+		    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
+		        if (item) {
+					//item.series.label contains the column element
+					pieChart.triggerHighlight(item.series.label);                              
+		        } else {
+		        	pieChart.triggerHighlight();
+		        }
+		    });
+			
+		    $(this.pieChartDiv).bind("plotclick", function (event, pos, item) {
+		        if (item) {
+					//item.series.label contains the column element
+					pieChart.triggerSelection(item.series.label);                              
+		        } else {
+		        	pieChart.triggerSelection();
+		        }
+		    });
 		}
-		
-	    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
-	        if (item) {
-				//item.series.label contains the column element
-				pieChart.triggerHighlight(item.series.label);                              
-	        } else {
-	        	pieChart.triggerHighlight();
-	        }
-	    });
-		
-	    $(this.pieChartDiv).bind("plotclick", function (event, pos, item) {
-	        if (item) {
-				//item.series.label contains the column element
-				pieChart.triggerSelection(item.series.label);                              
-	        } else {
-	        	pieChart.triggerSelection();
-	        }
-	    });
 	},
 
 	//check if dataset is still there
@@ -117,6 +115,8 @@ PieChart.prototype = {
 	},
 	
 	initPieChart : function(dataSets) {
+		this.initialize();
+
 		//TODO: this var "remembers" which dataset we are attached to
 		//if it goes missing we delete ourself. This could be improved.
 		if (typeof this.watchedDatasetObject === "undefined")
