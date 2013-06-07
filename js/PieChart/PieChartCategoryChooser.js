@@ -197,16 +197,12 @@ PieChartCategoryChooser.prototype = {
 			numericChartData.push(parseFloat(chartData[i]));
 		}
 		chartData = numericChartData;
+		chartData = chartData.sort(function sortNumber(a,b){
+		    return a - b;
+		});
 
 		var min = chartData[0];
-		var max = chartData[0];
-		for (var i = 0; i < chartData.length; i++){
-			var elem = chartData[i];
-			if (elem < min)
-				min = elem;
-			if (elem > max)
-				max = elem;
-		}
+		var max = chartData[chartData.length-1];
 		
 		var pieChartCategoryChooser = this;
 		
