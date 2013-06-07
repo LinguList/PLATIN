@@ -303,7 +303,7 @@ PieChartCategoryChooser.prototype = {
 			});
 
 			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend>"+max+"</legend>");
+			$(newCategoryContainer).append("<legend><="+max+"</legend>");
 			$(newCategoryContainer).width("188px");
 			$(newCategoryContainer).css("float","left");
 			var newCategory = document.createElement("ul");
