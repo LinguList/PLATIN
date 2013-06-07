@@ -65,12 +65,17 @@ PieChart.prototype = {
 		var pieChart = this;
 		
 		if (typeof this.pieChartDiv === "undefined"){
-			this.removeButton = document.createElement("button");
-			$(this.removeButton).text("remove");
-			$(this.removeButton).click(function(){
+			this.informationDIV = document.createElement("div");
+			$(this.informationDIV).append(GeoTemConfig.datasets[this.watchedDataset].label + " - " + this.watchColumn);
+			var c = GeoTemConfig.getColor(this.watchedDataset);
+			$(this.informationDIV).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
+			var removeButton = document.createElement("button");
+			$(this.informationDIV).append(removeButton);
+			$(removeButton).text("remove");
+			$(removeButton).click(function(){
 				pieChart.remove();
 			});
-			$(this.parent.gui.pieChartsDiv).append(this.removeButton);
+			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 		}
@@ -166,7 +171,7 @@ PieChart.prototype = {
 					if (this instanceof PieChart)
 						pieChartCount++;
 				});
-				var height = (parentHeight/pieChartCount) - $(this.removeButton).outerHeight(true);
+				var height = (parentHeight/pieChartCount) - $(this.informationDIV).outerHeight(true);
 				$(this.pieChartDiv).height(height);
 	
 				$.plot($(this.pieChartDiv), chartData,
