@@ -47,7 +47,7 @@ function createPlot(data){
 	$.each(data, function(name,val){
 		if (typeof val === "undefined")
 			val = 0;
-		var dateObj = moment(name,"YYYYYY");
+		var dateObj = moment(name,"YYYYYY-MM-DDTHH:mm:ss Z");
 		chartData.push([dateObj,val]);
 	});
 	
@@ -66,10 +66,19 @@ FuzzyTimelineDensity.prototype = {
 		//Gleichverteilung	
 		$(this.parent.datasets).each(function(){
 			var chartDataCounter = new Object();
+			var overallMin, overallMax;
 			$(this.objects).each(function(){
+			});
+			$(this.objects).each(function(){
+				var datemin,datemax;
 				if (this.isTemporal){
-					var datemin = this.dates[0].date.getYear()-100;
-					var datemax = this.dates[0].date.getYear()+100;
+					datemin = this.dates[0].date.getYear(),
+					datemax = datemin;
+				} else if (this.isFuzzyTemporal){
+					
+				}
+				
+				if ((typeof datemin !== "undefined") && (typeof datemax !== "undefined")){
 					var weight = 1/(datemax-datemin+1);
 					for (var i = datemin; i <= datemax; i++){
 						if (typeof chartDataCounter[i] === "undefined")
@@ -87,7 +96,7 @@ FuzzyTimelineDensity.prototype = {
 		
 		var options = {
 				series:{
-	                lines:{show: true}
+	                bars:{show: true}
 	            },
 				grid: {
 		            hoverable: true,
