@@ -176,7 +176,7 @@ Table.prototype = {
 		if (table.options.tableCreateNewFromSelected) {
 			this.createNewFromSelected = document.createElement('div');
 			//TODO: add real image
-			this.createNewFromSelected.setAttribute('class', 'smallButton showSelected');
+			this.createNewFromSelected.setAttribute('class', 'smallButton createNewRefined');
 			//TODO: add help
 			this.createNewFromSelected.title = GeoTemConfig.getString('createNewFromSelectedHelp');
 			selectors.appendChild(this.createNewFromSelected);

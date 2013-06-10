@@ -42,31 +42,47 @@
 
 function DataObject(name, description, locations, dates, weight, tableContent, projection) {
 
-	this.name = name;
-	this.description = description;
+	this.name = $.trim(name);
+	this.description = $.trim(description);
 	this.weight = weight;
-	this.tableContent = tableContent;
+	this.tableContent = new Object();
+	var objectTableContent = this.tableContent;
+	$.each(tableContent,function(key,value){
+		objectTableContent[$.trim(key)]=$.trim(value);
+	});
 
 	this.percentage = 0;
 	this.setPercentage = function(percentage) {
 		this.percentage = percentage;
 	}
 
-	this.locations = locations;
+	this.locations = [];
+	var objectLocations = this.locations;
+	$(locations).each(function(){
+		objectLocations.push({
+			latitude:this.latitude,
+			longitude:this.longitude,
+			place:$.trim(this.place)
+		});
+	});
 	
 	//Check if locations are valid
 	if (projection instanceof OpenLayers.Projection){	
 		var tempLocations = [];
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
+			this.latitude = parseFloat(this.latitude);
+			this.longitude = parseFloat(this.longitude);
 			if (projection.getCode() === "EPSG:4326"){
-				if (	(this.latitude>=-90) &&
+				if (	(typeof this.latitude === "number") &&
+						(this.latitude>=-90) &&
 						(this.latitude<=90) &&
+						(typeof this.longitude === "number") &&
 						(this.longitude>=-180) &&
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== undefined)
+					if (typeof console !== "undefined")
 						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
 				}					
 			}
@@ -152,5 +168,34 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		});
 		
 		return (allCombined.indexOf(text) != -1);
+	};
+	
+	this.hasColorInformation = false;
+	
+	this.setColor = function(r0,g0,b0,r1,g1,b1) {
+		this.hasColorInformation = true;
+		
+		this.color = new Object();
+		this.color.r0 = r0;
+		this.color.g0 = g0;
+		this.color.b0 = b0;
+		this.color.r1 = r1;
+		this.color.g1 = g1;
+		this.color.b1 = b1;
+	};
+
+	this.getColor = function() {
+		if (!this.hasColorInformation)
+			return;
+		
+		color = new Object();
+		color.r0 = this.r0;
+		color.g0 = this.g0;
+		color.b0 = this.b0;
+		color.r1 = this.r1;
+		color.g1 = this.g1;
+		color.b1 = this.b1;
+		
+		return color;
 	};
 };

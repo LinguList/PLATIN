@@ -48,7 +48,7 @@ function PieChartGui(pieChart, div, options) {
 				var firstTableContent = firstObject.tableContent;
 				$(pieChartGui.columnSelect).empty();
 			    for (var attribute in firstTableContent) {
-			    	$(pieChartGui.columnSelect).append("<option value="+attribute+">"+attribute+"</option>");
+			    	$(pieChartGui.columnSelect).append("<option value='"+attribute+"'>"+attribute+"</option>");
 			    }
 			    
 			    if (firstObject.isTemporal)
@@ -68,6 +68,15 @@ function PieChartGui(pieChart, div, options) {
 	this.columnSelectorDiv.appendChild(this.buttonNewPieChart);
 	$(this.buttonNewPieChart).click(function(){
 		pieChartGui.parent.addPieChart($(pieChartGui.datasetSelect).val(), $(pieChartGui.columnSelect).val());
+	});
+	this.buttonPieChartCategoryChooser = document.createElement("button");
+	$(this.buttonPieChartCategoryChooser).text("categorize");
+	this.columnSelectorDiv.appendChild(this.buttonPieChartCategoryChooser);
+	$(this.buttonPieChartCategoryChooser).click(function(){
+		var chooser = new PieChartCategoryChooser(	pieChartGui.parent,
+													pieChartGui.options,
+													$(pieChartGui.datasetSelect).val(),
+													$(pieChartGui.columnSelect).val() );
 	});
 	
 	this.refreshColumnSelector();

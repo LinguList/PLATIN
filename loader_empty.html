@@ -6,15 +6,10 @@
     <title>GeoTemCo</title>
 
  	<style type="text/css">
-		.legend > table, .legend > div {
-			width: 200px !important;
+		.legend table, .legend > div {
 		    height: 100px !important;
 			display: block;
-			overflow-y: scroll;
-			position: absolute;
-			right: 0px;
-			bottom: 0px;
-			font-size: 12px;
+			overflow-y: scroll;		    
 		}
 	</style>
 
@@ -79,32 +74,8 @@
 		var piechartDiv = document.getElementById("piechartContainerDiv");
 		var piechart = new WidgetWrapper();
 		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
-		piechartWidget.addPieChart(0,"objekt");
-		piechartWidget.addPieChart(0,"cu_perc",function(data){
-			var value = "Wenig CU";
-			if (data >= 50.0)
-				value = "Viel CU";
-			
-			return value;
-		});
-		/*
-		var kml1 = GeoTemConfig.getKml('data/heine.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
-		var kml2 = GeoTemConfig.getKml('data/kafka.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml2),'Franz Kafka'));
-		var kml3 = GeoTemConfig.getKml('data/goethe.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml3),'Johann Wolfgang von Goethe'));
-		*/
-		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(json){
-			datasets.push(new Dataset(GeoTemConfig.loadJson(json),'Silber Objekte'));
-			
-			map.display(datasets);
-			time.display(datasets);
-			table.display(datasets);
-			piechart.display(datasets);
-			
-			dataloaderWidget.loadFromURL();
-		});		
+		
+		dataloaderWidget.loadFromURL();
 	});
     </script>
 

@@ -976,7 +976,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
     cursor: pointer;
 }
 
-.legend {
+.mapLegend {
 	position: absolute;
 	right: 0px;
 	bottom: 0px;
@@ -1287,6 +1287,10 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/showSelected.png");
 }
 
+.createNewRefined {
+	background-image: url("../images/createNewRefined.png");
+}
+
 .selectPage {
 	background-image: url("../images/selectPage.png");
 }
@@ -1382,4 +1386,12 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 
 .filterCancelDisabled {
 	background-image: url("../images/filterCancelDisabled.png");
+}
+
+.removeDataset {
+	background-image: url("../images/filterCancel.png");
+}
+
+.exportDataset {
+	background-image: url("../images/exportDataset.png");
 }

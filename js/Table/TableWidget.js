@@ -71,17 +71,42 @@ TableWidget.prototype = {
 			}
 			tableTab.innerHTML = name;
 			
-			var removeTabLink = document.createElement('a');
-			removeTabLink.innerHTML = ' (x)';
-			removeTabLink.setAttribute('href','');
-			removeTabLink.onclick = $.proxy(function(e) {
+			var removeTabDiv = document.createElement('div');
+			removeTabDiv.setAttribute('class', 'smallButton removeDataset');
+			removeTabDiv.title = GeoTemConfig.getString('removeDatasetHelp');
+			removeTabDiv.onclick = $.proxy(function(e) {
 				GeoTemConfig.removeDataset(index);
-				//don't let the event propagate to the DIV				
+				//don't let the event propagate to the DIV above			
 				e.stopPropagation();
 				//discard link click
 				return(false);
 			},{index:index});
-			$(tableTab).append(removeTabLink);
+			$(tableTab).append(removeTabDiv);
+			
+			if (GeoTemConfig.tableExportDataset){
+				var exportTabDiv = document.createElement('div');
+				exportTabDiv.setAttribute('class', 'smallButton exportDataset');
+				exportTabDiv.title = GeoTemConfig.getString('exportDatasetHelp');
+				var exportTabForm = document.createElement('form');
+				//TODO: make this configurable
+				exportTabForm.action = 'php/download.php';
+				exportTabForm.method = 'post';
+				var exportTabHiddenValue = document.createElement('input');
+				exportTabHiddenValue.name = 'file';
+				exportTabHiddenValue.type = 'hidden';
+				exportTabForm.appendChild(exportTabHiddenValue);
+				exportTabDiv.onclick = $.proxy(function(e) {
+					$(exportTabHiddenValue).val(GeoTemConfig.createKMLfromDataset(index));
+					$(exportTabForm).submit();
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index});
+				exportTabDiv.appendChild(exportTabForm);
+				$(tableTab).append(exportTabDiv);
+			}
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;

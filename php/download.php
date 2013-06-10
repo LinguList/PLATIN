@@ -1,4 +1,4 @@
-<?php 
+<?php
 /*
 * proxy.php
 *
@@ -19,27 +19,29 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 * MA 02110-1301  USA
 */
-
-	//Hosts that are allowed to download from in RegEx form. (e.g. "/*.dropbox\.com/")
-	//If this array is empty, all hosts are allowed.
-	$validHosts = array(
-			"/localhost/",
-	);
-
-	if (isset($_REQUEST['address'])){
-
-		$parsedAddress = parse_url($_REQUEST['address']);
-		
-		$found = 0;
-		
-		foreach ($validHosts as $host){
-			if (preg_match($host, $parsedAddress["host"])){
-				$found = 1;
-				break;
-			}
-		}
-		
-		if ((count($validHosts)==0) || ($found==1))
-			echo file_get_contents($_REQUEST['address']);
+ 
+if (!empty($_POST['file'])) {
+	
+	$file = $_POST['file'];
+	$filesize = strlen($file);
+	
+	$mime = array('application/octet-stream');
+	
+	header('Content-Type: '.$mime);
+	header('Content-Disposition: attachment; filename="test.kml"');
+	header('Content-Transfer-Encoding: binary');
+	header('Content-Length: '.sprintf('%d', $filesize));
+	header('Expires: 0');
+	
+	// check for IE only headers
+	// credits to: cballou, http://stackoverflow.com/questions/2019964/php-form-download-to-zip
+	if (isset($_SERVER['HTTP_USER_AGENT']) && (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== false)) {
+	  header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+	  header('Pragma: public');
+	} else {
+	  header('Pragma: no-cache');
 	}
+	
+	echo $file;
+}
 ?>

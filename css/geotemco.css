@@ -1472,7 +1472,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
     cursor: pointer;
 }
 
-.legend {
+.mapLegend {
 	position: absolute;
 	right: 0px;
 	bottom: 0px;

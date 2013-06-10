@@ -46,6 +46,9 @@ var GeoTemConfig = {
 	allowFilter : true, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
+	tableExportDataset : true, // export dataset to KML 
+	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -153,6 +156,55 @@ GeoTemConfig.getColor = function(id){
 	return GeoTemConfig.colors[id];
 };
 
+GeoTemConfig.getAverageDatasetColor = function(id, objects){
+	var c = new Object();
+	var datasetColor = GeoTemConfig.getColor(id);
+	c.r0 = datasetColor.r0;
+	c.g0 = datasetColor.g0;
+	c.b0 = datasetColor.b0;
+	c.r1 = datasetColor.r1;
+	c.g1 = datasetColor.g1;
+	c.b1 = datasetColor.b1;
+	if (!GeoTemConfig.allowCustomColoring)
+		return c;
+	if (objects.length == 0)
+		return c;
+	var avgColor = new Object();
+	avgColor.r0 = 0;
+	avgColor.g0 = 0;
+	avgColor.b0 = 0;
+	avgColor.r1 = 0;
+	avgColor.g1 = 0;
+	avgColor.b1 = 0;
+	
+	$(objects).each(function(){
+		if (this.hasColorInformation){
+			avgColor.r0 += this.color.r0;
+			avgColor.g0 += this.color.g0;
+			avgColor.b0 += this.color.b0;
+			avgColor.r1 += this.color.r1;
+			avgColor.g1 += this.color.g1;
+			avgColor.b1 += this.color.b1;
+		} else {
+			avgColor.r0 += datasetColor.r0;
+			avgColor.g0 += datasetColor.g0;
+			avgColor.b0 += datasetColor.b0;
+			avgColor.r1 += datasetColor.r1;
+			avgColor.g1 += datasetColor.g1;
+			avgColor.b1 += datasetColor.b1;
+		}
+	});
+	
+	c.r0 = Math.floor(avgColor.r0/objects.length);
+	c.g0 = Math.floor(avgColor.g0/objects.length);
+	c.b0 = Math.floor(avgColor.b0/objects.length);
+	c.r1 = Math.floor(avgColor.r1/objects.length);
+	c.g1 = Math.floor(avgColor.g1/objects.length);
+	c.b1 = Math.floor(avgColor.b1/objects.length);
+	
+	return c;
+};
+
 GeoTemConfig.getString = function(field) {
 	if ( typeof Tooltips[GeoTemConfig.language] == 'undefined') {
 		GeoTemConfig.language = 'en';
@@ -195,9 +247,11 @@ GeoTemConfig.getJson = function(url) {
 GeoTemConfig.mergeObjects = function(set1, set2) {
 	var inside = [];
 	var newSet = [];
-	for (var i = 0; i < set1.length; i++) {
+	for (var i = 0; i < GeoTemConfig.datasets.length; i++){
 		inside.push([]);
 		newSet.push([]);
+	}
+	for (var i = 0; i < set1.length; i++) {
 		for (var j = 0; j < set1[i].length; j++) {
 			inside[i][set1[i][j].index] = true;
 			newSet[i].push(set1[i][j]);
@@ -226,19 +280,14 @@ GeoTemConfig.removeDataset = function(index){
 };
 
 /**
- * converts the csv-file to a kml-file
- * taken unchanged from GeoBrowser-GWT project
- * (https://it-dev.mpiwg-berlin.mpg.de/hg/STI-GWT/)
+ * converts the csv-file into json-format
  * 
  * @param {String}
  *            text
  */
 GeoTemConfig.convertCsv = function(text){
-
-	/* convert here from csv to kml */
-	var kmlString = '<?xml version="1.0" standalone="yes"?>\n';
-		kmlString += '<kml xmlns="http://www.opengis.com/kml/ext/2.2">\n';
-		kmlString += '\t<Folder>\n';
+	/* convert here from CSV to JSON */
+	var json = [];
 	/* define expected csv table headers (first line) */
 	var expectedHeaders = new Array("Name","Address","Description","Longitude","Latitude","TimeStamp","TimeSpan:begin","TimeSpan:end");
 	/* convert csv string to array of arrays using ucsv library */
@@ -248,76 +297,59 @@ GeoTemConfig.convertCsv = function(text){
 	/* loop outer array, begin with second line */
 	for (var i = 1; i < csvArray.length; i++) {
 		var innerArray = csvArray[i];
-		kmlString += '\t\t<Placemark>\n';
-		/* declare few variables */                                   
-		var timespanBegin = "";
-		var timespanEnd = "";
-		var longitude = "";
-		var latitude = "";
+		var dataObject = new Object();
+		var tableContent = new Object(); 
 	   	/* loop inner array */
-		var descriptionOrig="";
-		var descriptionTable="";
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
 			if (usedHeaders[j] == expectedHeaders[0]) {
-				kmlString += '\t\t\t<name><![CDATA[' + innerArray[j] + ']]></name>\n';
+				dataObject["name"] = ""+innerArray[j];
+				tableContent["name"] = ""+innerArray[j];
 			}
 			/* Address */
 			else if (usedHeaders[j] == expectedHeaders[1]) {
-				kmlString += '\t\t\t<address><![CDATA[' + innerArray[j] + ']]></address>\n';
+				dataObject["place"] = ""+innerArray[j];
+				tableContent["place"] = ""+innerArray[j];
 			}
 			/* Description */
 			else if (usedHeaders[j] == expectedHeaders[2]) {
-				descriptionOrig = innerArray[j];
+				dataObject["description"] = ""+innerArray[j];
+				tableContent["description"] = ""+innerArray[j];
 			}
 			/* TimeStamp */
 			else if (usedHeaders[j] == expectedHeaders[5]) {
-				kmlString += '\t\t\t<TimeStamp>\n' +
-					'\t\t\t\t<when>' + innerArray[j] + '</when>\n' +
-					'\t\t\t</TimeStamp>\n';
+				dataObject["time"] = ""+innerArray[j];
 			}
 			/* TimeSpan:begin */
 			else if (usedHeaders[j] == expectedHeaders[6]) {
-				timespanBegin = innerArray[j];
+				tableContent["TimeSpanBegin"] = ""+innerArray[j];
 			}
 			/* TimeSpan:end */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
-				timespanEnd = innerArray[j];
+				tableContent["TimeSpanEnd"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
 			else if (usedHeaders[j] == expectedHeaders[3]) {                              
-				longitude = innerArray[j];                                           
+				dataObject["lon"] = parseFloat(innerArray[j]);                                           
 			}                                                                        
 			/* Latitude */                                                           
 			else if (usedHeaders[j] == expectedHeaders[4]) {                              
-				latitude = innerArray[j];
+				dataObject["lat"] = parseFloat(innerArray[j]);
 			}
 			else {
-				descriptionTable += "<tr><td>"+usedHeaders[j]+"</td><td>"+innerArray[j]+"</td></tr>";
+				var header = new String(usedHeaders[j]);
+				//remove leading and trailing Whitespace
+				header = $.trim(header);
+				tableContent[header] = ""+innerArray[j];
 			}
 		}
-		if (descriptionTable.length > 0)
-			descriptionOrig = "<table>" + descriptionTable + "</table>";
-		kmlString += '\t\t\t<description><![CDATA[' + descriptionOrig + ']]></description>\n';
 		
-		/* set timespan:begin und timespan:end */
-		kmlString += '\t\t\t<TimeSpan>\n' +
-			'\t\t\t\t<begin>' + timespanBegin + '</begin>\n' +
-			'\t\t\t\t<end>' + timespanEnd + '</end>\n' +
-			'\t\t\t</TimeSpan>\n';
-		/* set longitude and latitude */                                                 
-		kmlString += '\t\t\t<Point>\n' +                                                 
-			'\t\t\t\t<coordinates>' +                                                
-			longitude +',' + latitude +                                              
-			'</coordinates>\n' +
-			'\t\t\t</Point>\n';
-		/* end Placemark */
-		kmlString += '\t\t</Placemark>\n';
+		dataObject["tableContent"] = tableContent;
+		
+		json.push(dataObject);
 	}
-	kmlString += '\t</Folder>\n';
-	kmlString += '</kml>\n';
 	
-	return kmlString;
+	return json;
 };
 
 /**
@@ -391,14 +423,12 @@ GeoTemConfig.getKmz = function(url,asyncFunc) {
 };
 
 /**
- * returns the xml dom object of an kml created  
+ * returns the JSON "object"  
  * from the csv file from the given url
  * @param {String} url the url of the file to load
  * @return xml dom object of given file
  */
 GeoTemConfig.getCsv = function(url,asyncFunc) {
-	var kmlDom = new Array();
-
 	var async = false;
 	if( asyncFunc ){
 		async = true;
@@ -410,11 +440,9 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
     req.open("GET",url,async);
     req.responseType = "text";
     req.onload = function() {
-    	var kml = GeoTemConfig.convertCsv(req.response);
-    	kmlDom = $.parseXML(kml);
-    	
+    	var json = GeoTemConfig.convertCsv(req.response);
     	if( asyncFunc )
-    		asyncFunc(kmlDom);
+    		asyncFunc(json);
     };
 	req.send();
 	
@@ -490,7 +518,7 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 		isValidDate = false;
 	
 	if (!isValidDate){
-		if (typeof console !== undefined)
+		if (typeof console !== "undefined")
 			console.error(xmlTime + " is no valid time format");
 		return null;
 	}
@@ -519,9 +547,9 @@ GeoTemConfig.loadJson = function(JSON) {
 			if (item.location instanceof Array) {
 				for (var j = 0; j < item.location.length; j++) {
 					var place = item.location[j].place || "unknown";
-					var lon = item.location[j].lon || "";
-					var lat = item.location[j].lat || "";
-					if ((lon == "" || lat == "" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
+					var lon = item.location[j].lon;
+					var lat = item.location[j].lat;
+					if ((typeof lon === "undefined" || typeof lat === "undefined" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
 						throw "e";
 					}
 					locations.push({
@@ -532,9 +560,9 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			} else {
 				var place = item.place || "unknown";
-				var lon = item.lon || "";
-				var lat = item.lat || "";
-				if ((lon == "" || lat == "" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
+				var lon = item.lon;
+				var lat = item.lat;
+				if ((typeof lon === "undefined" || typeof lat === "undefined" || isNaN(lon) || isNaN(lat) ) && !GeoTemConfig.incompleteData) {
 					throw "e";
 				}
 				locations.push({
@@ -571,6 +599,9 @@ GeoTemConfig.loadJson = function(JSON) {
 			continue;
 		}
 	}
+
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapTimeObjects);
 
 	return mapTimeObjects;
 }
@@ -736,6 +767,80 @@ GeoTemConfig.loadKml = function(kml) {
 			});
 		});
 	}
-	
+
+	if (GeoTemConfig.loadColorFromDataset)
+		GeoTemConfig.loadDataObjectColoring(mapObjects);
+
 	return mapObjects;
+};
+
+GeoTemConfig.createKMLfromDataset = function(index){
+	var kmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document>";
+	
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		var name = this.name;
+		var description = this.description;
+		//TODO: allow multiple time/date
+		var place = this.getPlace(0,0);
+		var lat = this.getLatitude(0);
+		var lon = this.getLongitude(0);
+		var timeStamp = this.getDate(0);
+		  
+		var kmlEntry = "<Placemark>";
+		
+		kmlEntry += "<name><![CDATA[" + name + "]]></name>";
+		kmlEntry += "<address><![CDATA[" + place + "]]></address>";
+		kmlEntry += "<description><![CDATA[" + description + "]]></description>";
+		kmlEntry += "<Point><coordinates>" + lon + "," + lat + "</coordinates></Point>";
+		  
+		kmlEntry += "<TimeStamp><when>" + timeStamp + "</when></TimeStamp>";
+		
+		kmlEntry += "</Placemark>";
+		      
+		kmlContent += kmlEntry;
+	});
+	  
+	kmlContent += "</Document></kml>";
+	  
+	return(kmlContent);
+};
+
+/**
+ * iterates over Datasets/DataObjects and loads color values
+ * from the "color0" and "color1" elements, which contains RGB
+ * values in hex (CSS style #RRGGBB)
+ * @param {dataObjects} array of DataObjects
+ */
+GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
+	$(dataObjects).each(function(){
+		var r0,g0,b0,r1,g1,b1;
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color0"] !== "undefined") ){
+			var color = this.tableContent["color0"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r0 = parseInt("0x"+color.substr(1,2));
+			    g0 = parseInt("0x"+color.substr(3,2));
+			    b0 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		if (	(typeof this.tableContent !== "undefined") &&
+				(typeof this.tableContent["color1"] !== "undefined") ){
+			var color = this.tableContent["color1"];
+			if ( (color.indexOf("#") == 0) && (color.length == 7) ){
+			    r1 = parseInt("0x"+color.substr(1,2));
+			    g1 = parseInt("0x"+color.substr(3,2));
+			    b1 = parseInt("0x"+color.substr(5,2));
+			}
+		}
+		
+		if (	(typeof r0 !== "undefined") && (typeof g0 !== "undefined") && (typeof b0 !== "undefined") &&
+				(typeof r1 !== "undefined") && (typeof g1 !== "undefined") && (typeof b1 !== "undefined") ){
+			this.setColor(r0,g0,b0,r1,g1,b1);
+			delete this.tableContent["color0"];
+			delete this.tableContent["color1"];
+		} else {
+			if (typeof console !== undefined)
+				console.error("Object '" + this.name + "' has invalid color information");
+		}
+	});
 };

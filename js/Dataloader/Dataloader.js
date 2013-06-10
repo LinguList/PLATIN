@@ -82,12 +82,13 @@ Dataloader.prototype = {
 			if (typeof this.options.proxy != 'undefined')
 				kmlURL = this.options.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
-			if (kml != null) {
+			if ((typeof kml !== "undefined") && (kml != null)) {
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kml));
 				
 				if (dataSet != null)
 					this.distributeDataset(dataSet);
-			}
+			} else
+				alert("Could not load file.");
 		},this));
 
 		$(this.parent.gui.loaders).append(this.KMLLoaderTab);
@@ -148,13 +149,14 @@ Dataloader.prototype = {
 			var csvURL = $(this.csvURL).val();
 			if (typeof this.options.proxy != 'undefined')
 				csvURL = this.options.proxy + csvURL;
-			GeoTemConfig.getCsv(csvURL, function(kml){
-				if (kml != null) {
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kml));
+			GeoTemConfig.getCsv(csvURL, function(json){
+				if ((typeof json !== "undefined") && (json.length > 0)) {
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json));
 					
 					if (dataSet != null)
 						dataLoader.distributeDataset(dataSet);
-				}
+				} else
+					alert("Could not load file.");
 			});
 		},this));
 
@@ -220,8 +222,8 @@ Dataloader.prototype = {
 				
 				reader.onloadend = ($.proxy(function(theFile) {
 			        return function(e) {
-			        	var kml = GeoTemConfig.convertCsv(reader.result);
-						var dataSet = new Dataset(GeoTemConfig.loadKml($.parseXML(kml)), fileName);
+			        	var json = GeoTemConfig.convertCsv(reader.result);
+						var dataSet = new Dataset(GeoTemConfig.loadJson(json, fileName));
 						if (dataSet != null)
 							this.distributeDataset(dataSet);			
 			        };
