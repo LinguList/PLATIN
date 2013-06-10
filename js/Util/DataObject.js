@@ -105,6 +105,13 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		this.isTemporal = true;
 	}
 
+	//TODO: allow more than one timespan (as with dates/places)
+	this.isFuzzyTemporal = false;
+	if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
+			(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
+		this.isFuzzyTemporal = true;
+	}
+	
 	this.getDate = function(dateId) {
 		return this.dates[dateId].date;
 	}
