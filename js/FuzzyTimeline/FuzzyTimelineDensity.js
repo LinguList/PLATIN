@@ -72,10 +72,11 @@ FuzzyTimelineDensity.prototype = {
 			$(this.objects).each(function(){
 				var datemin,datemax;
 				if (this.isTemporal){
-					datemin = this.dates[0].date.getYear(),
+					datemin = this.dates[0].date.getYear();
 					datemax = datemin;
 				} else if (this.isFuzzyTemporal){
-					
+					datemin = this.tableContent["TimeSpanBegin"];
+					datemax = this.tableContent["TimeSpanEnd"];
 				}
 				
 				if ((typeof datemin !== "undefined") && (typeof datemax !== "undefined")){
