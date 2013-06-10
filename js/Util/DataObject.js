@@ -123,8 +123,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 
 	//TODO: allow more than one timespan (as with dates/places)
 	this.isFuzzyTemporal = false;
-	if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
-			(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
+	if (	(typeof this.tableContent["TimeSpanBegin"] !== "undefined") &&
+			(typeof this.tableContent["TimeSpanEnd"] !== "undefined") ){
 		this.isFuzzyTemporal = true;
 	}
 	
