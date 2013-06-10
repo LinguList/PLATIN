@@ -34,6 +34,8 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	var fuzzyTimelineGui = this;
 	
 	this.fuzzyTimelineContainer = div;
+	if ($(this.fuzzyTimelineContainer).height() === 0)
+		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/16);
 	this.fuzzyTimelineContainer.style.position = 'relative';
 
 	this.densityDiv = document.createElement("div");
