@@ -33,8 +33,8 @@ function FuzzyTimelineDensity(parent) {
 	this.overallMin;
 	this.overallMax;
 	this.singleTickWidth;
-	//TODO: experiment with number of ticks, 1000 seems to be ok for now
-	this.tickCount = 1000;
+	//TODO: experiment with number of ticks, 500 seems to be ok for now
+	this.tickCount = 250;
 	this.selected = [];
 	
 	this.parent = parent;
