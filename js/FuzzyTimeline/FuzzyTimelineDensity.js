@@ -35,7 +35,12 @@ function FuzzyTimelineDensity(parent) {
 	this.singleTickWidth;
 	//TODO: experiment with number of ticks, 500 seems to be ok for now
 	this.tickCount = 250;
+	//contains all data
+	this.plots = [];
+	//contains selected data
 	this.selected = [];
+	//contains the last selected "date"
+	this.highlighted;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -75,13 +80,33 @@ FuzzyTimelineDensity.prototype = {
 		return({firstTick:firstTick,lastTick:lastTick});
 	},
 
+	getObjects : function(date) {
+		var density = this;
+		var searchedTick = Math.floor((date-this.overallMin)/this.singleTickWidth);
+		
+		var datasets = [];		
+		$(this.parent.datasets).each(function(){
+			var objects = [];
+			$(this.objects).each(function(){
+				var ticks = density.getTicks(this);
+				if (typeof ticks !== "undefined"){
+					if ((ticks.firstTick <= searchedTick) && (ticks.lastTick >= searchedTick))
+						objects.push(this);
+				}
+			});
+			datasets.push(objects);
+		});
+
+		return(datasets);
+	},
+	
 	initialize : function(overallMin, overallMax) {
 		var density = this;
 		this.overallMin = overallMin;
 		this.overallMax = overallMax;
 		var fuzzyTimeline = this;
 
-		var plots = [];
+		this.plots = [];
 		//calculate tick width (will be in ms)
 		density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
 
@@ -112,7 +137,7 @@ FuzzyTimelineDensity.prototype = {
 			
 			var udChartData = createPlot(chartDataCounter,density.overallMin,density.singleTickWidth);
 			if (udChartData.length > 0)
-				plots.push(udChartData);
+				density.plots.push(udChartData);
 		});
 		
 		var timeformat = "%Y";
@@ -148,11 +173,33 @@ FuzzyTimelineDensity.prototype = {
 				}
 			};
 		
-		density.plot = $.plot($(density.parent.gui.densityDiv), plots, options);
+		density.plot = $.plot($(density.parent.gui.densityDiv), density.plots, options);
+		
+	    $(density.parent.gui.densityDiv).bind("plothover", function (event, pos, item) {
+	    	var date;
+	        if (item) {
+				//contains the x-value (date)
+	        	date = item.datapoint[0];
+	        }
+	        //remember last date, so that we don't redraw the current state
+	    	if (density.highlighted !== date){
+	        	density.highlighted = date;
+	        	density.triggerHighlight(date);
+	        }
+	    });
 	},
 		
-	triggerHighlight : function(columnElement) {
-
+	triggerHighlight : function(date) {
+		var highlightedObjects = [];
+		
+		if (typeof date !== "undefined") {
+			highlightedObjects = this.getObjects(date);
+		} else {
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+				highlightedObjects.push([]);
+		}
+		
+		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
 	triggerSelection : function(columnElement) {
