@@ -560,6 +560,8 @@ Table.prototype = {
 				var key = table.keyHeaderList[k];
 				//vhz
 				var text = e.object.tableContent[key];
+				if (typeof text === "undefined")
+					text = "";
 				var cell = $("<td/>").appendTo(itemRow);
 				if (table.options.tableContentOffset && text.length < table.options.tableContentOffset) {
 					$(cell).html(text);
