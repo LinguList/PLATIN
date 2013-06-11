@@ -138,7 +138,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		               ];
 		this.TimeSpanBegin = moment(this.tableContent["TimeSpanBegin"],formats.slice());
 		this.TimeSpanEnd = moment(this.tableContent["TimeSpanEnd"],formats.slice());
-		if (this.TimeSpanBegin.isValid() && this.TimeSpanEnd.isValid()){
+		if ((this.TimeSpanBegin instanceof Object) && this.TimeSpanBegin.isValid() && 
+			(this.TimeSpanEnd instanceof Object) && this.TimeSpanEnd.isValid()){
 			var timeSpanGranularity = Math.max(	formats.indexOf(this.TimeSpanBegin._f),
 												formats.indexOf(this.TimeSpanEnd._f) );
 
