@@ -56,7 +56,18 @@ function createPlot(data,overallMin,singleTickWidth){
 
 FuzzyTimelineDensity.prototype = {
 		
-	getTicks : function(datemin,datemax) {
+	getTicks : function(dataObject) {
+		var datemin,datemax;
+		if (dataObject.isTemporal){
+			datemin = moment(dataObject.dates[0].date);
+			datemax = datemin;
+		} else if (dataObject.isFuzzyTemporal){
+			datemin = dataObject.TimeSpanBegin;
+			datemax = dataObject.TimeSpanEnd;
+		} else{
+			return;
+		}
+		
 		var firstTick = Math.floor((datemin-this.overallMin)/this.singleTickWidth);
 		var lastTick = Math.floor((datemax-this.overallMin)/this.singleTickWidth);
 		
@@ -81,19 +92,8 @@ FuzzyTimelineDensity.prototype = {
 				chartDataCounter[i]=0;
 			}
 			$(this.objects).each(function(){
-				var datemin,datemax;
-				if (this.isTemporal){
-					datemin = moment(this.dates[0].date);
-					datemax = datemin;
-				} else if (this.isFuzzyTemporal){
-					datemin = this.TimeSpanBegin;
-					datemax = this.TimeSpanEnd;
-				} else{
-					return;
-				}
-				
-				if ((datemin.isValid()) && (datemax.isValid())){
-					var ticks = density.getTicks(datemin,datemax);
+				var ticks = density.getTicks(this);
+				if (typeof ticks !== "undefined"){
 					//check whether dates are correctly sorted
 					if (ticks.firstTick>ticks.lastTick){
 						//dates are in the wrong order
