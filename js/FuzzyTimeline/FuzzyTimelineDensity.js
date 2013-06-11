@@ -177,8 +177,7 @@ FuzzyTimelineDensity.prototype = {
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						density.plot.highlight(datasetIndex,i);
 					}
-				} else
-					a = 1;
+				}
 			});
 			datasetIndex++;
 		});
