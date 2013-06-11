@@ -33,8 +33,6 @@ function FuzzyTimelineDensity(parent) {
 	
 	this.parent = parent;
 	this.options = parent.options;
-	
-	this.initialize();
 }
 
 function createPlot(data){
@@ -58,21 +56,20 @@ function createPlot(data){
 
 FuzzyTimelineDensity.prototype = {
 
-	initialize : function() {
+	initialize : function(overallMin, overallMax) {
 		var fuzzyTimeline = this;
 
 		var plots = [];
+		var singleTickRange = overallMin-overallMax;
 
 		//Gleichverteilung	
 		$(this.parent.datasets).each(function(){
 			var chartDataCounter = new Object();
-			var overallMin, overallMax;
-			$(this.objects).each(function(){
-			});
+
 			$(this.objects).each(function(){
 				var datemin,datemax;
 				if (this.isTemporal){
-					datemin = this.dates[0].date.getYear();
+					datemin = moment(this.dates[0].date);
 					datemax = datemin;
 				} else if (this.isFuzzyTemporal){
 					datemin = this.tableContent["TimeSpanBegin"];
@@ -97,7 +94,7 @@ FuzzyTimelineDensity.prototype = {
 		
 		var options = {
 				series:{
-	                bars:{show: true}
+	                points:{show: true}
 	            },
 				grid: {
 		            hoverable: true,
