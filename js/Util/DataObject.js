@@ -128,13 +128,13 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		//parse according to ISO 8601
 		//don't use the default "cross browser support" from moment.js
 		//cause it won't work correctly with negative years
-		var formats = [	"YYYYYY-MM-DDTHH:mm:ss.SSS",
-		               	"YYYYYY-MM-DDTHH:mm:ss",
-		               	"YYYYYY-MM-DDTHH:mm",
-		               	"YYYYYY-MM-DDTHH",
-		               	"YYYYYY-MM-DD",
+		var formats = [	"YYYYYY",
 		               	"YYYYYY-MM",
-		               	"YYYYYY"
+		               	"YYYYYY-MM-DD",
+		               	"YYYYYY-MM-DDTHH",
+		               	"YYYYYY-MM-DDTHH:mm",
+		               	"YYYYYY-MM-DDTHH:mm:ss",
+		               	"YYYYYY-MM-DDTHH:mm:ss.SSS"
 		               ];
 		this.TimeSpanBegin = moment(this.tableContent["TimeSpanBegin"],formats.slice());
 		this.TimeSpanEnd = moment(this.tableContent["TimeSpanEnd"],formats.slice());
@@ -144,19 +144,19 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 												formats.indexOf(this.TimeSpanEnd._f) );
 
 			//set granularity according to formats above
-			if (timeSpanGranularity === 6){
+			if (timeSpanGranularity === 0){
 				this.TimeSpanGranularity = SimileAjax.DateTime.YEAR;
-			} else if (timeSpanGranularity === 5){
+			} else if (timeSpanGranularity === 1){
 				this.TimeSpanGranularity = SimileAjax.DateTime.MONTH;
-			} else if (timeSpanGranularity === 4){
+			} else if (timeSpanGranularity === 2){
 				this.TimeSpanGranularity = SimileAjax.DateTime.DAY;
 			} else if (timeSpanGranularity === 3){
 				this.TimeSpanGranularity = SimileAjax.DateTime.HOUR;
-			} else if (timeSpanGranularity === 2){
+			} else if (timeSpanGranularity === 4){
 				this.TimeSpanGranularity = SimileAjax.DateTime.MINUTE;
-			} else if (timeSpanGranularity === 1){
+			} else if (timeSpanGranularity === 5){
 				this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
-			} else if (timeSpanGranularity === 0){
+			} else if (timeSpanGranularity === 6){
 				this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
 			}
 			this.isFuzzyTemporal = true;
