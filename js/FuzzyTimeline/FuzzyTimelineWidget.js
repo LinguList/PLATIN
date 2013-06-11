@@ -86,6 +86,7 @@ FuzzyTimelineWidget.prototype = {
 		if ( (typeof objects === "undefined") || (objects.length == 0) ){
 			return;
 		}
+		this.density.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {

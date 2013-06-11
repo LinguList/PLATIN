@@ -147,7 +147,7 @@ FuzzyTimelineDensity.prototype = {
 				}
 			};
 		
-		var plot = $.plot($(density.parent.gui.densityDiv), plots, options);
+		density.plot = $.plot($(density.parent.gui.densityDiv), plots, options);
 	},
 		
 	triggerHighlight : function(columnElement) {
@@ -156,6 +156,28 @@ FuzzyTimelineDensity.prototype = {
 
 	triggerSelection : function(columnElement) {
 
+	},
+	
+	highlightChanged : function(objects) {
+		var density = this;
+		if (density.plot instanceof Object){
+			density.plot.unhighlight();
+			var datasetIndex = 0;
+			$(objects).each(function(){
+				var dataset = this;
+				$(this).each(function(){
+					var dataObject = this;
+					var ticks = density.getTicks(dataObject);
+					if (typeof ticks !== "undefined"){
+						for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
+							density.plot.highlight(datasetIndex,i);
+						}
+					} else
+						a = 1;
+				});
+				datasetIndex++;
+			});
+		}
 	},
 
 	deselection : function() {
