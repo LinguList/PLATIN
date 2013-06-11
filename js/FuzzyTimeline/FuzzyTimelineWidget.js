@@ -43,9 +43,40 @@ function FuzzyTimelineWidget(core, div, options) {
 FuzzyTimelineWidget.prototype = {
 
 	initWidget : function(data) {
-		this.datasets = data;
-		
-		this.density.initialize();
+		if ( (data instanceof Array) && (data.length > 0) )
+		{
+			this.datasets = data;
+			
+			var overallMin, overallMax;
+			$(this.datasets).each(function(){
+				var chartDataCounter = new Object();
+				
+				$(this.objects).each(function(){
+					var datemin,datemax;
+					if (this.isTemporal){
+						//TODO: allow more than one date
+						datemin = moment(this.dates[0].date);
+						datemax = datemin;
+					} else if (this.isFuzzyTemporal){
+						//TODO: allow more than one date
+						datemin = this.TimeSpanBegin;
+						datemax = this.TimeSpanEnd;
+					}
+					
+					if (typeof overallMin === "undefined")
+						overallMin = datemin;
+					if (typeof overallMax === "undefined")
+						overallMax = datemax;
+					
+					if (overallMin > datemin)
+						overallMin = datemin;
+					if (overallMax < datemax)
+						overallMax = datemax;
+				});
+			});
+			
+			this.density.initialize(overallMin,overallMax);
+		}
 	},
 
 	highlightChanged : function(objects) {
