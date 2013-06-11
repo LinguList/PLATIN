@@ -35,6 +35,7 @@ function FuzzyTimelineDensity(parent) {
 	this.singleTickWidth;
 	//TODO: experiment with number of ticks, 1000 seems to be ok for now
 	this.tickCount = 1000;
+	this.selected = [];
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -158,26 +159,45 @@ FuzzyTimelineDensity.prototype = {
 
 	},
 	
+	clearHighlighted : function(objects) {
+		var density = this;
+		if (density.plot instanceof Object)
+			density.plot.unhighlight();
+	},
+	
+	drawHighlighted : function(objects) {
+		var density = this;
+		var datasetIndex = 0;
+		$(objects).each(function(){
+			var dataset = this;
+			$(dataset).each(function(){
+				var dataObject = this;
+				var ticks = density.getTicks(dataObject);
+				if (typeof ticks !== "undefined"){
+					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
+						density.plot.highlight(datasetIndex,i);
+					}
+				} else
+					a = 1;
+			});
+			datasetIndex++;
+		});
+	},
+	
 	highlightChanged : function(objects) {
 		var density = this;
 		if (density.plot instanceof Object){
-			density.plot.unhighlight();
-			var datasetIndex = 0;
-			$(objects).each(function(){
-				var dataset = this;
-				$(this).each(function(){
-					var dataObject = this;
-					var ticks = density.getTicks(dataObject);
-					if (typeof ticks !== "undefined"){
-						for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
-							density.plot.highlight(datasetIndex,i);
-						}
-					} else
-						a = 1;
-				});
-				datasetIndex++;
-			});
+			density.clearHighlighted();
+			density.drawHighlighted(density.selected);
+			density.drawHighlighted(objects);
 		}
+	},
+	
+	selectionChanged : function(objects) {
+		var density = this;
+		density.clearHighlighted();
+		density.selected = objects;
+		density.drawHighlighted(density.selected);
 	},
 
 	deselection : function() {

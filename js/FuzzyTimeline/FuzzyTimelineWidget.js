@@ -93,5 +93,7 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
+		var objects = selection.objects;
+		this.density.selectionChanged(objects);
 	},
 };
