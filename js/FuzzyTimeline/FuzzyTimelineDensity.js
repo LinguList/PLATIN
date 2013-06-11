@@ -35,21 +35,16 @@ function FuzzyTimelineDensity(parent) {
 	this.options = parent.options;
 }
 
-function createPlot(data){
+function createPlot(data,overallMin,singleTickWidth){
+	var singleTickCenter = singleTickWidth/2;
+
 	var chartData = [];
-	
-	function linsort (a, b) {
-		return a[0] - b[0];
-	}
 
 	$.each(data, function(name,val){
-		if (typeof val === "undefined")
-			val = 0;
-		var dateObj = moment(name,"YYYYYY-MM-DDTHH:mm:ss Z");
+		var tickCenterTime = overallMin+name*singleTickWidth+singleTickCenter;
+		var dateObj = moment(tickCenterTime);
 		chartData.push([dateObj,val]);
 	});
-	
-	chartData.sort(linsort);
 	
 	return chartData;
 }
@@ -60,41 +55,57 @@ FuzzyTimelineDensity.prototype = {
 		var fuzzyTimeline = this;
 
 		var plots = [];
-		var singleTickRange = overallMin-overallMax;
+		//calculate tick width (will be in ms)
+		//TODO: experiment with number of ticks, 1000 seems to be ok for now
+		var tickCount = 1000;
+		var singleTickWidth = (overallMax-overallMin)/tickCount;
 
 		//Gleichverteilung	
 		$(this.parent.datasets).each(function(){
 			var chartDataCounter = new Object();
 
+			for (var i = 0; i < tickCount; i++){
+				chartDataCounter[i]=0;
+			}
 			$(this.objects).each(function(){
 				var datemin,datemax;
 				if (this.isTemporal){
 					datemin = moment(this.dates[0].date);
 					datemax = datemin;
 				} else if (this.isFuzzyTemporal){
-					datemin = this.tableContent["TimeSpanBegin"];
-					datemax = this.tableContent["TimeSpanEnd"];
+					datemin = this.TimeSpanBegin;
+					datemax = this.TimeSpanEnd;
+				} else{
+					return;
 				}
 				
-				if ((typeof datemin !== "undefined") && (typeof datemax !== "undefined")){
-					var weight = 1/(datemax-datemin+1);
-					for (var i = datemin; i <= datemax; i++){
-						if (typeof chartDataCounter[i] === "undefined")
-							chartDataCounter[i] = weight;
-						else
-							chartDataCounter[i] += weight;
+				if ((datemin.isValid()) && (datemax.isValid())){
+					var firstTick = Math.floor((datemin-overallMin)/singleTickWidth);
+					var lastTick = Math.floor((datemax-overallMin)/singleTickWidth);
+					
+					//check whether dates are correctly sorted
+					if (firstTick>lastTick){
+						//dates are in the wrong order
+						if (typeof console !== "undefined")
+							console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
+						return;
+					}
+					
+					var weight = 1/(lastTick-firstTick+1);
+					for (var i = firstTick; i <= lastTick; i++){
+						chartDataCounter[i] += weight;
 					}
 				}
 			});
 			
-			var udChartData = createPlot(chartDataCounter);
+			var udChartData = createPlot(chartDataCounter,overallMin,singleTickWidth);
 			if (udChartData.length > 0)
 				plots.push(udChartData);
 		});
 		
 		var options = {
 				series:{
-	                points:{show: true}
+	                lines:{show: true}
 	            },
 				grid: {
 		            hoverable: true,
