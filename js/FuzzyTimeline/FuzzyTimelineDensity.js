@@ -103,6 +103,18 @@ FuzzyTimelineDensity.prototype = {
 				plots.push(udChartData);
 		});
 		
+		var timeformat = "%Y";
+		if (singleTickWidth<1000)
+			timeformat = "%Y/%m/%d %H:%M:%S";
+		if (singleTickWidth<60*1000)
+			timeformat = "%Y/%m/%d %H:%M";
+		else if (singleTickWidth<60*60*1000)
+			timeformat = "%Y/%m/%d %H";
+		else if (singleTickWidth<24*60*60*1000)
+			timeformat = "%Y/%m/%d";
+		else if (singleTickWidth<31*24*60*60*1000)
+			timeformat = "%Y/%m";
+		
 		var options = {
 				series:{
 	                lines:{show: true}
@@ -119,7 +131,8 @@ FuzzyTimelineDensity.prototype = {
 		        	mode: "x"
 		        },
 				xaxis: {
-					mode: "time"
+					mode: "time",
+					timeformat:timeformat
 				}
 			};
 		
