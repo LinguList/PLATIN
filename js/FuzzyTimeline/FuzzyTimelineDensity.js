@@ -30,6 +30,11 @@ function FuzzyTimelineDensity(parent) {
 
 	this.index;
 	this.fuzzyTimeline = this;
+	this.overallMin;
+	this.overallMax;
+	this.singleTickWidth;
+	//TODO: experiment with number of ticks, 1000 seems to be ok for now
+	this.tickCount = 1000;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -50,21 +55,29 @@ function createPlot(data,overallMin,singleTickWidth){
 }
 
 FuzzyTimelineDensity.prototype = {
+		
+	getTicks : function(datemin,datemax) {
+		var firstTick = Math.floor((datemin-this.overallMin)/this.singleTickWidth);
+		var lastTick = Math.floor((datemax-this.overallMin)/this.singleTickWidth);
+		
+		return({firstTick:firstTick,lastTick:lastTick});
+	},
 
 	initialize : function(overallMin, overallMax) {
+		var density = this;
+		this.overallMin = overallMin;
+		this.overallMax = overallMax;
 		var fuzzyTimeline = this;
 
 		var plots = [];
 		//calculate tick width (will be in ms)
-		//TODO: experiment with number of ticks, 1000 seems to be ok for now
-		var tickCount = 1000;
-		var singleTickWidth = (overallMax-overallMin)/tickCount;
+		density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
 
 		//Gleichverteilung	
 		$(this.parent.datasets).each(function(){
 			var chartDataCounter = new Object();
 
-			for (var i = 0; i < tickCount; i++){
+			for (var i = 0; i < density.tickCount; i++){
 				chartDataCounter[i]=0;
 			}
 			$(this.objects).each(function(){
@@ -80,39 +93,37 @@ FuzzyTimelineDensity.prototype = {
 				}
 				
 				if ((datemin.isValid()) && (datemax.isValid())){
-					var firstTick = Math.floor((datemin-overallMin)/singleTickWidth);
-					var lastTick = Math.floor((datemax-overallMin)/singleTickWidth);
-					
+					var ticks = density.getTicks(datemin,datemax);
 					//check whether dates are correctly sorted
-					if (firstTick>lastTick){
+					if (ticks.firstTick>ticks.lastTick){
 						//dates are in the wrong order
 						if (typeof console !== "undefined")
 							console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 						return;
 					}
 					
-					var weight = 1/(lastTick-firstTick+1);
-					for (var i = firstTick; i <= lastTick; i++){
+					var weight = 1/(ticks.lastTick-ticks.firstTick+1);
+					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						chartDataCounter[i] += weight;
 					}
 				}
 			});
 			
-			var udChartData = createPlot(chartDataCounter,overallMin,singleTickWidth);
+			var udChartData = createPlot(chartDataCounter,density.overallMin,density.singleTickWidth);
 			if (udChartData.length > 0)
 				plots.push(udChartData);
 		});
 		
 		var timeformat = "%Y";
-		if (singleTickWidth<1000)
+		if (density.singleTickWidth<1000)
 			timeformat = "%Y/%m/%d %H:%M:%S";
-		if (singleTickWidth<60*1000)
+		else if (density.singleTickWidth<60*1000)
 			timeformat = "%Y/%m/%d %H:%M";
-		else if (singleTickWidth<60*60*1000)
+		else if (density.singleTickWidth<60*60*1000)
 			timeformat = "%Y/%m/%d %H";
-		else if (singleTickWidth<24*60*60*1000)
+		else if (density.singleTickWidth<24*60*60*1000)
 			timeformat = "%Y/%m/%d";
-		else if (singleTickWidth<31*24*60*60*1000)
+		else if (density.singleTickWidth<31*24*60*60*1000)
 			timeformat = "%Y/%m";
 		
 		var options = {
@@ -136,7 +147,7 @@ FuzzyTimelineDensity.prototype = {
 				}
 			};
 		
-		var plot = $.plot($(this.parent.gui.densityDiv), plots, options);
+		var plot = $.plot($(density.parent.gui.densityDiv), plots, options);
 	},
 		
 	triggerHighlight : function(columnElement) {
