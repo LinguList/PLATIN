@@ -125,7 +125,41 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	this.isFuzzyTemporal = false;
 	if (	(typeof this.tableContent["TimeSpanBegin"] !== "undefined") &&
 			(typeof this.tableContent["TimeSpanEnd"] !== "undefined") ){
-		this.isFuzzyTemporal = true;
+		//parse according to ISO 8601
+		//don't use the default "cross browser support" from moment.js
+		//cause it won't work correctly with negative years
+		var formats = [	"YYYYYY-MM-DDTHH:mm:ss.SSS",
+		               	"YYYYYY-MM-DDTHH:mm:ss",
+		               	"YYYYYY-MM-DDTHH:mm",
+		               	"YYYYYY-MM-DDTHH",
+		               	"YYYYYY-MM-DD",
+		               	"YYYYYY-MM",
+		               	"YYYYYY"
+		               ];
+		this.TimeSpanBegin = moment(this.tableContent["TimeSpanBegin"],formats.slice());
+		this.TimeSpanEnd = moment(this.tableContent["TimeSpanEnd"],formats.slice());
+		if (this.TimeSpanBegin.isValid() && this.TimeSpanEnd.isValid()){
+			var timeSpanGranularity = Math.max(	formats.indexOf(this.TimeSpanBegin._f),
+												formats.indexOf(this.TimeSpanEnd._f) );
+
+			//set granularity according to formats above
+			if (timeSpanGranularity === 6){
+				this.TimeSpanGranularity = SimileAjax.DateTime.YEAR;
+			} else if (timeSpanGranularity === 5){
+				this.TimeSpanGranularity = SimileAjax.DateTime.MONTH;
+			} else if (timeSpanGranularity === 4){
+				this.TimeSpanGranularity = SimileAjax.DateTime.DAY;
+			} else if (timeSpanGranularity === 3){
+				this.TimeSpanGranularity = SimileAjax.DateTime.HOUR;
+			} else if (timeSpanGranularity === 2){
+				this.TimeSpanGranularity = SimileAjax.DateTime.MINUTE;
+			} else if (timeSpanGranularity === 1){
+				this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
+			} else if (timeSpanGranularity === 0){
+				this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
+			}
+			this.isFuzzyTemporal = true;
+		}
 	}
 	
 	this.getDate = function(dateId) {
