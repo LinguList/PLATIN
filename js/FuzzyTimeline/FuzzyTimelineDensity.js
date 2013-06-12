@@ -178,7 +178,25 @@ FuzzyTimelineDensity.prototype = {
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
-		            content: "%x : %y"
+		            content: function(xval, yval){
+		            	var singleTickCenter = density.singleTickWidth/2;
+		            	var formatString = "YYYY";
+		        		if (density.singleTickWidth<1000)
+		        			formatString = "YYYY/MM/DD HH:mm:ss";
+		        		else if (density.singleTickWidth<60*1000)
+		        			formatString = "YYYY/MM/DD HH:mm";
+		        		else if (density.singleTickWidth<60*60*1000)
+		        			formatString = "YYYY/MM/DD HH";
+		        		else if (density.singleTickWidth<24*60*60*1000)
+		        			formatString = "YYYY/MM/DD";
+		        		else if (density.singleTickWidth<31*24*60*60*1000)
+		        			formatString = "YYYY/MM";
+		            	
+		            	highlightString =	moment(xval-singleTickCenter).format(formatString) + " - " +
+		            						moment(xval+singleTickCenter).format(formatString) + " : " + yval; 
+
+		        		return highlightString;
+		            }
 		        },
 		        selection: { 
 		        	mode: "x"
