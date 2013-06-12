@@ -45,6 +45,8 @@ function FuzzyTimelineDensity(parent,div) {
 	this.parent = parent;
 	this.div = div;
 	this.options = parent.options;
+	
+	this.datasets;
 }
 
 function createPlot(data,overallMin,singleTickWidth){
@@ -86,7 +88,7 @@ FuzzyTimelineDensity.prototype = {
 		var searchedTick = Math.floor((date-this.overallMin)/this.singleTickWidth);
 		
 		var datasets = [];		
-		$(this.parent.datasets).each(function(){
+		$(density.datasets).each(function(){
 			var objects = [];
 			$(this.objects).each(function(){
 				var ticks = density.getTicks(this);
@@ -103,21 +105,22 @@ FuzzyTimelineDensity.prototype = {
 	
 	initialize : function(overallMin, overallMax) {
 		var density = this;
-		this.overallMin = overallMin;
-		this.overallMax = overallMax;
+		density.datasets = datasets;
+		density.overallMin = overallMin;
+		density.overallMax = overallMax;
 
 		this.plots = [];
 		//calculate tick width (will be in ms)
 		density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
 
 		//Gleichverteilung	
-		$(this.parent.datasets).each(function(){
+		$(density.datasets).each(function(){
 			var chartDataCounter = new Object();
 
 			for (var i = 0; i < density.tickCount; i++){
 				chartDataCounter[i]=0;
 			}
-			$(this.objects).each(function(){
+			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
 					//check whether dates are correctly sorted
