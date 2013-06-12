@@ -107,7 +107,7 @@ FuzzyTimelineDensity.prototype = {
 		return(datasets);
 	},
 	
-	initialize : function(overallMin, overallMax) {
+	initialize : function(overallMin, overallMax, datasets, tickWidth) {
 		var density = this;
 		density.datasets = datasets;
 		density.overallMin = overallMin;
@@ -115,7 +115,12 @@ FuzzyTimelineDensity.prototype = {
 
 		this.plots = [];
 		//calculate tick width (will be in ms)
-		density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
+		if (typeof tickWidth !== "undefined"){
+			density.singleTickWidth = tickWidth;
+			density.tickCount = Math.ceil((density.overallMax-density.overallMin)/tickWidth);
+		} else {
+			density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
+		}
 
 		//Gleichverteilung	
 		$(density.datasets).each(function(){

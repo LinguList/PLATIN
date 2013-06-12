@@ -37,7 +37,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.options = (new FuzzyTimelineConfig(options)).options;
 	this.gui = new FuzzyTimelineGui(this, div, this.options);
 	
-	this.density = new FuzzyTimelineDensity(this);
+	this.density = new FuzzyTimelineDensity(this,this.gui.densityDiv);
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -75,7 +75,7 @@ FuzzyTimelineWidget.prototype = {
 				});
 			});
 			
-			this.density.initialize(overallMin,overallMax);
+			this.density.initialize(overallMin,overallMax,this.datasets);
 		}
 	},
 
