@@ -26,7 +26,7 @@
  *
  * @param {HTML object} parent div to append the FuzzyTimeline
  */
-function FuzzyTimelineDensity(parent) {
+function FuzzyTimelineDensity(parent,div) {
 
 	this.index;
 	this.fuzzyTimeline = this;
@@ -43,6 +43,7 @@ function FuzzyTimelineDensity(parent) {
 	this.highlighted;
 	
 	this.parent = parent;
+	this.div = div;
 	this.options = parent.options;
 }
 
@@ -172,9 +173,9 @@ FuzzyTimelineDensity.prototype = {
 				}
 			};
 		
-		density.plot = $.plot($(density.parent.gui.densityDiv), density.plots, options);
+		density.plot = $.plot($(density.div), density.plots, options);
 		
-	    $(density.parent.gui.densityDiv).bind("plothover", function (event, pos, item) {
+	    $(density.div).bind("plothover", function (event, pos, item) {
 	    	var date;
 	        if (item) {
 				//contains the x-value (date)
