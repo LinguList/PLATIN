@@ -34,7 +34,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.overallMax;
 	this.singleTickWidth;
 	//TODO: experiment with number of ticks, 500 seems to be ok for now
-	this.tickCount = 250;
+	this.maxTickCount = 250;
 	//contains all data
 	this.plots = [];
 	//contains selected data
@@ -115,10 +115,14 @@ FuzzyTimelineDensity.prototype = {
 
 		this.plots = [];
 		//calculate tick width (will be in ms)
+		delete density.tickCount;
+		delete density.singleTickWidth;
 		if (typeof tickWidth !== "undefined"){
 			density.singleTickWidth = tickWidth;
 			density.tickCount = Math.ceil((density.overallMax-density.overallMin)/tickWidth);
-		} else {
+		} 
+		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
+			density.tickCount = density.maxTickCount;
 			density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
 		}
 
