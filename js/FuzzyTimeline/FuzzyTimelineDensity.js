@@ -104,7 +104,6 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		this.overallMin = overallMin;
 		this.overallMax = overallMax;
-		var fuzzyTimeline = this;
 
 		this.plots = [];
 		//calculate tick width (will be in ms)
