@@ -43,10 +43,12 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	$(this.densityDiv).height("50%");
 	div.appendChild(this.densityDiv);
 	this.rangeTimelineDiv = document.createElement("div");
+	$(this.rangeTimelineDiv).css("float","left");
 	$(this.rangeTimelineDiv).width("75%");
 	$(this.rangeTimelineDiv).height("50%");
 	div.appendChild(this.rangeTimelineDiv);
-	this.rangePiechartDiv = document.createElement("div");	
+	this.rangePiechartDiv = document.createElement("div");
+	$(this.rangePiechartDiv).css("float","right");
 	$(this.rangePiechartDiv).width("25%");
 	$(this.rangePiechartDiv).height("50%");
 	div.appendChild(this.rangePiechartDiv);

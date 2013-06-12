@@ -26,7 +26,7 @@
  *
  * @param {HTML object} parent div to append the FuzzyTimeline
  */
-function FuzzyTimelineRangePiechart(parent) {
+function FuzzyTimelineRangePiechart(parent,div,shownDatasets,hiddenDatasets) {
 
 	this.index;
 	this.fuzzyTimeline = this;
@@ -40,7 +40,7 @@ function FuzzyTimelineRangePiechart(parent) {
 FuzzyTimelineRangePiechart.prototype = {
 
 	initialize : function() {
-		var fuzzyTimeline = this;
+		var piechart = this;
 	},
 		
 	triggerHighlight : function(columnElement) {
