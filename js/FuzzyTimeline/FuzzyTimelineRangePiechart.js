@@ -26,13 +26,18 @@
  *
  * @param {HTML object} parent div to append the FuzzyTimeline
  */
-function FuzzyTimelineRangePiechart(parent,div,shownDatasets,hiddenDatasets) {
+function FuzzyTimelineRangePiechart(parent,div,datasetIndex,shownDatasets,hiddenDatasets) {
 
 	this.index;
 	this.fuzzyTimeline = this;
 	
 	this.parent = parent;
 	this.options = parent.options;
+	
+	this.div = div;
+	this.datasetIndex = datasetIndex;
+	this.shownDatasets = shownDatasets;
+	this.hiddenDatasets = hiddenDatasets;
 	
 	this.initialize();
 }
@@ -41,6 +46,30 @@ FuzzyTimelineRangePiechart.prototype = {
 
 	initialize : function() {
 		var piechart = this;
+		
+		var chartData = [];
+		chartData.push({label:"shown",data:piechart.shownDatasets[piechart.datasetIndex].length});
+		chartData.push({label:"hidden",data:piechart.hiddenDatasets[piechart.datasetIndex].length});
+		
+		$.plot($(piechart.div), chartData,
+			{
+				series: {
+					// Make this a pie chart.
+					pie: {
+						show:true
+					}
+				},
+				legend: { show:true, position: 'se' },
+				grid: {
+		            hoverable: true,
+		            clickable: true
+		        },
+		        tooltip: true,
+		        tooltipOpts: {
+		            content: "%s"
+		        }
+			}
+		);
 	},
 		
 	triggerHighlight : function(columnElement) {

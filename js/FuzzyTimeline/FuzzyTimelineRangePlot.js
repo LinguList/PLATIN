@@ -166,13 +166,15 @@ FuzzyTimelineRangePlot.prototype = {
 	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
 		var rangePlot = this;
 
+		var parentDiv = rangePlot.pieChartDiv;
 		rangePlot.deletePieCharts();
 		var datasetIndex = 0;
 		$(rangePlot.datasets).each(function(){
 			var div = document.createElement("div");
-			var test = $(rangePlot.pieChartDiv).height();
+			$(parentDiv).append(div);
+			$(div).height($(parentDiv).height()/rangePlot.datasets.length);
 
-			rangePlot.pieCharts.push(new FuzzyTimelineRangePiechart(rangePlot.parent,div,shownDatasets,hiddenDatasets));
+			rangePlot.pieCharts.push(new FuzzyTimelineRangePiechart(rangePlot.parent,div,datasetIndex,shownDatasets,hiddenDatasets));
 			datasetIndex++;
 		});
 	},
