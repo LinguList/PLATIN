@@ -90,7 +90,11 @@ FuzzyTimelineDensity.prototype = {
 		var datasets = [];		
 		$(density.datasets).each(function(){
 			var objects = [];
-			$(this.objects).each(function(){
+			//check if we got "real" datasets, or just array of objects
+			var datasetObjects = this;
+			if (typeof this.objects !== "undefined")
+				datasetObjects = this.objects;
+			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
 					if ((ticks.firstTick <= searchedTick) && (ticks.lastTick >= searchedTick))
@@ -120,6 +124,10 @@ FuzzyTimelineDensity.prototype = {
 			for (var i = 0; i < density.tickCount; i++){
 				chartDataCounter[i]=0;
 			}
+			//check if we got "real" datasets, or just array of objects
+			var datasetObjects = this;
+			if (typeof this.objects !== "undefined")
+				datasetObjects = this.objects;
 			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
