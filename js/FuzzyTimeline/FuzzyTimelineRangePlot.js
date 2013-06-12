@@ -83,7 +83,8 @@ FuzzyTimelineRangePlot.prototype = {
 				var dataObject = this;
 				if (dataObject.isTemporal){
 					if ($.inArray(0,rangePlot.spans)==-1)
-						rangePlot.spans.push(0);
+						//smallest span = 1ms
+						rangePlot.spans.push(1000);
 				} else if (dataObject.isFuzzyTemporal){
 					var span = dataObject.TimeSpanEnd - dataObject.TimeSpanBegin;
 					if ($.inArray(span,rangePlot.spans)==-1)
@@ -111,7 +112,8 @@ FuzzyTimelineRangePlot.prototype = {
 					var dataObject = this;
 					var span;
 					if (dataObject.isTemporal){
-						span = 0;
+						//smallest span = 1ms
+						span = 1000;
 					} else if (dataObject.isFuzzyTemporal){
 						span = dataObject.TimeSpanEnd - dataObject.TimeSpanBegin;
 					}
