@@ -79,8 +79,20 @@ FuzzyTimelineDensity.prototype = {
 		
 		var firstTick = Math.floor((datemin-this.overallMin)/this.singleTickWidth);
 		var lastTick = Math.floor((datemax-this.overallMin)/this.singleTickWidth);
+		//calculate how much the first (and last) tick and the time-span overlap
+		var firstTickPercentage = 1;
+		var lastTickPercentage = 1;
+		if (firstTick != lastTick){
+			var secondTickStart = this.overallMin+(firstTick+1)*this.singleTickWidth;
+			var lastTickStart = this.overallMin+lastTick*this.singleTickWidth;
+			firstTickPercentage = (secondTickStart-datemin)/this.singleTickWidth;
+			lastTickPercentage = (datemax-lastTickStart)/this.singleTickWidth;
+		}
 		
-		return({firstTick:firstTick,lastTick:lastTick});
+		return({	firstTick:firstTick,
+					lastTick:lastTick,
+					firstTickPercentage:firstTickPercentage,
+					lastTickPercentage:lastTickPercentage});
 	},
 
 	getObjects : function(date) {
@@ -140,8 +152,19 @@ FuzzyTimelineDensity.prototype = {
 			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
-					var weight = this.weight/(ticks.lastTick-ticks.firstTick+1);
+					var exactTickCount = 
+						ticks.firstTickPercentage+
+						ticks.lastTickPercentage+
+						(ticks.lastTick-ticks.firstTick-1);
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
+						var weight = 0;
+						if (i == ticks.firstTick)
+							weight = this.weight * ticks.firstTickPercentage/exactTickCount;
+						else if (i == ticks.lastTick)
+							weight = this.weight * ticks.lastTickPercentage/exactTickCount;
+						else
+							weight = this.weight * 1/exactTickCount;
+						
 						chartDataCounter[i] += weight;
 					}
 				}
