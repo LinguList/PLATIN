@@ -140,14 +140,6 @@ FuzzyTimelineDensity.prototype = {
 			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
-					//check whether dates are correctly sorted
-					if (ticks.firstTick>ticks.lastTick){
-						//dates are in the wrong order
-						if (typeof console !== "undefined")
-							console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
-						return;
-					}
-					
 					var weight = 1/(ticks.lastTick-ticks.firstTick+1);
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						chartDataCounter[i] += weight;

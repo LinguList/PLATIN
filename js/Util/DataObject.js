@@ -140,47 +140,55 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		this.TimeSpanEnd = moment(this.tableContent["TimeSpanEnd"],formats.slice());
 		if ((this.TimeSpanBegin instanceof Object) && this.TimeSpanBegin.isValid() && 
 			(this.TimeSpanEnd instanceof Object) && this.TimeSpanEnd.isValid()){
-			var timeSpanBeginGranularity = formats.indexOf(this.TimeSpanBegin._f);
-			var timeSpanEndGranularity = formats.indexOf(this.TimeSpanEnd._f);
-			var timeSpanGranularity = Math.max(	timeSpanBeginGranularity,
-												timeSpanEndGranularity );
+			//check whether dates are correctly sorted
+			if (this.TimeSpanBegin>this.TimeSpanEnd){
+				//dates are in the wrong order
+				if (typeof console !== "undefined")
+					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
+				
+			} else {
+				var timeSpanBeginGranularity = formats.indexOf(this.TimeSpanBegin._f);
+				var timeSpanEndGranularity = formats.indexOf(this.TimeSpanEnd._f);
+				var timeSpanGranularity = Math.max(	timeSpanBeginGranularity,
+													timeSpanEndGranularity );
 
-			//set granularity according to formats above
-			if (timeSpanGranularity === 0){
-				this.TimeSpanGranularity = SimileAjax.DateTime.YEAR;
-			} else if (timeSpanGranularity === 1){
-				this.TimeSpanGranularity = SimileAjax.DateTime.MONTH;
-			} else if (timeSpanGranularity === 2){
-				this.TimeSpanGranularity = SimileAjax.DateTime.DAY;
-			} else if (timeSpanGranularity === 3){
-				this.TimeSpanGranularity = SimileAjax.DateTime.HOUR;
-			} else if (timeSpanGranularity === 4){
-				this.TimeSpanGranularity = SimileAjax.DateTime.MINUTE;
-			} else if (timeSpanGranularity === 5){
-				this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
-			} else if (timeSpanGranularity === 6){
-				this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
-			}
-			
-			//also set upper bounds according to granularity
-			//(lower bound is already correct)
-			if (timeSpanEndGranularity === 0){
-				this.TimeSpanEnd.endOf("year");
-			} else if (timeSpanEndGranularity === 1){
-				this.TimeSpanEnd.endOf("month");
-			} else if (timeSpanEndGranularity === 2){
-				this.TimeSpanEnd.endOf("day");
-			} else if (timeSpanEndGranularity === 3){
-				this.TimeSpanEnd.endOf("hour");
-			} else if (timeSpanEndGranularity === 4){
-				this.TimeSpanEnd.endOf("minute");
-			} else if (timeSpanEndGranularity === 5){
-				this.TimeSpanEnd.endOf("second");
-			} else if (timeSpanEndGranularity === 6){
-				//has max accuracy, so no change needed
-			}
+				//set granularity according to formats above
+				if (timeSpanGranularity === 0){
+					this.TimeSpanGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanGranularity === 1){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanGranularity === 2){
+					this.TimeSpanGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanGranularity === 3){
+					this.TimeSpanGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanGranularity === 4){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanGranularity === 5){
+					this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanGranularity === 6){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
+				//also set upper bounds according to granularity
+				//(lower bound is already correct)
+				if (timeSpanEndGranularity === 0){
+					this.TimeSpanEnd.endOf("year");
+				} else if (timeSpanEndGranularity === 1){
+					this.TimeSpanEnd.endOf("month");
+				} else if (timeSpanEndGranularity === 2){
+					this.TimeSpanEnd.endOf("day");
+				} else if (timeSpanEndGranularity === 3){
+					this.TimeSpanEnd.endOf("hour");
+				} else if (timeSpanEndGranularity === 4){
+					this.TimeSpanEnd.endOf("minute");
+				} else if (timeSpanEndGranularity === 5){
+					this.TimeSpanEnd.endOf("second");
+				} else if (timeSpanEndGranularity === 6){
+					//has max accuracy, so no change needed
+				}
 
-			this.isFuzzyTemporal = true;
+				this.isFuzzyTemporal = true;
+			}
 		}
 	}
 	
