@@ -49,22 +49,22 @@ function FuzzyTimelineDensity(parent,div) {
 	this.datasets;
 }
 
-function createPlot(data,overallMin,singleTickWidth){
-	var singleTickCenter = singleTickWidth/2;
-
-	var chartData = [];
-
-	$.each(data, function(name,val){
-		var tickCenterTime = overallMin+name*singleTickWidth+singleTickCenter;
-		var dateObj = moment(tickCenterTime);
-		chartData.push([dateObj,val]);
-	});
-	
-	return chartData;
-}
-
 FuzzyTimelineDensity.prototype = {
+
+	createPlot : function(data,overallMin,singleTickWidth){
+		var singleTickCenter = singleTickWidth/2;
+
+		var chartData = [];
+
+		$.each(data, function(name,val){
+			var tickCenterTime = overallMin+name*singleTickWidth+singleTickCenter;
+			var dateObj = moment(tickCenterTime);
+			chartData.push([dateObj,val]);
+		});
 		
+		return chartData;
+	},
+
 	getTicks : function(dataObject) {
 		var datemin,datemax;
 		if (dataObject.isTemporal){
@@ -147,7 +147,7 @@ FuzzyTimelineDensity.prototype = {
 				}
 			});
 			
-			var udChartData = createPlot(chartDataCounter,density.overallMin,density.singleTickWidth);
+			var udChartData = density.createPlot(chartDataCounter,density.overallMin,density.singleTickWidth);
 			if (udChartData.length > 0)
 				density.plots.push(udChartData);
 		});
