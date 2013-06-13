@@ -152,30 +152,26 @@ FuzzyTimelineDensity.prototype = {
 				density.plots.push(udChartData);
 		});
 		
-		var timeformat = "%Y";
-		if (density.singleTickWidth<1000)
-			timeformat = "%Y/%m/%d %H:%M:%S";
-		else if (density.singleTickWidth<60*1000)
-			timeformat = "%Y/%m/%d %H:%M";
-		else if (density.singleTickWidth<60*60*1000)
-			timeformat = "%Y/%m/%d %H";
-		else if (density.singleTickWidth<24*60*60*1000)
-			timeformat = "%Y/%m/%d";
-		else if (density.singleTickWidth<31*24*60*60*1000)
-			timeformat = "%Y/%m";
+		var axisFormatString = "%Y";
+		var tooltipFormatString = "YYYY";
+		if (density.singleTickWidth<1000){
+			axisFormatString = "%Y/%m/%d %H:%M:%S";
+			tooltipFormatString = "YYYY/MM/DD HH:mm:ss";
+		} else if (density.singleTickWidth<60*1000) {
+			axisFormatString = "%Y/%m/%d %H:%M";
+			tooltipFormatString = "YYYY/MM/DD HH:mm";
+		} else if (density.singleTickWidth<60*60*1000){
+			axisFormatString = "%Y/%m/%d %H";
+			tooltipFormatString = "YYYY/MM/DD HH";
+		} else if (density.singleTickWidth<24*60*60*1000){
+			axisFormatString = "%Y/%m/%d";
+			tooltipFormatString = "YYYY/MM/DD";
+		} else if (density.singleTickWidth<31*24*60*60*1000){
+			axisFormatString = "%Y/%m";
+			tooltipFormatString = "YYYY/MM";
+		}
 		
     	var singleTickCenter = density.singleTickWidth/2;
-    	var formatString = "YYYY";
-		if (density.singleTickWidth<1000)
-			formatString = "YYYY/MM/DD HH:mm:ss";
-		else if (density.singleTickWidth<60*1000)
-			formatString = "YYYY/MM/DD HH:mm";
-		else if (density.singleTickWidth<60*60*1000)
-			formatString = "YYYY/MM/DD HH";
-		else if (density.singleTickWidth<24*60*60*1000)
-			formatString = "YYYY/MM/DD";
-		else if (density.singleTickWidth<31*24*60*60*1000)
-			formatString = "YYYY/MM";
 		
 		var options = {
 				series:{
@@ -188,8 +184,8 @@ FuzzyTimelineDensity.prototype = {
 		        tooltip: true,
 		        tooltipOpts: {
 		            content: function(xval, yval){
-		            	highlightString =	moment(xval-singleTickCenter).format(formatString) + " - " +
-		            						moment(xval+singleTickCenter).format(formatString) + " : ";
+		            	highlightString =	moment(xval-singleTickCenter).format(tooltipFormatString) + " - " +
+		            						moment(xval+singleTickCenter).format(tooltipFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 
@@ -201,7 +197,7 @@ FuzzyTimelineDensity.prototype = {
 		        },
 				xaxis: {
 					mode: "time",
-					timeformat:timeformat
+					timeformat:axisFormatString
 				}
 			};
 		
