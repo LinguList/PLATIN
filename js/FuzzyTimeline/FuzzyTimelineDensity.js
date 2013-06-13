@@ -140,7 +140,7 @@ FuzzyTimelineDensity.prototype = {
 			$(datasetObjects).each(function(){
 				var ticks = density.getTicks(this);
 				if (typeof ticks !== "undefined"){
-					var weight = 1/(ticks.lastTick-ticks.firstTick+1);
+					var weight = this.weight/(ticks.lastTick-ticks.firstTick+1);
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						chartDataCounter[i] += weight;
 					}
