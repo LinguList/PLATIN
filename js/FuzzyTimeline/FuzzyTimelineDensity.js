@@ -189,7 +189,9 @@ FuzzyTimelineDensity.prototype = {
 		        tooltipOpts: {
 		            content: function(xval, yval){
 		            	highlightString =	moment(xval-singleTickCenter).format(formatString) + " - " +
-		            						moment(xval+singleTickCenter).format(formatString) + " : " + yval; 
+		            						moment(xval+singleTickCenter).format(formatString) + " : ";
+		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
+		            	highlightString +=	Math.round(yval*100)/100; 
 
 		        		return highlightString;
 		            }
