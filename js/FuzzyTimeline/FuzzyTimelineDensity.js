@@ -33,6 +33,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.overallMin;
 	this.overallMax;
 	this.singleTickWidth;
+	this.singleTickCenter = function(){return this.singleTickWidth/2;};
 	//TODO: experiment with number of ticks, 500 seems to be ok for now
 	this.maxTickCount = 250;
 	//contains all data
@@ -51,13 +52,12 @@ function FuzzyTimelineDensity(parent,div) {
 
 FuzzyTimelineDensity.prototype = {
 
-	createPlot : function(data,overallMin,singleTickWidth){
-		var singleTickCenter = singleTickWidth/2;
-
+	createPlot : function(data){
+		density = this;
 		var chartData = [];
 
 		$.each(data, function(name,val){
-			var tickCenterTime = overallMin+name*singleTickWidth+singleTickCenter;
+			var tickCenterTime = density.overallMin+name*density.singleTickWidth+density.singleTickCenter();
 			var dateObj = moment(tickCenterTime);
 			chartData.push([dateObj,val]);
 		});
@@ -147,7 +147,7 @@ FuzzyTimelineDensity.prototype = {
 				}
 			});
 			
-			var udChartData = density.createPlot(chartDataCounter,density.overallMin,density.singleTickWidth);
+			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
 				density.plots.push(udChartData);
 		});
@@ -171,8 +171,6 @@ FuzzyTimelineDensity.prototype = {
 			tooltipFormatString = "YYYY/MM";
 		}
 		
-    	var singleTickCenter = density.singleTickWidth/2;
-		
 		var options = {
 				series:{
 	                lines:{show: true}
@@ -184,8 +182,8 @@ FuzzyTimelineDensity.prototype = {
 		        tooltip: true,
 		        tooltipOpts: {
 		            content: function(xval, yval){
-		            	highlightString =	moment(xval-singleTickCenter).format(tooltipFormatString) + " - " +
-		            						moment(xval+singleTickCenter).format(tooltipFormatString) + " : ";
+		            	highlightString =	moment(xval-density.singleTickCenter()).format(tooltipFormatString) + " - " +
+		            						moment(xval+density.singleTickCenter()).format(tooltipFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 
