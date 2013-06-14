@@ -94,6 +94,36 @@ FuzzyTimelineRangePlot.prototype = {
 		});
 		//sort the spans
 		rangePlot.spans.sort(function(a,b){return a-b;});
+
+		var fixedSpans = [
+		    moment.duration(1, 'seconds'),
+			moment.duration(1, 'minutes'),
+			moment.duration(10, 'minutes'),
+			moment.duration(15, 'minutes'),
+			moment.duration(30, 'minutes'),
+			moment.duration(1, 'hours'),
+			moment.duration(5, 'hours'),
+			moment.duration(10, 'hours'),
+			moment.duration(12, 'hours'),
+			moment.duration(1, 'days'),
+			moment.duration(7, 'days'),
+			moment.duration(1, 'weeks'),
+			moment.duration(1, 'months'),
+			moment.duration(3, 'months'),
+			moment.duration(6, 'months'),
+			moment.duration(1, 'years'),
+			moment.duration(10, 'years'),
+			moment.duration(100, 'years'),
+			moment.duration(1000, 'years')];
+		
+		//add the fixed spans, that are longer than minimum span and not already contained
+		for (var i = 0; i < fixedSpans.length; i++){
+			if ((fixedSpans[i] > rangePlot.spans[0]) && ($.inArray(fixedSpans[i],rangePlot.spans) == -1))
+				rangePlot.spans.push(fixedSpans[i]);
+		}
+
+		//and sort again to fit the fixed spans in
+		rangePlot.spans.sort(function(a,b){return a-b;});
 		
 		if (rangePlot.spans.length > 0){
 			//create empty hash map (span -> DataObjects)
