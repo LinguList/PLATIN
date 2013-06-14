@@ -255,7 +255,7 @@ FuzzyTimelineDensity.prototype = {
 
 	},
 	
-	clearHighlighted : function(objects) {
+	clearHighlighted : function() {
 		var density = this;
 		if (density.plot instanceof Object)
 			density.plot.unhighlight();
