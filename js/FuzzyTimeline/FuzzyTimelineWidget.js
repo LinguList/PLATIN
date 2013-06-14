@@ -50,8 +50,6 @@ FuzzyTimelineWidget.prototype = {
 			
 			var overallMin, overallMax;
 			$(this.datasets).each(function(){
-				var chartDataCounter = new Object();
-				
 				$(this.objects).each(function(){
 					var datemin,datemax;
 					if (this.isTemporal){
