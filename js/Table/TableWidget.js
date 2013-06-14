@@ -155,7 +155,7 @@ TableWidget.prototype = {
 	},
 
 	highlightChanged : function(objects) {
-		if( !GeoTemConfig.highlightEvents ){
+		if( !GeoTemConfig.highlightEvents || (typeof this.tables[this.activeTable] === "undefined")){
 			return;
 		}
 		if( this.tables.length > 0 ){
@@ -175,7 +175,7 @@ TableWidget.prototype = {
 	},
 
 	selectionChanged : function(selection) {
-		if( !GeoTemConfig.selectionEvents ){
+		if( !GeoTemConfig.selectionEvents || (typeof this.tables[this.activeTable] === "undefined")){
 			return;
 		}
 		this.reset();
