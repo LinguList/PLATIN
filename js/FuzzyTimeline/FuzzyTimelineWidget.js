@@ -37,15 +37,25 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.options = (new FuzzyTimelineConfig(options)).options;
 	this.gui = new FuzzyTimelineGui(this, div, this.options);
 	
-	this.density = new FuzzyTimelineDensity(this,this.gui.densityDiv);
-	this.rangePlot = new FuzzyTimelineRangePlot(this);
+	this.density;
+	this.rangePlot;
 }
 
 FuzzyTimelineWidget.prototype = {
 
 	initWidget : function(data) {
+		$(this.gui.densityDiv).empty();
+		delete this.density;
+		$(this.gui.rangeTimelineDiv).empty();
+		$(this.gui.rangePiechartDiv).empty();
+		delete this.rangePlot;
+		
+		
 		if ( (data instanceof Array) && (data.length > 0) )
 		{
+			this.density = new FuzzyTimelineDensity(this,this.gui.densityDiv);
+			this.rangePlot = new FuzzyTimelineRangePlot(this);
+			
 			this.datasets = data;
 			
 			var overallMin, overallMax;
