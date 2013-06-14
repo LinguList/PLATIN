@@ -177,19 +177,19 @@ FuzzyTimelineDensity.prototype = {
 		
 		var axisFormatString = "%Y";
 		var tooltipFormatString = "YYYY";
-		if (density.singleTickWidth<1000){
+		if (density.singleTickWidth<60*1000){
 			axisFormatString = "%Y/%m/%d %H:%M:%S";
 			tooltipFormatString = "YYYY/MM/DD HH:mm:ss";
-		} else if (density.singleTickWidth<60*1000) {
+		} else if (density.singleTickWidth<60*60*1000) {
 			axisFormatString = "%Y/%m/%d %H:%M";
 			tooltipFormatString = "YYYY/MM/DD HH:mm";
-		} else if (density.singleTickWidth<60*60*1000){
+		} else if (density.singleTickWidth<24*60*60*1000){
 			axisFormatString = "%Y/%m/%d %H";
 			tooltipFormatString = "YYYY/MM/DD HH";
-		} else if (density.singleTickWidth<24*60*60*1000){
+		} else if (density.singleTickWidth<31*24*60*60*1000){
 			axisFormatString = "%Y/%m/%d";
 			tooltipFormatString = "YYYY/MM/DD";
-		} else if (density.singleTickWidth<31*24*60*60*1000){
+		} else if (density.singleTickWidth<12*31*24*60*60*1000){
 			axisFormatString = "%Y/%m";
 			tooltipFormatString = "YYYY/MM";
 		}
