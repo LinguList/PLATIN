@@ -151,7 +151,7 @@ FuzzyTimelineRangePlot.prototype = {
 					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangePlot.spanHash[i]);
 				}
 				//redraw plot
-				//span * 2, cause only this assures that all values fit into every "tick"
+				//span * 2, cause this will fit most values into a single tick
 				rangePlot.plot.initialize(rangePlot.overallMin,rangePlot.overallMax,shownDatasets,2*rangePlot.spans[handlePosition]);
 				//redraw pie charts
 				rangePlot.drawRangePieChart(shownDatasets,hiddenDatasets);
