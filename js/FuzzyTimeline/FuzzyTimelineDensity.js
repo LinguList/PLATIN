@@ -56,11 +56,20 @@ FuzzyTimelineDensity.prototype = {
 		density = this;
 		var chartData = [];
 
+		chartData.push([density.overallMin,0]);
 		$.each(data, function(name,val){
 			var tickCenterTime = density.overallMin+name*density.singleTickWidth+density.singleTickCenter();
 			var dateObj = moment(tickCenterTime);
 			chartData.push([dateObj,val]);
 		});
+		var maxPlotedDate = chartData[chartData.length-1][0];
+		if (density.overallMax > maxPlotedDate){
+			chartData.push([density.overallMax,0]);
+		} else {
+			chartData.push([maxPlotedDate+1,0]);
+		}
+		
+
 		
 		return chartData;
 	},
