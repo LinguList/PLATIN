@@ -97,6 +97,7 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		this.density.highlightChanged(objects);
+		this.rangePlot.plot.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
@@ -105,5 +106,6 @@ FuzzyTimelineWidget.prototype = {
 		}
 		var objects = selection.objects;
 		this.density.selectionChanged(objects);
+		this.rangePlot.plot.selectionChanged(objects);
 	},
 };
