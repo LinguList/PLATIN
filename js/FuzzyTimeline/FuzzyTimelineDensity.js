@@ -246,6 +246,16 @@ FuzzyTimelineDensity.prototype = {
 	        	density.triggerHighlight(date);
 	        }
 	    });
+	    
+	    $(density.div).bind("plotclick", function (event, pos, item) {
+	    	var date;
+	        //that date may be undefined is on purpose	    	
+	        if (item) {
+	        	date = item.datapoint[0];
+	        }  	
+        	density.triggerSelection(date);
+	    });
+	    
 	},
 		
 	triggerHighlight : function(date) {
@@ -261,8 +271,22 @@ FuzzyTimelineDensity.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
-	triggerSelection : function(columnElement) {
-
+	triggerSelection : function(date) {
+		var density = this;
+		var selection;
+		if (typeof date !== "undefined") {
+			density.selected = density.getObjects(date);
+			selection = new Selection(density.selected, density);
+		} else {
+			//empty selection
+			density.selected = [];
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+				density.selected.push([]);
+			selection = new Selection(density.selected);
+		}
+		
+		this.parent.selectionChanged(selection);
+		this.parent.core.triggerSelection(selection);
 	},
 	
 	clearHighlighted : function() {
