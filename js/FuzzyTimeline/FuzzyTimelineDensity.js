@@ -305,7 +305,10 @@ FuzzyTimelineDensity.prototype = {
 				var ticks = density.getTicks(dataObject);
 				if (typeof ticks !== "undefined"){
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
-						density.plot.highlight(datasetIndex,i);
+						//the addition of "boundary points", that will always be zero,
+						//inserts invalid points that have to be skipped
+						//(see createPlot and the points for overallMin and overallMax)						
+						density.plot.highlight(datasetIndex,i+1);
 					}
 				}
 			});
