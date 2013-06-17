@@ -240,6 +240,7 @@ FuzzyTimelineDensity.prototype = {
 	        	date = item.datapoint[0];
 	        }
 	        //remember last date, so that we don't redraw the current state
+	        //that date may be undefined is on purpose
 	    	if (density.highlighted !== date){
 	        	density.highlighted = date;
 	        	density.triggerHighlight(date);
