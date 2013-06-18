@@ -146,54 +146,58 @@ LineOverlayWidget.prototype = {
 			});
 		}
 		var lineOverlayWidget = this;
-
-		var map = lineOverlayWidget.attachedMapWidgets[0].openlayersMap;
-		var cs = lineOverlayWidget.attachedMapWidgets[0].mds.getObjectsByZoom();
-
-		if (lineOverlayWidget.lineLayer instanceof OpenLayers.Layer.Vector){
-			map.removeLayer(lineOverlayWidget.lineLayer);
-			delete lineOverlayWidget.lineLayer;
-		}
-		lineOverlayWidget.lineLayer = new OpenLayers.Layer.Vector("Line Layer"); 
-
-		map.addLayer(lineOverlayWidget.lineLayer);                    
-		map.addControl(new OpenLayers.Control.DrawFeature(lineOverlayWidget.lineLayer, OpenLayers.Handler.Path));
 		
-		$(lineOverlayWidget.lines).each(function(){
-			var line = this;
-			
-			if (flatObjects.length > 0){
-				//if objects are limited, check whether start or end are within 
-				if (	($.inArray(line.objectStart, flatObjects) === -1) &&
-						($.inArray(line.objectEnd, flatObjects) === -1) )
-					return;
+		$(lineOverlayWidget.attachedMapWidgets).each(function(){
+			var mapWidget = this;
+
+			var map = mapWidget.openlayersMap;
+			var cs = mapWidget.mds.getObjectsByZoom();
+
+			if (lineOverlayWidget.lineLayer instanceof OpenLayers.Layer.Vector){
+				map.removeLayer(lineOverlayWidget.lineLayer);
+				delete lineOverlayWidget.lineLayer;
 			}
-			//line.objectEnd;
-			//get XY-val of start Object
-			var xyStart = lineOverlayWidget.getXYofObject(cs, line.objectStart);
-			//continue if no valid XY-coords where found
-			if ( (typeof xyStart.x === "undefined") && (typeof xyStart.y === "undefined") )
-				return;
-			var xyEnd = lineOverlayWidget.getXYofObject(cs, line.objectEnd);
-			//continue if no valid XY-coords where found
-			if ( (typeof xyEnd.x === "undefined") && (typeof xyEnd.y === "undefined") )
-				return;
+			lineOverlayWidget.lineLayer = new OpenLayers.Layer.Vector("Line Layer"); 
 
-			var points = new Array(
-					   new OpenLayers.Geometry.Point(xyStart.x, xyStart.y),
-					   new OpenLayers.Geometry.Point(xyEnd.x, xyEnd.y)
-					);
+			map.addLayer(lineOverlayWidget.lineLayer);                    
+			map.addControl(new OpenLayers.Control.DrawFeature(lineOverlayWidget.lineLayer, OpenLayers.Handler.Path));
+			
+			$(lineOverlayWidget.lines).each(function(){
+				var line = this;
+				
+				if (flatObjects.length > 0){
+					//if objects are limited, check whether start or end are within 
+					if (	($.inArray(line.objectStart, flatObjects) === -1) &&
+							($.inArray(line.objectEnd, flatObjects) === -1) )
+						return;
+				}
+				//line.objectEnd;
+				//get XY-val of start Object
+				var xyStart = lineOverlayWidget.getXYofObject(cs, line.objectStart);
+				//continue if no valid XY-coords where found
+				if ( (typeof xyStart.x === "undefined") && (typeof xyStart.y === "undefined") )
+					return;
+				var xyEnd = lineOverlayWidget.getXYofObject(cs, line.objectEnd);
+				//continue if no valid XY-coords where found
+				if ( (typeof xyEnd.x === "undefined") && (typeof xyEnd.y === "undefined") )
+					return;
 
-			var line = new OpenLayers.Geometry.LineString(points);
+				var points = new Array(
+						   new OpenLayers.Geometry.Point(xyStart.x, xyStart.y),
+						   new OpenLayers.Geometry.Point(xyEnd.x, xyEnd.y)
+						);
 
-			var style = { 
-			  strokeColor: '#0000ff', 
-			  strokeOpacity: 0.5,
-			  strokeWidth: 5
-			};
+				var line = new OpenLayers.Geometry.LineString(points);
 
-			var lineFeature = new OpenLayers.Feature.Vector(line, null, style);
-			lineOverlayWidget.lineLayer.addFeatures([lineFeature]);
+				var style = { 
+				  strokeColor: '#0000ff', 
+				  strokeOpacity: 0.5,
+				  strokeWidth: 5
+				};
+
+				var lineFeature = new OpenLayers.Feature.Vector(line, null, style);
+				lineOverlayWidget.lineLayer.addFeatures([lineFeature]);
+			});
 		});
 	},
 	
