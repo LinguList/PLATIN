@@ -168,18 +168,13 @@ LineOverlayWidget.prototype = {
 			$(this).each(function(){
 				var circle = this;
 				//iterata over objects in this circle;
-				$(circle.elements).each(function(){
-					if (this === dataObject){
-						x = circle.originX;
-						y = circle.originY;
-						found = true;
-						
-						return false;
-					}
-				});
-				//break loop
-				if (found === true)
+				var index = $.inArray(dataObject,circle.elements); 
+				if (index !== -1){
+					x = circle.originX;
+					y = circle.originY;
+					found = true;
 					return false;
+				}
 			});
 			//break loop
 			if (found === true)
@@ -218,6 +213,13 @@ LineOverlayWidget.prototype = {
 			map.addLayer(lineOverlayWidget.lineLayer);                    
 			map.addControl(new OpenLayers.Control.DrawFeature(lineOverlayWidget.lineLayer, OpenLayers.Handler.Path));
 			
+			var lineFeatures = [];
+			var style = { 
+					  strokeColor: '#0000ff', 
+					  strokeOpacity: 0.5,
+					  strokeWidth: 5
+					};
+			
 			$(lineOverlayWidget.lines).each(function(){
 				var line = this;
 				
@@ -227,7 +229,6 @@ LineOverlayWidget.prototype = {
 							($.inArray(line.objectEnd, flatObjects) === -1) )
 						return;
 				}
-				//line.objectEnd;
 				//get XY-val of start Object
 				var xyStart = lineOverlayWidget.getXYofObject(cs, line.objectStart);
 				//continue if no valid XY-coords where found
@@ -245,15 +246,9 @@ LineOverlayWidget.prototype = {
 
 				var line = new OpenLayers.Geometry.LineString(points);
 
-				var style = { 
-				  strokeColor: '#0000ff', 
-				  strokeOpacity: 0.5,
-				  strokeWidth: 5
-				};
-
-				var lineFeature = new OpenLayers.Feature.Vector(line, null, style);
-				lineOverlayWidget.lineLayer.addFeatures([lineFeature]);
+				lineFeatures.push(new OpenLayers.Feature.Vector(line, null, style));
 			});
+			lineOverlayWidget.lineLayer.addFeatures(lineFeatures);
 		});
 	},
 	
