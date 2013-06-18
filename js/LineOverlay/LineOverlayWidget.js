@@ -39,6 +39,8 @@ function LineOverlayWidget(core, options) {
 	this.lineOverlay = new LineOverlay(this);
 	this.lines = [];
 	this.lineLayer;
+	
+	this.selected = [];
 }
 
 /**
@@ -65,14 +67,19 @@ LineOverlayWidget.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		this.drawLines();
+		this.drawLines(GeoTemConfig.mergeObjects(objects,this.selected));
 	},
 
 	selectionChanged : function(selection) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		this.drawLines();
+		if (selection.valid())
+			this.selected = selection.objects;
+		else
+			this.selected = [];
+
+		this.drawLines(this.selected);
 	},
 
 	triggerHighlight : function(item) {
@@ -126,7 +133,18 @@ LineOverlayWidget.prototype = {
 		return ({x:x,y:y});
 	},
 	
-	drawLines : function() {
+	/**
+	 * @param {DataObjects[][]} objects set of objects to limit to
+	 */
+	drawLines : function(objects) {
+		var flatObjects = [];
+		if (	(typeof objects !== "undefined") &&
+				(objects instanceof Array) &&
+				(objects.length > 0) ) {
+			$(objects).each(function(){
+				$.merge(flatObjects, this);				
+			});
+		}
 		var lineOverlayWidget = this;
 
 		var map = lineOverlayWidget.attachedMapWidgets[0].openlayersMap;
@@ -143,6 +161,13 @@ LineOverlayWidget.prototype = {
 		
 		$(lineOverlayWidget.lines).each(function(){
 			var line = this;
+			
+			if (flatObjects.length > 0){
+				//if objects are limited, check whether start or end are within 
+				if (	($.inArray(line.objectStart, flatObjects) === -1) &&
+						($.inArray(line.objectEnd, flatObjects) === -1) )
+					return;
+			}
 			//line.objectEnd;
 			//get XY-val of start Object
 			var xyStart = lineOverlayWidget.getXYofObject(cs, line.objectStart);
