@@ -57,9 +57,6 @@ LineOverlayWidget.prototype = {
 
 	initWidget : function() {
 		var lineOverlayWidget = this;
-		lineOverlayWidget.lines = [];
-		if ((typeof GeoTemConfig.datasets !== "undefined") && (GeoTemConfig.datasets.length > 0))
-       		lineOverlayWidget.lines.push(new Line(GeoTemConfig.datasets[0].objects[0],GeoTemConfig.datasets[0].objects[212]));		
 		this.drawLines();
 	},
 
@@ -101,6 +98,65 @@ LineOverlayWidget.prototype = {
 	},
 
 	reset : function() {
+	},
+	
+	//identical to the function in PieChartWidget
+	//here cause widgets may be used independed of each other
+	getElementData : function(dataObject, watchedColumn, selectionFunction) {
+		var columnData;
+		if (watchedColumn.indexOf("[") === -1){
+			columnData = dataObject[watchedColumn];
+			if (typeof columnData === "undefined"){
+				columnData = dataObject.tableContent[watchedColumn];
+			};
+		} else {
+			try {
+				var columnName = watchedColumn.split("[")[0];
+				var IndexAndAttribute = watchedColumn.split("[")[1];
+				if (IndexAndAttribute.indexOf("]") != -1){
+					var arrayIndex = IndexAndAttribute.split("]")[0];
+					var attribute = IndexAndAttribute.split("]")[1];
+					
+					if (typeof attribute === "undefined")
+						columnData = dataObject[columnName][arrayIndex];
+					else{
+						attribute = attribute.split(".")[1];
+						columnData = dataObject[columnName][arrayIndex][attribute];
+					}
+				}
+			} catch(e) {
+				if (typeof console !== undefined)
+					console.error(e);
+				
+				delete columnData;
+			}
+		}
+		
+		if ( (typeof columnData !== "undefined") && (typeof selectionFunction !== "undefined") )
+			columnData = selectionFunction(columnData);
+		
+		return(columnData);
+	},
+	
+	matchColumns : function(dataSet1, columnName1, dataSet2, columnName2) {
+		var lineOverlayWidget = this;
+		lineOverlayWidget.lines = [];
+		$(GeoTemConfig.datasets[dataSet1].objects).each(function(){
+			var object1 = this;
+			var data1 = lineOverlayWidget.getElementData(object1, columnName1);
+			
+			$(GeoTemConfig.datasets[dataSet2].objects).each(function(){
+				var object2 = this;
+				//avoid reflexive and double entries
+				if ((dataSet1 === dataSet2)&&(object1.index<=object2.index))
+					return;
+				var data2 = lineOverlayWidget.getElementData(object2, columnName2);
+				
+				if (data1 === data2){
+					lineOverlayWidget.lines.push(new Line(object1, object2));
+				}
+			});
+		});
 	},
 	
 	getXYofObject : function(cs,dataObject){
