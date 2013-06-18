@@ -76,6 +76,10 @@
 		var overlayloaderWidget = new OverlayloaderWidget(overlayloader,overlayloaderDiv);
 		overlayloaderWidget.attachMapWidget(mapWidget);
 		
+		var lineOverlay = new WidgetWrapper();
+		var lineOverlayWidget = new LineOverlayWidget(lineOverlay);
+		lineOverlayWidget.attachMapWidget(mapWidget);
+		
 		var piechartDiv = document.getElementById("piechartContainerDiv");
 		var piechart = new WidgetWrapper();
 		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
@@ -102,6 +106,7 @@
 			time.display(datasets);
 			table.display(datasets);
 			piechart.display(datasets);
+			lineOverlay.display(datasets);
 			
 			dataloaderWidget.loadFromURL();
 		});		

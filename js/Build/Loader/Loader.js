@@ -251,6 +251,12 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlayConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlayWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlay.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
