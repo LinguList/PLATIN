@@ -38,7 +38,7 @@ function LineOverlayWidget(core, options) {
 	
 	this.lineOverlay = new LineOverlay(this);
 	this.lines = [];
-	this.lineLayer;
+	this.multiLineFeature;
 	
 	this.selected = [];
 }
@@ -199,21 +199,18 @@ LineOverlayWidget.prototype = {
 		var lineOverlayWidget = this;
 		
 		$(lineOverlayWidget.attachedMapWidgets).each(function(){
-			var mapWidget = this;
+			var mapWidget = this.mapWidget;
+			var lineLayer = this.lineLayer;
 
 			var map = mapWidget.openlayersMap;
 			var cs = mapWidget.mds.getObjectsByZoom();
 
-			if (lineOverlayWidget.lineLayer instanceof OpenLayers.Layer.Vector){
-				map.removeLayer(lineOverlayWidget.lineLayer);
-				delete lineOverlayWidget.lineLayer;
+			if (lineOverlayWidget.multiLineFeature instanceof OpenLayers.Feature.Vector){
+				lineLayer.removeFeatures(lineOverlayWidget.multiLineFeature);
+				delete lineOverlayWidget.multiLineFeature;
 			}
-			lineOverlayWidget.lineLayer = new OpenLayers.Layer.Vector("Line Layer"); 
 
-			map.addLayer(lineOverlayWidget.lineLayer);                    
-			map.addControl(new OpenLayers.Control.DrawFeature(lineOverlayWidget.lineLayer, OpenLayers.Handler.Path));
-			
-			var lineFeatures = [];
+			var lineStrings = [];
 			var style = { 
 					  strokeColor: '#0000ff', 
 					  strokeOpacity: 0.5,
@@ -239,6 +236,10 @@ LineOverlayWidget.prototype = {
 				if ( (typeof xyEnd.x === "undefined") && (typeof xyEnd.y === "undefined") )
 					return;
 
+				//do not draw 0-length lines (from same circle)
+				if ( (xyStart.x === xyEnd.x) && (xyStart.y === xyEnd.y) )
+					return;
+
 				var points = new Array(
 						   new OpenLayers.Geometry.Point(xyStart.x, xyStart.y),
 						   new OpenLayers.Geometry.Point(xyEnd.x, xyEnd.y)
@@ -246,13 +247,34 @@ LineOverlayWidget.prototype = {
 
 				var line = new OpenLayers.Geometry.LineString(points);
 
-				lineFeatures.push(new OpenLayers.Feature.Vector(line, null, style));
+				//Only draw each line once. Unfortunately this check is faster
+				//than drawing multiple lines.
+				var found = false;
+				$(lineStrings).each(function(){
+					var checkLine = this;
+					if (	(checkLine.components[0].x === line.components[0].x) &&
+							(checkLine.components[0].y === line.components[0].y) &&
+							(checkLine.components[1].x === line.components[1].x) &&
+							(checkLine.components[1].y === line.components[1].y) ){
+						found = true;
+						return false;
+					}
+				});
+				
+				if (found === true)
+					return;
+				
+				lineStrings.push(line);
 			});
-			lineOverlayWidget.lineLayer.addFeatures(lineFeatures);
+			var multiLineString = new OpenLayers.Geometry.MultiLineString(lineStrings);
+			lineOverlayWidget.multiLineFeature = new OpenLayers.Feature.Vector(multiLineString, null, style);
+			lineLayer.addFeatures(lineOverlayWidget.multiLineFeature);
 		});
 	},
 	
-	attachMapWidget : function(widget) {
-		this.attachedMapWidgets.push(widget);
+	attachMapWidget : function(mapWidget) {
+		var lineLayer = new OpenLayers.Layer.Vector("Line Layer");
+		mapWidget.openlayersMap.addLayer(lineLayer);
+		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});		
 	}
 };
