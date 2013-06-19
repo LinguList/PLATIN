@@ -252,10 +252,14 @@ LineOverlayWidget.prototype = {
 				var found = false;
 				$(lineStrings).each(function(){
 					var checkLine = this;
-					if (	(checkLine.components[0].x === line.components[0].x) &&
+					if ((	(checkLine.components[0].x === line.components[0].x) &&
 							(checkLine.components[0].y === line.components[0].y) &&
 							(checkLine.components[1].x === line.components[1].x) &&
-							(checkLine.components[1].y === line.components[1].y) ){
+							(checkLine.components[1].y === line.components[1].y) ) ||
+						(	(checkLine.components[0].x === line.components[1].x) &&
+							(checkLine.components[0].y === line.components[1].y) &&
+							(checkLine.components[1].x === line.components[0].x) &&
+							(checkLine.components[1].y === line.components[0].y) ) ){
 						found = true;
 						return false;
 					}
