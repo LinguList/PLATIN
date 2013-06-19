@@ -273,8 +273,13 @@ LineOverlayWidget.prototype = {
 	},
 	
 	attachMapWidget : function(mapWidget) {
+		var lineOverlayWidget = this;
 		var lineLayer = new OpenLayers.Layer.Vector("Line Layer");
 		mapWidget.openlayersMap.addLayer(lineLayer);
-		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});		
+		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});
+		//register zoom event
+		mapWidget.openlayersMap.events.register("zoomend", lineOverlayWidget, function(){
+			this.drawLines(this.selected);
+		});
 	}
 };
