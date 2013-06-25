@@ -226,7 +226,7 @@ GeoTemConfig.convertCsv = function(text){
 	/* convert here from CSV to JSON */
 	var json = [];
 	/* define expected csv table headers (first line) */
-	var expectedHeaders = new Array("Name","Address","Description","Longitude","Latitude","TimeStamp","TimeSpan:begin","TimeSpan:end");
+	var expectedHeaders = new Array("Name","Address","Description","Longitude","Latitude","TimeStamp","TimeSpan:begin","TimeSpan:end","weight");
 	/* convert csv string to array of arrays using ucsv library */
 	var csvArray = CSV.csvToArray(text);
 	/* get real used table headers from csv file (first line) */
@@ -264,6 +264,10 @@ GeoTemConfig.convertCsv = function(text){
 			/* TimeSpan:end */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
 				tableContent["TimeSpanEnd"] = ""+innerArray[j];
+			}   						
+			/* weight */
+			else if (usedHeaders[j] == expectedHeaders[7]) {
+				dataObject["weight"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
 			else if (usedHeaders[j] == expectedHeaders[3]) {                              
