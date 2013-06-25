@@ -148,7 +148,7 @@ LineOverlayWidget.prototype = {
 			$(GeoTemConfig.datasets[dataSet2].objects).each(function(){
 				var object2 = this;
 				//avoid reflexive and double entries
-				if ((dataSet1 === dataSet2)&&(object1.index<=object2.index))
+				if ((columnName1 === columnName2)&&(dataSet1 === dataSet2)&&(object1.index<=object2.index))
 					return;
 				var data2 = lineOverlayWidget.getElementData(object2, columnName2);
 				
