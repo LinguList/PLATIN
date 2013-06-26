@@ -25,6 +25,9 @@
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  */
 function LineOverlayConfig(options) {
+	this.options = {
+			showArrows : true,
+	}
 
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

@@ -19,6 +19,22 @@
 * MA 02110-1301  USA
 */
 
+//calculate angle between line and x-axis
+//credits: geometricnet (http://geometricnet.sourceforge.net/examples/directions.html)
+bearing = function(x1,y1,x2,y2) {
+	b_x = 0;
+	b_y = 1;
+	a_x = x2 - x1;
+	a_y = y2 - y1;
+	angle_rad = Math.acos((a_x*b_x+a_y*b_y)/Math.sqrt(a_x*a_x+a_y*a_y)) ;
+	angle = 360/(2*Math.PI)*angle_rad;
+	if (a_x < 0) {
+	    return 360 - angle;
+	} else {
+	    return angle;
+	}
+};
+
 /**
  * @class LineOverlayWidget
  * Implementation for the widget interactions of an overlay showing lines between points
@@ -205,17 +221,9 @@ LineOverlayWidget.prototype = {
 			var map = mapWidget.openlayersMap;
 			var cs = mapWidget.mds.getObjectsByZoom();
 
-			if (lineOverlayWidget.multiLineFeature instanceof OpenLayers.Feature.Vector){
-				lineLayer.removeFeatures(lineOverlayWidget.multiLineFeature);
-				delete lineOverlayWidget.multiLineFeature;
-			}
+			lineLayer.removeAllFeatures();
 
 			var lineStrings = [];
-			var style = { 
-					  strokeColor: '#0000ff', 
-					  strokeOpacity: 0.5,
-					  strokeWidth: 5
-					};
 			
 			$(lineOverlayWidget.lines).each(function(){
 				var line = this;
@@ -267,18 +275,43 @@ LineOverlayWidget.prototype = {
 				
 				if (found === true)
 					return;
+
+				if (lineOverlayWidget.options.showArrows === true){
+				    var arrowFeature = new OpenLayers.Feature.Vector(
+						new OpenLayers.Geometry.Point(xyEnd.x-((xyEnd.x-xyStart.x)*0.03), xyEnd.y-((xyEnd.y-xyStart.y)*0.03)), 
+						{
+							type: "triangle",
+							angle: bearing(xyStart.x,xyStart.y,xyEnd.x,xyEnd.y)
+						}
+					);
+					lineLayer.addFeatures(arrowFeature);
+				}
 				
 				lineStrings.push(line);
 			});
 			var multiLineString = new OpenLayers.Geometry.MultiLineString(lineStrings);
-			lineOverlayWidget.multiLineFeature = new OpenLayers.Feature.Vector(multiLineString, null, style);
+			lineOverlayWidget.multiLineFeature = new OpenLayers.Feature.Vector(multiLineString);
 			lineLayer.addFeatures(lineOverlayWidget.multiLineFeature);
 		});
 	},
 	
 	attachMapWidget : function(mapWidget) {
+	    var styles = new OpenLayers.StyleMap({
+	        "default": {
+	            graphicName: "${type}",
+	            rotation: "${angle}",
+	            pointRadius: 5,
+	            strokeColor: '#0000ff', 
+	            strokeOpacity: 0.5,
+	            strokeWidth: 3,
+	            fillOpacity: 1
+	        }
+	    });
+	    
 		var lineOverlayWidget = this;
-		var lineLayer = new OpenLayers.Layer.Vector("Line Layer");
+		var lineLayer = new OpenLayers.Layer.Vector("Line Layer", {
+	        styleMap: styles
+	    });
 		mapWidget.openlayersMap.addLayer(lineLayer);
 		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});
 		//register zoom event
