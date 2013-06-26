@@ -160,6 +160,8 @@ LineOverlayWidget.prototype = {
 		$(GeoTemConfig.datasets[dataSet1].objects).each(function(){
 			var object1 = this;
 			var data1 = lineOverlayWidget.getElementData(object1, columnName1);
+			//split because there could be multiple comma separated values 
+			data1 = data1.split(",");
 			
 			$(GeoTemConfig.datasets[dataSet2].objects).each(function(){
 				var object2 = this;
@@ -167,10 +169,17 @@ LineOverlayWidget.prototype = {
 				if ((columnName1 === columnName2)&&(dataSet1 === dataSet2)&&(object1.index<=object2.index))
 					return;
 				var data2 = lineOverlayWidget.getElementData(object2, columnName2);
+				//split because there could be multiple comma separated values 
+				data2 = data2.split(",");
 				
-				if (data1 === data2){
-					lineOverlayWidget.lines.push(new Line(object1, object2));
-				}
+				//check if at least one pair matches
+				for(var i = 0; i < data1.length; i++ ){
+					var firstVal = data1[i];
+					if (data2.indexOf(firstVal) !== -1){
+						lineOverlayWidget.lines.push(new Line(object1, object2));
+						break;
+					}
+				}				
 			});
 		});
 	},
