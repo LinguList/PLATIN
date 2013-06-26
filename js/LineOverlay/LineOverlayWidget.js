@@ -244,7 +244,7 @@ LineOverlayWidget.prototype = {
 			$(lineOverlayWidget.lines).each(function(){
 				var line = this;
 				
-				if (flatObjects.length > 0){
+				if ((lineOverlayWidget.options.onlyShowSelectedOrHighlighted === true) || (flatObjects.length > 0)){
 					//if objects are limited, check whether start or end are within 
 					if (checkIfLineInPreset(line.objectStart, line.objectEnd, flatObjects))
 						return;

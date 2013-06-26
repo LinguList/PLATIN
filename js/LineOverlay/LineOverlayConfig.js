@@ -27,7 +27,8 @@
 function LineOverlayConfig(options) {
 	this.options = {
 			showArrows : true,
-			showLines : "both" //which directions will be shown: "both", "inbound", "outbound"
+			showLines : "both", //which directions will be shown: "both", "inbound", "outbound"
+			onlyShowSelectedOrHighlighted : false, //only show lines in case of selection/highlight 
 	}
 
 	if ( typeof options != 'undefined') {
