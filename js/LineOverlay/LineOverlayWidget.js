@@ -225,13 +225,28 @@ LineOverlayWidget.prototype = {
 
 			var lineStrings = [];
 			
+			var checkIfLineInPreset = function(){return false;};
+			if (lineOverlayWidget.options.showLines === "inbound"){
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return ($.inArray(objectEnd, flatObjects) === -1);
+				};
+			} else if (lineOverlayWidget.options.showLines === "outbound"){
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return ($.inArray(objectStart, flatObjects) === -1);
+				};
+			} else /*if (lineOverlayWidget.options.showLines === "both")*/{
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return (	($.inArray(objectStart, flatObjects) === -1) &&
+								($.inArray(objectEnd, flatObjects) === -1) );
+				};
+			}
+			
 			$(lineOverlayWidget.lines).each(function(){
 				var line = this;
 				
 				if (flatObjects.length > 0){
 					//if objects are limited, check whether start or end are within 
-					if (	($.inArray(line.objectStart, flatObjects) === -1) &&
-							($.inArray(line.objectEnd, flatObjects) === -1) )
+					if (checkIfLineInPreset(line.objectStart, line.objectEnd, flatObjects))
 						return;
 				}
 				//get XY-val of start Object
