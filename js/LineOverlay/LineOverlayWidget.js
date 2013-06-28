@@ -288,7 +288,9 @@ LineOverlayWidget.prototype = {
 							(checkLine.components[0].y === line.components[0].y) &&
 							(checkLine.components[1].x === line.components[1].x) &&
 							(checkLine.components[1].y === line.components[1].y) ) ||
-						(	(checkLine.components[0].x === line.components[1].x) &&
+						// if lines are "directional" (arrows) the opposite one isn't the same anymore!
+						(	(lineOverlayWidget.options.showArrows === false) &&
+							(checkLine.components[0].x === line.components[1].x) &&
 							(checkLine.components[0].y === line.components[1].y) &&
 							(checkLine.components[1].x === line.components[0].x) &&
 							(checkLine.components[1].y === line.components[0].y) ) ){
