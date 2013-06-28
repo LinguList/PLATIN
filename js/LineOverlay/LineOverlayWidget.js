@@ -232,7 +232,7 @@ LineOverlayWidget.prototype = {
 
 			lineLayer.removeAllFeatures();
 
-			var lineStrings = [];
+			var lineElements = [];
 			
 			var checkIfLineInPreset = function(){return false;};
 			if (lineOverlayWidget.options.showLines === "inbound"){
@@ -282,8 +282,8 @@ LineOverlayWidget.prototype = {
 				//Only draw each line once. Unfortunately this check is faster
 				//than drawing multiple lines.
 				var found = false;
-				$(lineStrings).each(function(){
-					var checkLine = this;
+				$(lineElements).each(function(){
+					var checkLine = this.line;
 					if ((	(checkLine.components[0].x === line.components[0].x) &&
 							(checkLine.components[0].y === line.components[0].y) &&
 							(checkLine.components[1].x === line.components[1].x) &&
@@ -295,6 +295,9 @@ LineOverlayWidget.prototype = {
 							(checkLine.components[1].x === line.components[0].x) &&
 							(checkLine.components[1].y === line.components[0].y) ) ){
 						found = true;
+						//increase width of this line
+						this.width++;
+						//and don't draw it again
 						return false;
 					}
 				});
@@ -302,22 +305,30 @@ LineOverlayWidget.prototype = {
 				if (found === true)
 					return;
 
+				lineElements.push({line:line,width:1});
+			});
+
+			$(lineElements).each(function(){ 
+				var line = this.line;
+				var width = this.width;
+				
 				if (lineOverlayWidget.options.showArrows === true){
+					var xyStart = line.components[0];
+					var xyEnd = line.components[1];
 				    var arrowFeature = new OpenLayers.Feature.Vector(
 						new OpenLayers.Geometry.Point(xyEnd.x-((xyEnd.x-xyStart.x)*0.03), xyEnd.y-((xyEnd.y-xyStart.y)*0.03)), 
 						{
 							type: "triangle",
-							angle: bearing(xyStart.x,xyStart.y,xyEnd.x,xyEnd.y)
+							angle: bearing(xyStart.x,xyStart.y,xyEnd.x,xyEnd.y),
+							width:width
 						}
 					);
 					lineLayer.addFeatures(arrowFeature);
 				}
-				
-				lineStrings.push(line);
+
+				var lineFeature = new OpenLayers.Feature.Vector(line,{width:width});
+				lineLayer.addFeatures(lineFeature);
 			});
-			var multiLineString = new OpenLayers.Geometry.MultiLineString(lineStrings);
-			lineOverlayWidget.multiLineFeature = new OpenLayers.Feature.Vector(multiLineString);
-			lineLayer.addFeatures(lineOverlayWidget.multiLineFeature);
 		});
 	},
 	
@@ -326,10 +337,10 @@ LineOverlayWidget.prototype = {
 	        "default": {
 	            graphicName: "${type}",
 	            rotation: "${angle}",
-	            pointRadius: 5,
+	            pointRadius: "${width}",
 	            strokeColor: '#0000ff', 
 	            strokeOpacity: 0.5,
-	            strokeWidth: 3,
+	            strokeWidth: "${width}",
 	            fillOpacity: 1
 	        }
 	    });
