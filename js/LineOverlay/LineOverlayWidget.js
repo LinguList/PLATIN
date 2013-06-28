@@ -320,7 +320,7 @@ LineOverlayWidget.prototype = {
 						{
 							type: "triangle",
 							angle: bearing(xyStart.x,xyStart.y,xyEnd.x,xyEnd.y),
-							width:width
+							width: width+1
 						}
 					);
 					lineLayer.addFeatures(arrowFeature);
