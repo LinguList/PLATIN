@@ -156,7 +156,7 @@ LineOverlayWidget.prototype = {
 	
 	matchColumns : function(dataSet1, columnName1, dataSet2, columnName2) {
 		var lineOverlayWidget = this;
-		lineOverlayWidget.lines = [];
+		lineOverlayWidget.lines;
 		$(GeoTemConfig.datasets[dataSet1].objects).each(function(){
 			var object1 = this;
 			var data1 = lineOverlayWidget.getElementData(object1, columnName1);
