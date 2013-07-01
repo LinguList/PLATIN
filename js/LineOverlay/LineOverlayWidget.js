@@ -195,8 +195,8 @@ LineOverlayWidget.prototype = {
 				//iterata over objects in this circle;
 				var index = $.inArray(dataObject,circle.elements); 
 				if (index !== -1){
-					x = circle.originX;
-					y = circle.originY;
+					x = circle.feature.geometry.x;
+					y = circle.feature.geometry.y;
 					found = true;
 					return false;
 				}
