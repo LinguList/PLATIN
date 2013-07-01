@@ -258,6 +258,69 @@ GeoTemConfig.createKMLfromDataset = function(index){
 	return(kmlContent);
 };
 
+GeoTemConfig.createCSVfromDataset = function(index){
+	var csvContent = "";
+	
+	var header = ["name", "description", "weight"];
+	var tableContent = [];
+	
+	var firstDataObject = GeoTemConfig.datasets[index].objects[0];
+	
+	$.each(firstDataObject.tableContent,function(key){
+		tableContent.push(key);
+	});
+	
+	var isFirst = true;
+	$(header).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+		csvContent += "\""+val+"\"";
+	});
+	$(tableContent).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+		csvContent += "\""+val+"\"";
+	});
+	
+	var isFirstRow = true;
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		var elem = this;
+		
+		if (isFirstRow){
+			isFirstRow = false;
+		} else {
+			csvContent += "\n";
+		}
+		
+		var isFirst = true;
+		$(header).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem[val]+"\"";
+		});
+		$(tableContent).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem.tableContent[val]+"\"";
+		});
+
+	});
+	  
+	return(csvContent);
+};
+
 /**
  * converts the csv-file to a kml-file
  * taken unchanged from GeoBrowser-GWT project
