@@ -153,6 +153,7 @@ Table.prototype = {
 		
 		if (table.options.tableSelectByText) {
 			this.selectByTextDiv = document.createElement('div');
+			$(this.selectByTextDiv).css("vertical-align", "top");
 			//TODO: improve appearance (wrong margin)
 			$(this.selectByTextDiv).css("display", "inline-block");
 			//create and append the input field
