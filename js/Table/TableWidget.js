@@ -64,12 +64,18 @@ TableWidget.prototype = {
 		var tableWidget = this;
 		var addTab = function(name, index) {
 			var tableTab = document.createElement('div');
+			var tableTabTable = document.createElement('table');
+			$(tableTab).append(tableTabTable);
+			var tableTabTableRow = document.createElement('tr');
+			$(tableTabTable).append(tableTabTableRow);
 			tableTab.setAttribute('class', 'tableTab');
 			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
 			tableTab.onclick = function() {
 				tableWidget.selectTable(index);
 			}
-			tableTab.innerHTML = name;
+			var tableNameDiv = document.createElement('div');
+			tableNameDiv.innerHTML = name;
+			$(tableTabTableRow).append($(document.createElement('td')).append(tableNameDiv));
 			
 			var removeTabDiv = document.createElement('div');
 			removeTabDiv.setAttribute('class', 'smallButton removeDataset');
@@ -81,7 +87,7 @@ TableWidget.prototype = {
 				//discard link click
 				return(false);
 			},{index:index});
-			$(tableTab).append(removeTabDiv);
+			$(tableTabTableRow).append($(document.createElement('td')).append(removeTabDiv));
 			
 			if (GeoTemConfig.tableExportDataset){
 				var exportTabDiv = document.createElement('div');
@@ -104,7 +110,7 @@ TableWidget.prototype = {
 					return(false);
 				},{index:index});
 				exportTabDiv.appendChild(exportTabForm);
-				$(tableTab).append(exportTabDiv);
+				$(tableTabTableRow).append($(document.createElement('td')).append(exportTabDiv));
 			}
 			
 			return tableTab;
