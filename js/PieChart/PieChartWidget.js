@@ -31,6 +31,7 @@
 function PieChartWidget(core, div, options) {
 
 	this.datasets;
+	this.selected;
 	this.core = core;
 	this.core.setWidget(this);
 
@@ -48,11 +49,12 @@ PieChartWidget.prototype = {
 		if (	(typeof GeoTemConfig.datasets !== "undefined") && 
 				(GeoTemConfig.datasets.length > watchedDataset) )
 			newPieChart.initPieChart(GeoTemConfig.datasets);
-		this.redrawPieCharts();
+		this.redrawPieCharts(this.selected);
 	},
 
 	initWidget : function(data) {
 		this.datasets = data;
+		this.selected = this.datasets; 
 		
 		this.gui.refreshColumnSelector();
 		
@@ -90,6 +92,7 @@ PieChartWidget.prototype = {
 			selection.loadAllObjects();
 		}
 		var objects = selection.objects;
+		this.selected = objects;
 		this.redrawPieCharts(objects, true);
 	},
 	
