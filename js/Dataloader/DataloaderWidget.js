@@ -84,18 +84,19 @@ DataloaderWidget.prototype = {
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			var fileName = $.url(paramValue).attr('file');
 			if (typeof dataLoaderWidget.options.proxy != 'undefined')
 				paramValue = dataLoaderWidget.options.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				GeoTemConfig.getKml(paramValue,function(kmlDoc){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), paramValue);
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName);
 					if (dataSet != null)
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				GeoTemConfig.getCsv(paramValue,function(json){
-					var dataSet = new Dataset(GeoTemConfig.loadJson(json), paramValue);
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName);
 					if (dataSet != null)
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
