@@ -162,7 +162,10 @@ PieChart.prototype = {
 				var hash = 0;
 				for (var i = 0; i < string.length; i++) {
 					char = string.charCodeAt(i);
-					hash = (hash << 4)+char;
+					char =	char +
+							(char << 2) +			
+							(char << 4);
+					hash = (hash << 5)-hash+char;
 				}
 				hash = Math.abs(hash) & 0xFFFFFF;
 				return hash;
