@@ -251,6 +251,8 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChart.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartCategoryChooser.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartHashFunctions.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
