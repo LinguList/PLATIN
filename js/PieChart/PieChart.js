@@ -156,30 +156,10 @@ PieChart.prototype = {
 					chartDataCounter[columnData]++;
 			});
 			
-			// simple function to generate 24bit (rgb!)
-			// hash values from strings
-			var hashCode = function(string){
-				var hash = 0;
-				for (var i = 0; i < string.length; i++) {
-					char = string.charCodeAt(i);
-					char =	char +
-							(char << 2) +			
-							(char << 4);
-					hash = (hash << 5)-hash+char;
-				}
-				hash = Math.abs(hash) & 0xFFFFFF;
-				return hash;
-			};
-			
 			var chartData = [];
 			$.each(chartDataCounter, function(name,val){
-				//get rgb-color (24bit) from hash
-				var color = hashCode(name).toString(16);
-				//pad to 6 digits
-				while (color.length < 6){
-					color += '0';
-				}
-				color = '#'+color;
+				//get rgb-color (24bit = 6 hex digits) from hash
+				var color = '#'+hex_md5(name).substr(0,6);
 				chartData.push({label:name,data:val,color:color});
 			});
 			
