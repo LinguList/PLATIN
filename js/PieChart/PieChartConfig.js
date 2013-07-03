@@ -27,7 +27,8 @@
 function PieChartConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address='
+			proxy : 'php/proxy.php?address=',
+			restrictPieChartSize : 0.25 // restrict size to percantage of window size (false for no restriction)
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
