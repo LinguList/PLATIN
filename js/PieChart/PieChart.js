@@ -172,6 +172,8 @@ PieChart.prototype = {
 						pieChartCount++;
 				});
 				var height = (parentHeight/pieChartCount) - $(this.informationDIV).outerHeight(true);
+				if (pieChart.options.restrictPieChartSize !== false)
+					height = Math.min(height, $(window).height() * pieChart.options.restrictPieChartSize);
 				$(this.pieChartDiv).height(height);
 	
 				$.plot($(this.pieChartDiv), chartData,
