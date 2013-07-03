@@ -180,6 +180,12 @@ PieChart.prototype = {
 				chartData.push({label:name,data:val,color:color});
 			});
 			
+			var sortByVal = function(a,b){
+				return (b.data-a.data);
+			};
+			
+			chartData.sort(sortByVal);
+			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
 				
