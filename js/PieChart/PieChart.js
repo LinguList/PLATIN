@@ -156,10 +156,35 @@ PieChart.prototype = {
 					chartDataCounter[columnData]++;
 			});
 			
+			// simple function to generate 24bit (rgb!)
+			// hash values from strings
+			var hashCode = function(string){
+				var hash = 0;
+				for (var i = 0; i < string.length; i++) {
+					char = string.charCodeAt(i);
+					hash = (hash << 4)+char;
+				}
+				hash = Math.abs(hash) & 0xFFFFFF;
+				return hash;
+			};
+			
 			var chartData = [];
 			$.each(chartDataCounter, function(name,val){
-				chartData.push({label:name,data:val});
+				//get rgb-color (24bit) from hash
+				var color = hashCode(name).toString(16);
+				//pad to 6 digits
+				while (color.length < 6){
+					color += '0';
+				}
+				color = '#'+color;
+				chartData.push({label:name,data:val,color:color});
 			});
+			
+			var sortByVal = function(a,b){
+				return (b.data-a.data);
+			};
+			
+			chartData.sort(sortByVal);
 			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
@@ -237,8 +262,13 @@ PieChart.prototype = {
 
 		this.parent.core.triggerSelection(selection);
 		
-		if (!selection.valid())
+		if (!selection.valid()){
 			selection.loadAllObjects();
+			//"undo" selection (click next to piechart)
+			//so also redraw this dataset
+			this.preHighlightObjects = selection.objects;
+			this.redrawPieChart(selection.objects);
+		}			
 		
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
