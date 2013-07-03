@@ -39,6 +39,7 @@ function TableConfig(options) {
 		tableSelectPage : true, // selection of complete table pages
 		tableSelectAll : false, // selection of complete tables
 		tableShowSelected : true, // show selected objects only option
+		tableInvertSelection : true, // show invert selection option
 		tableSelectByText : true, // select objects by full-text search
 		tableCreateNewFromSelected : true, // create new dataset from selected objects
 		unselectedCellColor : '#EEE' // color for an unselected row/tab

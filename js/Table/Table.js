@@ -124,6 +124,23 @@ Table.prototype = {
 			}
 		}
 
+		if (table.options.tableInvertSelection) {
+			this.invertSelection = document.createElement('div');
+			this.invertSelection.setAttribute('class', 'smallButton invertSelection');
+			table.invertSelection.title = GeoTemConfig.getString('invertSelectionHelp');
+			selectors.appendChild(this.invertSelection);
+			this.invertSelection.onclick = function() {
+				for (var i = 0; i < table.elements.length; i++) {
+					if (table.elements[i].selected === true)
+						table.elements[i].selected = false;
+					else
+						table.elements[i].selected = true;
+				}
+				table.update();
+				table.parent.tableSelection();
+			}
+		}
+		
 		this.showSelectedItems = false;
 		if (table.options.tableShowSelected) {
 			this.showSelected = document.createElement('div');

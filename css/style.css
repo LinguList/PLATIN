@@ -1276,6 +1276,10 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/selectAll.png");
 }
 
+.invertSelection {
+	background-image: url("../images/invertSelection.png");
+}
+
 .deselectAll {
 	background-image: url("../images/deselectAll.png");
 }
