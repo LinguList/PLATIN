@@ -237,8 +237,13 @@ PieChart.prototype = {
 
 		this.parent.core.triggerSelection(selection);
 		
-		if (!selection.valid())
+		if (!selection.valid()){
 			selection.loadAllObjects();
+			//"undo" selection (click next to piechart)
+			//so also redraw this dataset
+			this.preHighlightObjects = selection.objects;
+			this.redrawPieChart(selection.objects);
+		}			
 		
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
