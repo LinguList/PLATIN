@@ -46,6 +46,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.parent = parent;
 	this.div = div;
 	this.options = parent.options;
+	this.plot;
 	
 	this.datasets;
 }
@@ -134,7 +135,7 @@ FuzzyTimelineDensity.prototype = {
 		density.overallMin = overallMin;
 		density.overallMax = overallMax;
 
-		this.plots = [];
+		density.plots = [];
 		//calculate tick width (will be in ms)
 		delete density.tickCount;
 		delete density.singleTickWidth;
