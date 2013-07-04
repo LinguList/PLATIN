@@ -234,6 +234,7 @@ FuzzyTimelineDensity.prototype = {
 		
 		density.plot = $.plot($(density.div), density.plots, options);
 		
+		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {
 	    	var date;
 	        if (item) {
@@ -248,6 +249,7 @@ FuzzyTimelineDensity.prototype = {
 	        }
 	    });
 	    
+		$(density.div).unbind("plotclick");
 	    $(density.div).bind("plotclick", function (event, pos, item) {
 	    	var date;
 	        //that date may be undefined is on purpose	    	
