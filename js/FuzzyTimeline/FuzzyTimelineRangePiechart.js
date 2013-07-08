@@ -66,7 +66,7 @@ FuzzyTimelineRangePiechart.prototype = {
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
-		            content: "%s"
+		            content: "%s %p.1%"
 		        }
 			}
 		);
