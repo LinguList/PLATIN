@@ -52,16 +52,8 @@ function FuzzyTimelineRangeSlider(parent) {
 	$(this.sliderValue).css("float","right");
 	$(this.sliderValue).width("15%");
 	$(this.sliderValue).height("2%");
-
-	this.plotDiv = document.createElement("div");
-	$(this.rangeDiv).append(this.plotDiv);
-	$(this.plotDiv).width("100%");
-	$(this.plotDiv).height("98%");
-
-	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
-
-	this.plot = new FuzzyTimelineDensity(this.parent,this.plotDiv);
-	this.pieCharts = [];
+	
+	this.rangeBars = new FuzzyTimelineRangeBars(this.parent);
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -75,7 +67,6 @@ FuzzyTimelineRangeSlider.prototype = {
 		//reset values
 		rangeSlider.spans = [];
 		rangeSlider.spanHash = [];
-		rangeSlider.deletePieCharts();
 
 		//get all distinct time-spans
 		$(this.datasets).each(function(){
@@ -180,11 +171,10 @@ FuzzyTimelineRangeSlider.prototype = {
 				for (var i = handlePosition+1; i < rangeSlider.spanHash.length; i++){
 					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangeSlider.spanHash[i]);
 				}
-				//redraw plot
-				//span * 2, cause this will fit most values into a single tick
-				rangeSlider.plot.initialize(rangeSlider.overallMin,rangeSlider.overallMax,shownDatasets,2*rangeSlider.spans[handlePosition]);
+				//redraw range plot
+				rangeSlider.rangeBars.drawRangeBarChart(rangeSlider.overallMin,rangeSlider.overallMax,shownDatasets,rangeSlider.spans[handlePosition]);
 				//redraw pie charts
-				rangeSlider.drawRangePieChart(shownDatasets,hiddenDatasets);
+				rangeSlider.rangeBars.drawRangePieChart(shownDatasets,hiddenDatasets);
 			};
 			
 			$(rangeSlider.sliderDiv).on( "slide", onSlideFunction);
