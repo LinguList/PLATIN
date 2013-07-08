@@ -38,7 +38,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.gui = new FuzzyTimelineGui(this, div, this.options);
 	
 	this.density;
-	this.rangePlot;
+	this.rangeSlider;
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -48,13 +48,13 @@ FuzzyTimelineWidget.prototype = {
 		delete this.density;
 		$(this.gui.rangeTimelineDiv).empty();
 		$(this.gui.rangePiechartDiv).empty();
-		delete this.rangePlot;
+		delete this.rangeSlider;
 		
 		
 		if ( (data instanceof Array) && (data.length > 0) )
 		{
 			this.density = new FuzzyTimelineDensity(this,this.gui.densityDiv);
-			this.rangePlot = new FuzzyTimelineRangePlot(this);
+			this.rangeSlider = new FuzzyTimelineRangeSlider(this);
 			
 			this.datasets = data;
 			
@@ -85,7 +85,7 @@ FuzzyTimelineWidget.prototype = {
 			});
 			
 			this.density.initialize(overallMin,overallMax,this.datasets);
-			this.rangePlot.initialize(overallMin,overallMax,this.datasets);
+			this.rangeSlider.initialize(overallMin,overallMax,this.datasets);
 		}
 	},
 
@@ -97,7 +97,7 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		this.density.highlightChanged(objects);
-		this.rangePlot.plot.highlightChanged(objects);
+		this.rangeSlider.plot.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
@@ -106,6 +106,6 @@ FuzzyTimelineWidget.prototype = {
 		}
 		var objects = selection.objects;
 		this.density.selectionChanged(objects);
-		this.rangePlot.plot.selectionChanged(objects);
+		this.rangeSlider.plot.selectionChanged(objects);
 	},
 };

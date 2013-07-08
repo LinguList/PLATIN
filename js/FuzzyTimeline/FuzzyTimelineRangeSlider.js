@@ -1,5 +1,5 @@
 /*
-* FuzzyTimelineRangePlot.js
+* FuzzyTimelineRangeSlider.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,15 +20,15 @@
 */
 
 /**
- * @class FuzzyTimelineRangePlot
- * Implementation for a fuzzy time-ranges plot
+ * @class FuzzyTimelineRangeSlider
+ * Implementation for a fuzzy time-ranges slider
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  *
  * @param {HTML object} parent div to append the FuzzyTimeline
  */
-function FuzzyTimelineRangePlot(parent) {
+function FuzzyTimelineRangeSlider(parent) {
 
-	this.rangePlot = this;
+	this.rangeSlider = this;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -64,36 +64,36 @@ function FuzzyTimelineRangePlot(parent) {
 	this.pieCharts = [];
 }
 
-FuzzyTimelineRangePlot.prototype = {
+FuzzyTimelineRangeSlider.prototype = {
 
 	initialize : function(overallMin,overallMax,datasets) {
-		var rangePlot = this;
-		rangePlot.overallMin = overallMin;
-		rangePlot.overallMax = overallMax;
-		rangePlot.datasets = datasets;
+		var rangeSlider = this;
+		rangeSlider.overallMin = overallMin;
+		rangeSlider.overallMax = overallMax;
+		rangeSlider.datasets = datasets;
 
 		//reset values
-		rangePlot.spans = [];
-		rangePlot.spanHash = [];
-		rangePlot.deletePieCharts();
+		rangeSlider.spans = [];
+		rangeSlider.spanHash = [];
+		rangeSlider.deletePieCharts();
 
 		//get all distinct time-spans
 		$(this.datasets).each(function(){
 			$(this.objects).each(function(){
 				var dataObject = this;
 				if (dataObject.isTemporal){
-					if ($.inArray(0,rangePlot.spans)==-1)
+					if ($.inArray(0,rangeSlider.spans)==-1)
 						//smallest span = 1ms
-						rangePlot.spans.push(1000);
+						rangeSlider.spans.push(1000);
 				} else if (dataObject.isFuzzyTemporal){
 					var span = dataObject.TimeSpanEnd - dataObject.TimeSpanBegin;
-					if ($.inArray(span,rangePlot.spans)==-1)
-						rangePlot.spans.push(span);
+					if ($.inArray(span,rangeSlider.spans)==-1)
+						rangeSlider.spans.push(span);
 				} 
 			});
 		});
 		//sort the spans
-		rangePlot.spans.sort(function(a,b){return a-b;});
+		rangeSlider.spans.sort(function(a,b){return a-b;});
 
 		var fixedSpans = [
 		    moment.duration(1, 'seconds'),
@@ -118,26 +118,26 @@ FuzzyTimelineRangePlot.prototype = {
 		
 		//add the fixed spans, that are longer than minimum span and not already contained
 		for (var i = 0; i < fixedSpans.length; i++){
-			if ((fixedSpans[i] > rangePlot.spans[0]) && ($.inArray(fixedSpans[i],rangePlot.spans) == -1))
-				rangePlot.spans.push(fixedSpans[i]);
+			if ((fixedSpans[i] > rangeSlider.spans[0]) && ($.inArray(fixedSpans[i],rangeSlider.spans) == -1))
+				rangeSlider.spans.push(fixedSpans[i]);
 		}
 
 		//and sort again to fit the fixed spans in
-		rangePlot.spans.sort(function(a,b){return a-b;});
+		rangeSlider.spans.sort(function(a,b){return a-b;});
 		
-		if (rangePlot.spans.length > 0){
+		if (rangeSlider.spans.length > 0){
 			//create empty hash map (span -> DataObjects)
-			$(rangePlot.spans).each(function(){
+			$(rangeSlider.spans).each(function(){
 				var emptyObjectArray = [];
-				$(rangePlot.datasets).each(function(){
+				$(rangeSlider.datasets).each(function(){
 					emptyObjectArray.push([]);
 				});
-				rangePlot.spanHash.push(emptyObjectArray);
+				rangeSlider.spanHash.push(emptyObjectArray);
 			});
 
 			//build hash map (span -> DataObjects)
 			var datasetIndex = 0;
-			$(rangePlot.datasets).each(function(){
+			$(rangeSlider.datasets).each(function(){
 				$(this.objects).each(function(){
 					var dataObject = this;
 					var span;
@@ -149,17 +149,17 @@ FuzzyTimelineRangePlot.prototype = {
 					}
 					
 					if (typeof span !== "undefined"){
-						var spanIndex = rangePlot.spans.indexOf(span);
+						var spanIndex = rangeSlider.spans.indexOf(span);
 						//has to be in array, so no check for -1
-						rangePlot.spanHash[spanIndex][datasetIndex].push(dataObject);
+						rangeSlider.spanHash[spanIndex][datasetIndex].push(dataObject);
 					}
 				});
 				datasetIndex++;
 			});
 			
-			$(rangePlot.sliderDiv).slider({
+			$(rangeSlider.sliderDiv).slider({
 				min:0,
-				max:rangePlot.spans.length-1,
+				max:rangeSlider.spans.length-1,
 				step:1,
 				value:0
 			});
@@ -167,55 +167,55 @@ FuzzyTimelineRangePlot.prototype = {
 			var onSlideFunction = function( event, ui ){
 				//redraw span "name"
 				var handlePosition = ui.value;
-				$(rangePlot.sliderValue).empty();
-				$(rangePlot.sliderValue).append(moment.duration(rangePlot.spans[handlePosition]).humanize());
-				var shownDatasets = rangePlot.spanHash[0];
+				$(rangeSlider.sliderValue).empty();
+				$(rangeSlider.sliderValue).append(moment.duration(rangeSlider.spans[handlePosition]).humanize());
+				var shownDatasets = rangeSlider.spanHash[0];
 				for (var i = 1; i < handlePosition; i++){
-					shownDatasets = GeoTemConfig.mergeObjects(shownDatasets,rangePlot.spanHash[i]);
+					shownDatasets = GeoTemConfig.mergeObjects(shownDatasets,rangeSlider.spanHash[i]);
 				}
 				var hiddenDatasets = [];
-				$(rangePlot.datasets).each(function(){
+				$(rangeSlider.datasets).each(function(){
 					hiddenDatasets.push([]);
 				});
-				for (var i = handlePosition+1; i < rangePlot.spanHash.length; i++){
-					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangePlot.spanHash[i]);
+				for (var i = handlePosition+1; i < rangeSlider.spanHash.length; i++){
+					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangeSlider.spanHash[i]);
 				}
 				//redraw plot
 				//span * 2, cause this will fit most values into a single tick
-				rangePlot.plot.initialize(rangePlot.overallMin,rangePlot.overallMax,shownDatasets,2*rangePlot.spans[handlePosition]);
+				rangeSlider.plot.initialize(rangeSlider.overallMin,rangeSlider.overallMax,shownDatasets,2*rangeSlider.spans[handlePosition]);
 				//redraw pie charts
-				rangePlot.drawRangePieChart(shownDatasets,hiddenDatasets);
+				rangeSlider.drawRangePieChart(shownDatasets,hiddenDatasets);
 			};
 			
-			$(rangePlot.sliderDiv).on( "slide", onSlideFunction);
+			$(rangeSlider.sliderDiv).on( "slide", onSlideFunction);
 			
 			onSlideFunction({},{value:0});
 		}
 	},
 			
 	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
-		var rangePlot = this;
+		var rangeSlider = this;
 
-		var parentDiv = rangePlot.pieChartDiv;
-		rangePlot.deletePieCharts();
+		var parentDiv = rangeSlider.pieChartDiv;
+		rangeSlider.deletePieCharts();
 		var datasetIndex = 0;
-		$(rangePlot.datasets).each(function(){
+		$(rangeSlider.datasets).each(function(){
 			var div = document.createElement("div");
 			$(parentDiv).append(div);
-			$(div).height($(parentDiv).height()/rangePlot.datasets.length);
+			$(div).height($(parentDiv).height()/rangeSlider.datasets.length);
 
-			rangePlot.pieCharts.push(new FuzzyTimelineRangePiechart(rangePlot.parent,div,datasetIndex,shownDatasets,hiddenDatasets));
+			rangeSlider.pieCharts.push(new FuzzyTimelineRangePiechart(rangeSlider.parent,div,datasetIndex,shownDatasets,hiddenDatasets));
 			datasetIndex++;
 		});
 	},
 	
 	deletePieCharts : function(){
-		var rangePlot = this;
-		$(rangePlot.pieChartDiv).empty();
-		for (var piechart in rangePlot.pieCharts){
+		var rangeSlider = this;
+		$(rangeSlider.pieChartDiv).empty();
+		for (var piechart in rangeSlider.pieCharts){
 			delete piechart;
 		}
-		rangePlot.pieCharts = [];
+		rangeSlider.pieCharts = [];
 	},
 	
 	triggerHighlight : function(columnElement) {
