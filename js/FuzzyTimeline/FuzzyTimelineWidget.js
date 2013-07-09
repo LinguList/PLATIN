@@ -44,22 +44,23 @@ function FuzzyTimelineWidget(core, div, options) {
 FuzzyTimelineWidget.prototype = {
 
 	initWidget : function(data) {
-		$(this.gui.densityDiv).empty();
-		delete this.density;
-		$(this.gui.rangeTimelineDiv).empty();
-		$(this.gui.rangePiechartDiv).empty();
-		delete this.rangeSlider;
+		var fuzzyTimeline = this;
+		
+		$(fuzzyTimeline.gui.densityDiv).empty();
+		delete fuzzyTimeline.density;
+		$(fuzzyTimeline.gui.rangePiechartDiv).empty();
+		$(fuzzyTimeline.gui.sliderDiv).empty();
+		delete fuzzyTimeline.rangeSlider;
 		
 		
 		if ( (data instanceof Array) && (data.length > 0) )
 		{
-			this.density = new FuzzyTimelineDensity(this,this.gui.densityDiv);
-			this.rangeSlider = new FuzzyTimelineRangeSlider(this);
+			fuzzyTimeline.density = new FuzzyTimelineDensity(fuzzyTimeline,fuzzyTimeline.gui.densityDiv);
+			fuzzyTimeline.rangeSlider = new FuzzyTimelineRangeSlider(fuzzyTimeline);
 			
-			this.datasets = data;
+			fuzzyTimeline.datasets = data;
 			
-			var overallMin, overallMax;
-			$(this.datasets).each(function(){
+			$(fuzzyTimeline.datasets).each(function(){
 				$(this.objects).each(function(){
 					var datemin,datemax;
 					if (this.isTemporal){
@@ -72,20 +73,20 @@ FuzzyTimelineWidget.prototype = {
 						datemax = this.TimeSpanEnd;
 					}
 					
-					if (typeof overallMin === "undefined")
-						overallMin = datemin;
-					if (typeof overallMax === "undefined")
-						overallMax = datemax;
+					if (typeof fuzzyTimeline.overallMin === "undefined")
+						fuzzyTimeline.overallMin = datemin;
+					if (typeof fuzzyTimeline.overallMax === "undefined")
+						fuzzyTimeline.overallMax = datemax;
 					
-					if (overallMin > datemin)
-						overallMin = datemin;
-					if (overallMax < datemax)
-						overallMax = datemax;
+					if (fuzzyTimeline.overallMin > datemin)
+						fuzzyTimeline.overallMin = datemin;
+					if (fuzzyTimeline.overallMax < datemax)
+						fuzzyTimeline.overallMax = datemax;
 				});
 			});
 			
-			this.density.initialize(overallMin,overallMax,this.datasets);
-			this.rangeSlider.initialize(overallMin,overallMax,this.datasets);
+			fuzzyTimeline.density.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
+			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
 		}
 	},
 
