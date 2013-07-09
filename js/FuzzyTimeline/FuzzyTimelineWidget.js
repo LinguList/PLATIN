@@ -129,4 +129,66 @@ FuzzyTimelineWidget.prototype = {
 		this.density.selectionChanged(objects);
 		this.rangeBars.plot.selectionChanged(objects);
 	},
+	
+	getTicks : function(dataObject, spanWidth) {
+		var datemin,datemax;
+		if (dataObject.isTemporal){
+			datemin = moment(dataObject.dates[0].date);
+			datemax = datemin;
+		} else if (dataObject.isFuzzyTemporal){
+			datemin = dataObject.TimeSpanBegin;
+			datemax = dataObject.TimeSpanEnd;
+		} else{
+			return;
+		}
+		
+		var firstTick = Math.floor((datemin-this.overallMin)/spanWidth);
+		var lastTick = Math.floor((datemax-this.overallMin)/spanWidth);
+		//calculate how much the first (and last) tick and the time-span overlap
+		var firstTickPercentage = 1;
+		var lastTickPercentage = 1;
+		if (firstTick != lastTick){
+			var secondTickStart = this.overallMin+(firstTick+1)*spanWidth;
+			var lastTickStart = this.overallMin+lastTick*spanWidth;
+			firstTickPercentage = (secondTickStart-datemin)/spanWidth;
+			lastTickPercentage = (datemax-lastTickStart)/spanWidth;
+		}
+		
+		return({	firstTick:firstTick,
+					lastTick:lastTick,
+					firstTickPercentage:firstTickPercentage,
+					lastTickPercentage:lastTickPercentage});
+	},
+
+	getObjects : function(date) {
+		var fuzzyTimeline = this;
+		var searchDate = moment(date);
+		
+		var datasets = [];		
+		$(fuzzyTimeline.datasets).each(function(){
+			var objects = [];
+			//check if we got "real" datasets, or just array of objects
+			var datasetObjects = this;
+			if (typeof this.objects !== "undefined")
+				datasetObjects = this.objects;
+			$(datasetObjects).each(function(){
+				var datemin,datemax;
+				if (dataObject.isTemporal){
+					datemin = moment(dataObject.dates[0].date);
+					datemax = datemin;
+				} else if (dataObject.isFuzzyTemporal){
+					datemin = dataObject.TimeSpanBegin;
+					datemax = dataObject.TimeSpanEnd;
+				} else{
+					return;
+				}
+				
+				if ( (datemin <= searchDate) && (datemax >= searchDate) )
+					objects.push(this);
+			});
+			datasets.push(objects);
+		});
+
+		return(datasets);
+	},
 };

@@ -74,60 +74,6 @@ FuzzyTimelineDensity.prototype = {
 		
 		return chartData;
 	},
-
-	getTicks : function(dataObject) {
-		var datemin,datemax;
-		if (dataObject.isTemporal){
-			datemin = moment(dataObject.dates[0].date);
-			datemax = datemin;
-		} else if (dataObject.isFuzzyTemporal){
-			datemin = dataObject.TimeSpanBegin;
-			datemax = dataObject.TimeSpanEnd;
-		} else{
-			return;
-		}
-		
-		var firstTick = Math.floor((datemin-this.overallMin)/this.singleTickWidth);
-		var lastTick = Math.floor((datemax-this.overallMin)/this.singleTickWidth);
-		//calculate how much the first (and last) tick and the time-span overlap
-		var firstTickPercentage = 1;
-		var lastTickPercentage = 1;
-		if (firstTick != lastTick){
-			var secondTickStart = this.overallMin+(firstTick+1)*this.singleTickWidth;
-			var lastTickStart = this.overallMin+lastTick*this.singleTickWidth;
-			firstTickPercentage = (secondTickStart-datemin)/this.singleTickWidth;
-			lastTickPercentage = (datemax-lastTickStart)/this.singleTickWidth;
-		}
-		
-		return({	firstTick:firstTick,
-					lastTick:lastTick,
-					firstTickPercentage:firstTickPercentage,
-					lastTickPercentage:lastTickPercentage});
-	},
-
-	getObjects : function(date) {
-		var density = this;
-		var searchedTick = Math.floor((date-this.overallMin)/this.singleTickWidth);
-		
-		var datasets = [];		
-		$(density.datasets).each(function(){
-			var objects = [];
-			//check if we got "real" datasets, or just array of objects
-			var datasetObjects = this;
-			if (typeof this.objects !== "undefined")
-				datasetObjects = this.objects;
-			$(datasetObjects).each(function(){
-				var ticks = density.getTicks(this);
-				if (typeof ticks !== "undefined"){
-					if ((ticks.firstTick <= searchedTick) && (ticks.lastTick >= searchedTick))
-						objects.push(this);
-				}
-			});
-			datasets.push(objects);
-		});
-
-		return(datasets);
-	},
 	
 	initialize : function(overallMin, overallMax, datasets, tickWidth) {
 		var density = this;
@@ -160,7 +106,7 @@ FuzzyTimelineDensity.prototype = {
 			if (typeof this.objects !== "undefined")
 				datasetObjects = this.objects;
 			$(datasetObjects).each(function(){
-				var ticks = density.getTicks(this);
+				var ticks = density.parent.getTicks(this, density.singleTickWidth);
 				if (typeof ticks !== "undefined"){
 					var exactTickCount = 
 						ticks.firstTickPercentage+
@@ -305,7 +251,7 @@ FuzzyTimelineDensity.prototype = {
 			var dataset = this;
 			$(dataset).each(function(){
 				var dataObject = this;
-				var ticks = density.getTicks(dataObject);
+				var ticks = density.parent.getTicks(dataObject, density.singleTickWidth);
 				if (typeof ticks !== "undefined"){
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						//the addition of "boundary points", that will always be zero,
