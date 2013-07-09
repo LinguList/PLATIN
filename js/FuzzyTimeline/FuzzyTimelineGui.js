@@ -38,9 +38,13 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/16);
 	this.fuzzyTimelineContainer.style.position = 'relative';
 
+	this.sliderDiv = document.createElement("div");
+	$(this.sliderDiv).width("100%");
+	$(this.sliderDiv).height("5%");
+	div.appendChild(this.sliderDiv);
 	this.densityDiv = document.createElement("div");
 	$(this.densityDiv).width("100%");
-	$(this.densityDiv).height("50%");
+	$(this.densityDiv).height("45%");
 	div.appendChild(this.densityDiv);
 	this.rangeTimelineDiv = document.createElement("div");
 	$(this.rangeTimelineDiv).css("float","left");

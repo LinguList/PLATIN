@@ -40,18 +40,16 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.overallMax;
 	this.datasets;
 	
-	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
+	this.sliderParentDiv = this.parent.gui.sliderDiv;
 	this.sliderDiv = document.createElement("div");
-	$(this.rangeDiv).append(this.sliderDiv);
+	$(this.sliderParentDiv).append(this.sliderDiv);
 	$(this.sliderDiv).css("float","left");
-	$(this.sliderDiv).width("85%");
-	$(this.sliderDiv).height("2%");
+	$(this.sliderDiv).width("90%");
 	this.sliderValue = document.createElement("div");
-	$(this.rangeDiv).append(this.sliderValue);
+	$(this.sliderParentDiv).append(this.sliderValue);
 	this.sliderValue.align = "right";
 	$(this.sliderValue).css("float","right");
-	$(this.sliderValue).width("15%");
-	$(this.sliderValue).height("2%");
+	$(this.sliderValue).width("10%");
 	
 	this.rangeBars = new FuzzyTimelineRangeBars(this.parent);
 }
