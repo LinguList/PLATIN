@@ -50,8 +50,6 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.sliderValue.align = "right";
 	$(this.sliderValue).css("float","right");
 	$(this.sliderValue).width("10%");
-	
-	this.rangeBars = new FuzzyTimelineRangeBars(this.parent);
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -169,10 +167,8 @@ FuzzyTimelineRangeSlider.prototype = {
 				for (var i = handlePosition+1; i < rangeSlider.spanHash.length; i++){
 					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangeSlider.spanHash[i]);
 				}
-				//redraw range plot
-				rangeSlider.rangeBars.drawRangeBarChart(rangeSlider.overallMin,rangeSlider.overallMax,shownDatasets,rangeSlider.spans[handlePosition]);
-				//redraw pie charts
-				rangeSlider.rangeBars.drawRangePieChart(shownDatasets,hiddenDatasets);
+				
+				rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
 			};
 			
 			$(rangeSlider.sliderDiv).on( "slide", onSlideFunction);

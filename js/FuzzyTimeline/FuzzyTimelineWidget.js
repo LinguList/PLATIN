@@ -31,6 +31,11 @@
 function FuzzyTimelineWidget(core, div, options) {
 
 	this.datasets;
+	this.hiddenDatasets;
+	this.shownDatasets;
+	this.overallMin;
+	this.overallMax;
+	
 	this.core = core;
 	this.core.setWidget(this);
 
@@ -39,6 +44,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	
 	this.density;
 	this.rangeSlider;
+	this.rangeBars;
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -48,15 +54,18 @@ FuzzyTimelineWidget.prototype = {
 		
 		$(fuzzyTimeline.gui.densityDiv).empty();
 		delete fuzzyTimeline.density;
+		$(fuzzyTimeline.gui.rangeTimelineDiv).empty();
 		$(fuzzyTimeline.gui.rangePiechartDiv).empty();
 		$(fuzzyTimeline.gui.sliderDiv).empty();
 		delete fuzzyTimeline.rangeSlider;
+		delete fuzzyTimeline.rangeBars;
 		
 		
 		if ( (data instanceof Array) && (data.length > 0) )
 		{
 			fuzzyTimeline.density = new FuzzyTimelineDensity(fuzzyTimeline,fuzzyTimeline.gui.densityDiv);
 			fuzzyTimeline.rangeSlider = new FuzzyTimelineRangeSlider(fuzzyTimeline);
+			fuzzyTimeline.rangeBars = new FuzzyTimelineRangeBars(fuzzyTimeline);
 			
 			fuzzyTimeline.datasets = data;
 			
@@ -86,8 +95,19 @@ FuzzyTimelineWidget.prototype = {
 			});
 			
 			fuzzyTimeline.density.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
+			fuzzyTimeline.rangeBars.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
 			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
 		}
+	},
+	
+	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
+		var fuzzyTimeline = this;
+		//redraw density plot
+		fuzzyTimeline.density.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,shownDatasets);
+		//redraw range plot
+		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,spanWidth);
+		//redraw pie charts
+		fuzzyTimeline.rangeBars.drawRangePieChart(shownDatasets,hiddenDatasets);
 	},
 
 	highlightChanged : function(objects) {
@@ -98,7 +118,7 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		this.density.highlightChanged(objects);
-		this.rangeSlider.rangeBars.plot.highlightChanged(objects);
+		this.rangeBars.plot.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
@@ -107,6 +127,6 @@ FuzzyTimelineWidget.prototype = {
 		}
 		var objects = selection.objects;
 		this.density.selectionChanged(objects);
-		this.rangeSlider.rangeBars.plot.selectionChanged(objects);
+		this.rangeBars.plot.selectionChanged(objects);
 	},
 };

@@ -33,6 +33,9 @@ function FuzzyTimelineRangeBars(parent) {
 	this.parent = parent;
 	this.options = parent.options;
 	
+	this.overallMin;
+	this.overallMax;
+	
 	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
 	this.plotDiv = document.createElement("div");
 	$(this.rangeDiv).append(this.plotDiv);
@@ -49,15 +52,18 @@ FuzzyTimelineRangeBars.prototype = {
 
 	initialize : function(overallMin,overallMax,datasets) {
 		var rangeBar = this;
+		
+		rangeBar.overallMin = overallMin;
+		rangeBar.overallMax = overallMax;
 
 		rangeBar.deletePieCharts();
 	},
 	
-	drawRangeBarChart : function(overallMin, overallMax, shownDatasets, spanWidth){
+	drawRangeBarChart : function(shownDatasets, spanWidth){
 		var rangeBar = this;
 		//redraw plot
 		//span * 2, cause this will fit most values into a single tick
-		rangeBar.plot.initialize(overallMin,overallMax,shownDatasets,2*spanWidth);
+		rangeBar.plot.initialize(rangeBar.overallMin,rangeBar.overallMax,shownDatasets,2*spanWidth);
 	},
 
 	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
