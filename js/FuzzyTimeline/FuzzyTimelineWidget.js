@@ -173,6 +173,7 @@ FuzzyTimelineWidget.prototype = {
 				datasetObjects = this.objects;
 			$(datasetObjects).each(function(){
 				var datemin,datemax;
+				var dataObject = this;
 				if (dataObject.isTemporal){
 					datemin = moment(dataObject.dates[0].date);
 					datemax = datemin;

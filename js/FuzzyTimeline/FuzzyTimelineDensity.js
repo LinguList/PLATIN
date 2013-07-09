@@ -211,7 +211,7 @@ FuzzyTimelineDensity.prototype = {
 		var highlightedObjects = [];
 		
 		if (typeof date !== "undefined") {
-			highlightedObjects = this.getObjects(date);
+			highlightedObjects = this.parent.getObjects(date);
 		} else {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 				highlightedObjects.push([]);
@@ -224,7 +224,7 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		var selection;
 		if (typeof date !== "undefined") {
-			density.selected = density.getObjects(date);
+			density.selected = density.parent.getObjects(date);
 			selection = new Selection(density.selected, density);
 		} else {
 			//empty selection
