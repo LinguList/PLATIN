@@ -33,6 +33,7 @@ function FuzzyTimelineRangeBars(parent) {
 	this.parent = parent;
 	this.options = parent.options;
 	
+	this.datasets;
 	this.overallMin;
 	this.overallMax;
 	
@@ -44,7 +45,7 @@ function FuzzyTimelineRangeBars(parent) {
 
 	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
 
-	this.plot = new FuzzyTimelineDensity(this.parent,this.plotDiv);
+	this.plot;
 	this.pieCharts = [];
 }
 
@@ -55,15 +56,104 @@ FuzzyTimelineRangeBars.prototype = {
 		
 		rangeBar.overallMin = overallMin;
 		rangeBar.overallMax = overallMax;
+		rangeBar.datasets = datasets;
 
 		rangeBar.deletePieCharts();
 	},
 	
 	drawRangeBarChart : function(shownDatasets, spanWidth){
 		var rangeBar = this;
-		//redraw plot
-		//span * 2, cause this will fit most values into a single tick
-		rangeBar.plot.initialize(rangeBar.overallMin,rangeBar.overallMax,shownDatasets,2*spanWidth);
+		var tickCount = Math.ceil((rangeBar.overallMax-rangeBar.overallMin)/spanWidth);
+		
+		if (tickCount > 100){
+			tickCount = 100;
+			spanWidth = (rangeBar.overallMax-rangeBar.overallMin)/tickCount;
+		}
+		
+		var plots = [];
+		var ticks = [];
+		
+		var axisFormatString = "YYYY";
+		if (spanWidth<60*1000){
+			axisFormatString = "YYYY/MM/DD HH:mm:ss";
+		} else if (spanWidth<60*60*1000) {
+			axisFormatString = "YYYY/MM/DD HH:mm";
+		} else if (spanWidth<24*60*60*1000){
+			axisFormatString = "YYYY/MM/DD HH";
+		} else if (spanWidth<31*24*60*60*1000){
+			axisFormatString = "YYYY/MM/DD";
+		} else if (spanWidth<12*31*24*60*60*1000){
+			axisFormatString = "YYYY/MM";
+		}
+		
+		for (var i = 0; i < tickCount; i++){
+			ticks[i] = [i,moment(rangeBar.overallMin+i*spanWidth).format(axisFormatString)];
+		}
+		
+		$(shownDatasets).each(function(){
+			var chartDataCounter = [];
+			
+			for (var i = 0; i < tickCount; i++){
+				chartDataCounter[i] = [];
+				chartDataCounter[i][0]=i;
+				chartDataCounter[i][1]=0;
+			}
+			//check if we got "real" datasets, or just array of objects
+			var datasetObjects = this;
+			if (typeof this.objects !== "undefined")
+				datasetObjects = this.objects;
+			$(datasetObjects).each(function(){
+				var ticks = rangeBar.parent.getTicks(this, spanWidth);
+				if (typeof ticks !== "undefined"){
+					var exactTickCount = 
+						ticks.firstTickPercentage+
+						ticks.lastTickPercentage+
+						(ticks.lastTick-ticks.firstTick-1);
+					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
+						var weight = 0;
+						if (i == ticks.firstTick)
+							weight = this.weight * ticks.firstTickPercentage/exactTickCount;
+						else if (i == ticks.lastTick)
+							weight = this.weight * ticks.lastTickPercentage/exactTickCount;
+						else
+							weight = this.weight * 1/exactTickCount;
+						
+						chartDataCounter[i][1] += weight;
+					}
+				}
+			});
+			
+			plots.push(chartDataCounter);
+		});
+		
+		var options = {
+				series:{
+	                bars:{show: true}
+	            },
+				grid: {
+		            hoverable: true,
+		            clickable: true
+		        },
+		        xaxis: {          
+		        	  ticks: ticks
+		        },
+		        tooltip: true,
+		        tooltipOpts: {
+		            content: function(xval, yval){
+		            	highlightString =	moment(rangeBar.overallMin+xval*spanWidth).format(axisFormatString)	+ " - " +
+		            						moment(rangeBar.overallMin+(xval+1)*spanWidth).format(axisFormatString) + " : ";
+		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
+		            	highlightString +=	Math.round(yval*100)/100; 
+
+		        		return highlightString;
+		            }
+		        },
+		        selection: { 
+		        	mode: "x"
+		        }
+			};
+
+		rangeBar.plot = $.plot($(rangeBar.plotDiv), plots, options);
 	},
 
 	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
@@ -89,6 +179,22 @@ FuzzyTimelineRangeBars.prototype = {
 			delete piechart;
 		}
 		rangeBar.pieCharts = [];
+	},
+	
+	highlightChanged : function(objects) {
+		if( !GeoTemConfig.highlightEvents ){
+			return;
+		}
+		if ( (typeof objects === "undefined") || (objects.length == 0) ){
+			return;
+		}
+	},
+
+	selectionChanged : function(selection) {
+		if( !GeoTemConfig.selectionEvents ){
+			return;
+		}
+		var objects = selection.objects;
 	},
 	
 	triggerHighlight : function(columnElement) {

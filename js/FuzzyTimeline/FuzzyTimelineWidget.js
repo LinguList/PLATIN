@@ -118,7 +118,7 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		this.density.highlightChanged(objects);
-		this.rangeBars.plot.highlightChanged(objects);
+		this.rangeBars.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
@@ -127,7 +127,7 @@ FuzzyTimelineWidget.prototype = {
 		}
 		var objects = selection.objects;
 		this.density.selectionChanged(objects);
-		this.rangeBars.plot.selectionChanged(objects);
+		this.rangeBars.selectionChanged(objects);
 	},
 	
 	getTicks : function(dataObject, spanWidth) {
