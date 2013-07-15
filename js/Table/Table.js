@@ -374,7 +374,71 @@ Table.prototype = {
 		for (var key in this.elements[0].object.tableContent) {
 			addSortButton(key);
 		}
+		
+		//Bottom pagination elements
+		this.bottomToolbar = document.createElement("table");
+		this.bottomToolbar.setAttribute('class', 'ddbToolbar');
+		this.bottomToolbar.style.overflow = 'auto';
+		this.tableDiv.appendChild(this.bottomToolbar);
+		
+		var bottomNavigation = document.createElement("tr");
+		this.bottomToolbar.appendChild(bottomNavigation);
 
+		var bottomPagination = document.createElement("td");
+		bottomNavigation.appendChild(bottomPagination);
+
+		this.bottomLastPage = document.createElement('div');
+		this.bottomLastPage.setAttribute('class', 'paginationButton');
+		this.bottomLastPage.title = GeoTemConfig.getString('paginationLastPageHelp');
+		$(this.bottomLastPage).css('float', 'right');
+		bottomPagination.appendChild(this.bottomLastPage);
+		this.bottomLastPage.onclick = function() {
+			if (table.page != table.pages - 1) {
+				table.page = table.pages - 1;
+				table.update();
+			}
+		}
+
+		this.bottomNextPage = document.createElement('div');
+		this.bottomNextPage.setAttribute('class', 'paginationButton');
+		this.bottomNextPage.title = GeoTemConfig.getString('paginationNextPageHelp');
+		$(this.bottomNextPage).css('float', 'right');
+		bottomPagination.appendChild(this.bottomNextPage);
+		this.bottomNextPage.onclick = function() {
+			if (table.page < table.pages - 1) {
+				table.page++;
+				table.update();
+			}
+		}
+		
+		this.bottomPageInfo = document.createElement('div');
+		this.bottomPageInfo.setAttribute('class', 'pageInfo');
+		$(this.bottomPageInfo).css('float', 'right');
+		bottomPagination.appendChild(this.bottomPageInfo);
+
+		this.bottomPreviousPage = document.createElement('div');
+		this.bottomPreviousPage.setAttribute('class', 'paginationButton');
+		this.bottomPreviousPage.title = GeoTemConfig.getString('paginationPreviousPageHelp');
+		$(this.bottomPreviousPage).css('float', 'right');
+		bottomPagination.appendChild(this.bottomPreviousPage);
+		this.bottomPreviousPage.onclick = function() {
+			if (table.page > 0) {
+				table.page--;
+				table.update();
+			}
+		}
+
+		this.bottomFirstPage = document.createElement('div');
+		this.bottomFirstPage.setAttribute('class', 'paginationButton');
+		this.bottomFirstPage.title = GeoTemConfig.getString('paginationFirsPageHelp');
+		$(this.bottomFirstPage).css('float', 'right');
+		bottomPagination.appendChild(this.bottomFirstPage);
+		this.bottomFirstPage.onclick = function() {
+			if (table.page != 0) {
+				table.page = 0;
+				table.update();
+			}
+		}
 	},
 
 	sortAscending : function(key) {
@@ -418,6 +482,7 @@ Table.prototype = {
 		infoText = infoText.replace('PAGES_ID', this.pages);
 		infoText = infoText.replace('PAGE_ID', this.page + 1);
 		this.pageInfo.innerHTML = infoText;
+		this.bottomPageInfo.innerHTML = infoText;
 	},
 
 	setResultsText : function() {
@@ -457,16 +522,24 @@ Table.prototype = {
 		if (this.page == 0) {
 			this.previousPage.setAttribute('class', 'paginationButton previousPageDisabled');
 			this.firstPage.setAttribute('class', 'paginationButton firstPageDisabled');
+			this.bottomPreviousPage.setAttribute('class', 'paginationButton previousPageDisabled');
+			this.bottomFirstPage.setAttribute('class', 'paginationButton firstPageDisabled');
 		} else {
 			this.previousPage.setAttribute('class', 'paginationButton previousPageEnabled');
 			this.firstPage.setAttribute('class', 'paginationButton firstPageEnabled');
+			this.bottomPreviousPage.setAttribute('class', 'paginationButton previousPageEnabled');
+			this.bottomFirstPage.setAttribute('class', 'paginationButton firstPageEnabled');
 		}
 		if (this.page == this.pages - 1) {
 			this.nextPage.setAttribute('class', 'paginationButton nextPageDisabled');
 			this.lastPage.setAttribute('class', 'paginationButton lastPageDisabled');
+			this.bottomNextPage.setAttribute('class', 'paginationButton nextPageDisabled');
+			this.bottomLastPage.setAttribute('class', 'paginationButton lastPageDisabled');
 		} else {
 			this.nextPage.setAttribute('class', 'paginationButton nextPageEnabled');
 			this.lastPage.setAttribute('class', 'paginationButton lastPageEnabled');
+			this.bottomNextPage.setAttribute('class', 'paginationButton nextPageEnabled');
+			this.bottomLastPage.setAttribute('class', 'paginationButton lastPageEnabled');
 		}
 		this.setPagesText();
 		this.setResultsText();
