@@ -550,14 +550,38 @@ MapWidget.prototype = {
 	addBaseLayers : function(layers) {
 		if ( layers instanceof Array) {
 			for (var i in layers ) {
-				var layer = new OpenLayers.Layer.WMS(layers[i].name, layers[i].url, {
-					projection : "EPSG:4326",
-					layers : layers[i].layer,
-					transparent : "true",
-					format : "image/png"
-				}, {
-					isBaseLayer : true
-				});
+				var layer;
+				if (layers[i].type === "XYZ"){
+			        layer = new OpenLayers.Layer.XYZ(
+			        			layers[i].name,
+				                [
+				                 	layers[i].url
+				                ], 
+				                {
+					                sphericalMercator: true,
+					                transitionEffect: "resize",
+					                buffer: 1,
+					                numZoomLevels: 12,
+					                transparent : true
+				                }, 
+								{
+									isBaseLayer : true
+								}
+			            );
+				} else {
+					layer = new OpenLayers.Layer.WMS(
+							layers[i].name, layers[i].url, 
+							{
+								projection : "EPSG:4326",
+								layers : layers[i].layer,
+								transparent : "true",
+								format : "image/png"
+							}, 
+							{
+								isBaseLayer : true
+							}
+					);
+				}
 				this.baseLayers.push(layer);
 				this.openlayersMap.addLayers([layer]);
 			}
