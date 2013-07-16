@@ -306,7 +306,7 @@ Overlayloader.prototype = {
 
 		this.DARIAHMapSelect = document.createElement("select");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1994'>Contemporary Map (1994)</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1994'>Historical Map of 1945</option>");
+		$(this.DARIAHMapSelect).append("<option value='historic:cntry1945'>Historical Map of 1945</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1938'>Historical Map of 1938</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1920'>Historical Map of 1920</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1914'>Historical Map of 1914</option>");
