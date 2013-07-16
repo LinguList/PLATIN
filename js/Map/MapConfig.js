@@ -34,14 +34,129 @@ function MapConfig(options) {
 		mapHeight : '580px', // false or desired height css definition for the map
 		mapTitle : 'GeoTemCo Map View', // title will be shown in map header
 		mapIndex : 0, // index = position in location array; for multiple locations the 2nd map refers to index 1
-		alternativeMap : false, // alternative map definition for a web mapping service or 'false' for no alternative map
-		/* an example:
-		 {
-		 name: 'someMapName',
-		 url: '/geoserver/wms',
-		 layer: 'namespace:layerName'
-		 }
-		 */
+		alternativeMap :  [
+				{
+					name: 'Barrington Roman Empire',
+					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
+					layer: 'namespace:layerName',
+					type:'XYZ'	 	
+				},
+				{
+					name: 'Contemporary Map (1994)',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1994'
+				},
+				{
+					name: 'Historical Map of 1945',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1945'
+				},
+				{
+					name: 'Historical Map of 1938',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1938'
+				},
+				{
+					name: 'Historical Map of 1920',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1920'
+				},
+				{
+					name: 'Historical Map of 1914',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1914'
+				},
+				{
+					name: 'Historical Map of 1880',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1880'
+				},
+				{
+					name: 'Historical Map of 1815',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1815'
+				},
+				{
+					name: 'Historical Map of 1783',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1783'
+				},
+				{
+					name: 'Historical Map of 1715',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1715'
+				},
+				{
+					name: 'Historical Map of 1650',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1650'
+				},
+				{
+					name: 'Historical Map of 1530',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1530'
+				},
+				{
+					name: 'Historical Map of 1492',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1492'
+				},
+				{
+					name: 'Historical Map of 1279',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1279'
+				},
+				{
+					name: 'Historical Map of 1000',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1000'
+				},
+				{
+					name: 'Historical Map of 800',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry800'
+				},
+				{
+					name: 'Historical Map of 600',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry600'
+				},
+				{
+					name: 'Historical Map of 400',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry400'
+				},
+				{
+					name: 'Historical Map of 1 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1bc'
+				},
+				{
+					name: 'Historical Map of 200 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry200bc'
+				},
+				{
+					name: 'Historical Map of 323 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry323bc'
+				},
+				{
+					name: 'Historical Map of 500 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry500bc'
+				},
+				{
+					name: 'Historical Map of 1000 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry1000bc'
+				},
+				{
+					name: 'Historical Map of 2000 BC',
+					url: 'http://dev2.dariah.eu/geoserver/wms',
+					layer: 'historic:cntry2000bc'
+				},
+		],
 		legend : true, // if a legend at the bottom of the map should be shown or not
 		mapMerge : false, // if the elements of distinct datasets should be merged into one set or not
 		useGraphics : false,  // if different graphics should represent different datasets or not
