@@ -41,8 +41,51 @@ function StorytellingWidget(core, div, options) {
 StorytellingWidget.prototype = {
 
 	initWidget : function(data) {
-		this.datasets = data;
 		var storytellingWidget = this;
+		var gui = storytellingWidget.gui;
+		
+		storytellingWidget.datasets = data;
+		
+		$(gui.storytellingContainer).empty();
+		
+		var magneticLinkParam = "";
+		$(storytellingWidget.datasets).each(function(){
+			
+			if (magneticLinkParam.length > 0)
+				magneticLinkParam += "&";
+
+			var paragraph = $("<p></p>");
+			paragraph.append(this.label);
+			if (typeof this.url !== "undefined"){
+				//TODO: makes only sense for KML or CSV URLs, so "type" of
+				//URL should be preserved (in dataset).
+				//startsWith and endsWith defined in SIMILE Ajax (string.js) 
+				if (this.url.toLowerCase().endsWith("kml")){
+					magneticLinkParam += "kml=";
+				} else {
+					magneticLinkParam += "csv=";
+				}
+				magneticLinkParam += this.url;
+				
+				var tableLinkDiv = document.createElement('a');
+				tableLinkDiv.title = this.url;
+				tableLinkDiv.href = this.url;
+				tableLinkDiv.target = '_';
+				tableLinkDiv.setAttribute('class', 'externalLink');
+				paragraph.append(tableLinkDiv);
+			} else {
+				
+			}
+			
+			$(gui.storytellingContainer).append(paragraph);
+		});
+		
+		var magneticLink = document.createElement('a');
+		$(magneticLink).append("Magnetic Link");
+		magneticLink.title = "Use this link to reload currently loaded (online) data.";
+		magneticLink.href = "?"+magneticLinkParam;
+		magneticLink.target = '_';
+		$(gui.storytellingContainer).prepend(magneticLink);
 	},
 	
 	highlightChanged : function(objects) {
