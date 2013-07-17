@@ -325,55 +325,6 @@ Table.prototype = {
 			var cell = document.createElement('th');
 			this.elementListHeader.appendChild(cell);
 		}
-
-		if ( typeof (this.elements[0]) == 'undefined') {
-			return;
-		}
-
-		var ascButtons = [];
-		var descButtons = [];
-		var clearButtons = function() {
-			for (var i in ascButtons ) {
-				ascButtons[i].setAttribute('class', 'sort sortAscDeactive');
-			}
-			for (var i in descButtons ) {
-				descButtons[i].setAttribute('class', 'sort sortDescDeactive');
-			}
-		}
-		var addSortButton = function(key) {
-			table.keyHeaderList.push(key);
-			var cell = document.createElement('th');
-			table.elementListHeader.appendChild(cell);
-			var sortAsc = document.createElement('div');
-			var sortDesc = document.createElement('div');
-			var span = document.createElement('div');
-			span.setAttribute('class', 'headerLabel');
-			span.innerHTML = key;
-			cell.appendChild(sortDesc);
-			cell.appendChild(span);
-			cell.appendChild(sortAsc);
-			sortAsc.setAttribute('class', 'sort sortAscDeactive');
-			sortAsc.title = GeoTemConfig.getString('sortAZHelp');
-			sortDesc.setAttribute('class', 'sort sortDescDeactive');
-			sortDesc.title = GeoTemConfig.getString('sortZAHelp');
-			ascButtons.push(sortAsc);
-			descButtons.push(sortDesc);
-			sortAsc.onclick = function() {
-				clearButtons();
-				sortAsc.setAttribute('class', 'sort sortAscActive');
-				table.sortAscending(key);
-				table.update();
-			}
-			sortDesc.onclick = function() {
-				clearButtons();
-				sortDesc.setAttribute('class', 'sort sortDescActive');
-				table.sortDescending(key);
-				table.update();
-			}
-		}
-		for (var key in this.elements[0].object.tableContent) {
-			addSortButton(key);
-		}
 		
 		//Bottom pagination elements
 		this.bottomToolbar = document.createElement("table");
@@ -438,6 +389,55 @@ Table.prototype = {
 				table.page = 0;
 				table.update();
 			}
+		}
+
+		if ( typeof (this.elements[0]) == 'undefined') {
+			return;
+		}
+
+		var ascButtons = [];
+		var descButtons = [];
+		var clearButtons = function() {
+			for (var i in ascButtons ) {
+				ascButtons[i].setAttribute('class', 'sort sortAscDeactive');
+			}
+			for (var i in descButtons ) {
+				descButtons[i].setAttribute('class', 'sort sortDescDeactive');
+			}
+		}
+		var addSortButton = function(key) {
+			table.keyHeaderList.push(key);
+			var cell = document.createElement('th');
+			table.elementListHeader.appendChild(cell);
+			var sortAsc = document.createElement('div');
+			var sortDesc = document.createElement('div');
+			var span = document.createElement('div');
+			span.setAttribute('class', 'headerLabel');
+			span.innerHTML = key;
+			cell.appendChild(sortDesc);
+			cell.appendChild(span);
+			cell.appendChild(sortAsc);
+			sortAsc.setAttribute('class', 'sort sortAscDeactive');
+			sortAsc.title = GeoTemConfig.getString('sortAZHelp');
+			sortDesc.setAttribute('class', 'sort sortDescDeactive');
+			sortDesc.title = GeoTemConfig.getString('sortZAHelp');
+			ascButtons.push(sortAsc);
+			descButtons.push(sortDesc);
+			sortAsc.onclick = function() {
+				clearButtons();
+				sortAsc.setAttribute('class', 'sort sortAscActive');
+				table.sortAscending(key);
+				table.update();
+			}
+			sortDesc.onclick = function() {
+				clearButtons();
+				sortDesc.setAttribute('class', 'sort sortDescActive');
+				table.sortDescending(key);
+				table.update();
+			}
+		}
+		for (var key in this.elements[0].object.tableContent) {
+			addSortButton(key);
 		}
 	},
 
