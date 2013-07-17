@@ -101,6 +101,7 @@ var Tooltips = {
 		"undoFilterSelection" : "Undo the last filter / inverse filter",
 		"cancelSelection" : "Discard the current selection (all items appear as deselected)",
 		"showSelectedHelp" : "Show only elements within the selection",
+		"selectByTextHelp" : "Select elements that contain the given text",
 		"showAllElementsHelp" : "Show all elements",
 		"paginationFirsPageHelp" : "Show first page",
 		"paginationPreviousPageHelp" : "Show previous page",
@@ -114,7 +115,11 @@ var Tooltips = {
 		"linearPlot" : "Linear Value Scale",
 		"logarithmicPlot" : "Logarithmic Value Scale",
 		"playButton" : "Animate Selected Range",
-		"pauseButton" : "Pause Animation"
+		"pauseButton" : "Pause Animation",
+		"createNewFromSelectedHelp" : "Create new dataset from selected values",
+		"removeDatasetHelp" : "Remove this dataset",
+		"exportDatasetHelp" : "Export this dataset to a KML file",
+		"invertSelectionHelp" : "Invert the current selection"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -188,6 +193,7 @@ var Tooltips = {
 		"undoFilterSelection" : "Undo the last filter / inverse filter",
 		"cancelSelection" : "Discard the current selection (all items appear as deselected)",
 		"showSelectedHelp" : "Show only elements within the selection",
+		"selectByTextHelp" : "Select elements that contain the given text",
 		"showAllElementsHelp" : "Show all elements",
 		"paginationFirsPageHelp" : "Show first page",
 		"paginationPreviousPageHelp" : "Show previous page",
@@ -201,6 +207,10 @@ var Tooltips = {
 		"linearPlot" : "Linear Value Scale",
 		"logarithmicPlot" : "Logarithmic Value Scale",
 		"playButton" : "Animate Selected Range",
-		"pauseButton" : "Pause Animation"
+		"pauseButton" : "Pause Animation",
+		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen",
+		"removeDatasetHelp" : "Diesen Datensatz entfernen",
+		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
+		"invertSelectionHelp" : "Jetzige Selektion umkehren"
 	}
 }

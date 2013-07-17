@@ -976,7 +976,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
     cursor: pointer;
 }
 
-.legend {
+.mapLegend {
 	position: absolute;
 	right: 0px;
 	bottom: 0px;
@@ -1151,6 +1151,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=85)";
 	-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=85)";
 	border-spacing: 0px;
+	height:47px;
 }
 
 .tableTab {
@@ -1275,6 +1276,10 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/selectAll.png");
 }
 
+.invertSelection {
+	background-image: url("../images/invertSelection.png");
+}
+
 .deselectAll {
 	background-image: url("../images/deselectAll.png");
 }
@@ -1285,6 +1290,10 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 
 .showSelected {
 	background-image: url("../images/showSelected.png");
+}
+
+.createNewRefined {
+	background-image: url("../images/createNewRefined.png");
 }
 
 .selectPage {
@@ -1382,4 +1391,22 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 
 .filterCancelDisabled {
 	background-image: url("../images/filterCancelDisabled.png");
+}
+
+.removeDataset {
+	background-image: url("../images/filterCancel.png");
+}
+
+.exportDataset {
+	background-image: url("../images/exportDataset.png");
+}
+
+.externalLink {
+	display: inline-block;
+	height: 10px;
+	width: 10px;
+	cursor: pointer;
+	padding-left: 5px;
+	padding-right: 5px;
+	background: url("../images/externalLink.png") top no-repeat;
 }

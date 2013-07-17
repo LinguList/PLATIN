@@ -65,6 +65,17 @@ function Selection(objects, widget) {
 		}
 		return false;
 	};
-
+	
+	this.loadAllObjects = function() {
+		allObjects = [];
+		$(GeoTemConfig.datasets).each(function(){
+			var singleDatasetObjects = []; 
+			$(this.objects).each(function(){
+				singleDatasetObjects.push(this);
+			});
+			allObjects.push(singleDatasetObjects);
+		});
+		this.objects = allObjects;
+	};
 };
 

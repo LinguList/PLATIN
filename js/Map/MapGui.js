@@ -175,7 +175,7 @@ function MapGui(map, div, options, iid) {
 
 	if (options.legend) {
 		this.legendDiv = document.createElement("div");
-		this.legendDiv.setAttribute('class', 'legend');
+		this.legendDiv.setAttribute('class', 'mapLegend');
 		this.mapWindow.appendChild(this.legendDiv);
 	}
 
@@ -248,6 +248,8 @@ function MapGui(map, div, options, iid) {
 		}
 		this.headerHeight = toolbarTable.offsetHeight;
 		this.headerWidth = toolbarTable.offsetWidth;
+		this.map.openlayersMap.updateSize();
+		this.map.drawObjectLayer(true);
 	};
 
 	this.updateLegend = function(datasets){

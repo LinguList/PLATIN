@@ -283,7 +283,6 @@ MapWidget.prototype = {
 			this.openlayersMap.addControl(new OpenLayers.Control.ScaleLine());
 		}
 		this.gui.resize();
-		this.openlayersMap.updateSize();
 		this.setBaseLayers();
 		this.gui.setMapsDropdown();
 		this.gui.setMap();
@@ -383,7 +382,8 @@ MapWidget.prototype = {
 			this.drawSquare = new OpenLayers.Control.DrawFeature(map.objectLayer, OpenLayers.Handler.RegularPolygon, {
 				displayClass : "olControlDrawFeaturePolygon",
 				handlerOptions : {
-					sides : 4
+					sides : 4,
+	                                irregular: true
 				},
 				callbacks : {
 					"done" : map.drawnPolygonHandler,
@@ -550,14 +550,38 @@ MapWidget.prototype = {
 	addBaseLayers : function(layers) {
 		if ( layers instanceof Array) {
 			for (var i in layers ) {
-				var layer = new OpenLayers.Layer.WMS(layers[i].name, layers[i].url, {
-					projection : "EPSG:4326",
-					layers : layers[i].layer,
-					transparent : "true",
-					format : "image/png"
-				}, {
-					isBaseLayer : true
-				});
+				var layer;
+				if (layers[i].type === "XYZ"){
+			        layer = new OpenLayers.Layer.XYZ(
+			        			layers[i].name,
+				                [
+				                 	layers[i].url
+				                ], 
+				                {
+					                sphericalMercator: true,
+					                transitionEffect: "resize",
+					                buffer: 1,
+					                numZoomLevels: 12,
+					                transparent : true
+				                }, 
+								{
+									isBaseLayer : true
+								}
+			            );
+				} else {
+					layer = new OpenLayers.Layer.WMS(
+							layers[i].name, layers[i].url, 
+							{
+								projection : "EPSG:4326",
+								layers : layers[i].layer,
+								transparent : "true",
+								format : "image/png"
+							}, 
+							{
+								isBaseLayer : true
+							}
+					);
+				}
 				this.baseLayers.push(layer);
 				this.openlayersMap.addLayers([layer]);
 			}
@@ -629,7 +653,9 @@ MapWidget.prototype = {
 			this.openlayersMap.addLayers([this.baseLayers[i]]);
 		}
 		if (this.options.alternativeMap) {
-			this.addBaseLayers([this.options.alternativeMap]);
+			if (!(this.options.alternativeMap instanceof Array))
+				this.options.alternativeMap = [this.options.alternativeMap];
+			this.addBaseLayers(this.options.alternativeMap);
 		}
 		this.setBaseLayerByName(this.options.baseLayer);
 	},
@@ -808,8 +834,10 @@ MapWidget.prototype = {
 		}
 		this.zIndices[id] = this.layerZIndex;
 		this.layerZIndex += 2;
-		this.reset();
 		this.drawObjectLayer(false);
+		for( var i=0; i<this.polygons.length; i++ ){
+			this.objectLayer.addFeatures([this.polygons[i]]);
+		}
 	},
 
 	/**
@@ -887,7 +915,7 @@ MapWidget.prototype = {
 						}
 					}
 					else {
-						c = GeoTemConfig.getColor(point.search);
+						c = GeoTemConfig.getAverageDatasetColor(point.search,point.elements);
 						shape = 'circle';
 						rotation = 0;
 					}
@@ -1028,12 +1056,12 @@ MapWidget.prototype = {
 			if( graphic.shape == 'square' ){
 				olRadius *= 0.75;
 			}
-		}		
-		if (olRadius != point.olFeature.style.pointRadius) {
-			point.olFeature.style.pointRadius = olRadius;
-			if (polygon.containsPoint(point.feature.geometry)) {
-				this.objectLayer.drawFeature(point.olFeature);
-			}
+		}
+		point.olFeature.style.pointRadius = olRadius;
+		var c = GeoTemConfig.getAverageDatasetColor(point.search, point.overlayElements);
+		point.olFeature.style.fillColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
+		if (polygon.containsPoint(point.feature.geometry)) {
+			this.objectLayer.drawFeature(point.olFeature);
 		}
 	},
 
