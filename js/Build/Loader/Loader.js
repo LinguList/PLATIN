@@ -253,6 +253,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'Storytelling.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
