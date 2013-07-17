@@ -63,6 +63,7 @@ TableWidget.prototype = {
 
 		var tableWidget = this;
 		var addTab = function(name, index) {
+			var dataSet = GeoTemConfig.datasets[index];
 			var tableTab = document.createElement('div');
 			var tableTabTable = document.createElement('table');
 			$(tableTab).append(tableTabTable);
@@ -74,7 +75,16 @@ TableWidget.prototype = {
 				tableWidget.selectTable(index);
 			}
 			var tableNameDiv = document.createElement('div');
-			tableNameDiv.innerHTML = name;
+			$(tableNameDiv).append(name);
+			
+			if (typeof dataSet.url !== "undefined"){
+				var tableLinkDiv = document.createElement('a');
+				tableLinkDiv.title = dataSet.url;
+				tableLinkDiv.href = dataSet.url;
+				tableLinkDiv.target = '_';
+				tableLinkDiv.setAttribute('class', 'externalLink');
+				$(tableNameDiv).append(tableLinkDiv);
+			}
 			$(tableTabTableRow).append($(document.createElement('td')).append(tableNameDiv));
 			
 			var removeTabDiv = document.createElement('div');

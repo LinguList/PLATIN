@@ -1400,3 +1400,13 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 .exportDataset {
 	background-image: url("../images/exportDataset.png");
 }
+
+.externalLink {
+	display: inline-block;
+	height: 10px;
+	width: 10px;
+	cursor: pointer;
+	padding-left: 5px;
+	padding-right: 5px;
+	background: url("../images/externalLink.png") top no-repeat;
+}
