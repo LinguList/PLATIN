@@ -37,5 +37,5 @@ function StorytellingGui(storytelling, div, options) {
 	storytellingGui.storytellingContainer.style.position = 'relative';
 };
 
-PlacetableGui.prototype = {
+StorytellingGui.prototype = {
 };
