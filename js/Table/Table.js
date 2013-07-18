@@ -252,7 +252,7 @@ Table.prototype = {
 		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
 			addItemNumber(table.options.validResultsPerPage[i], i);
 		}
-		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, 'selectMapType');
+		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, GeoTemConfig.getString('paginationDropdownHelp'));
 		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
 			if (table.options.initialResultsPerPage == table.options.validResultsPerPage[i]) {
 				dropdown.setEntry(i);
