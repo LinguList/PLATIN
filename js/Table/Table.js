@@ -65,6 +65,7 @@ Table.prototype = {
 		if (table.options.tableSelectPage) {
 			var selectPageItems = true;
 			this.selectPage = document.createElement('div');
+			$(this.selectPage).css("float","left");
 			this.selectPage.setAttribute('class', 'smallButton selectPage');
 			this.selectPage.title = GeoTemConfig.getString('selectTablePageItemsHelp');
 			selectors.appendChild(this.selectPage);
@@ -102,6 +103,7 @@ Table.prototype = {
 			var selectAllItems = true;
 			this.selectAll = document.createElement('div');
 			this.selectAll.setAttribute('class', 'smallButton selectAll');
+			$(this.selectAll).css("float","left");
 			table.selectAll.title = GeoTemConfig.getString('selectAllTableItemsHelp');
 			selectors.appendChild(this.selectAll);
 			this.selectAll.onclick = function() {
@@ -127,6 +129,7 @@ Table.prototype = {
 		if (table.options.tableInvertSelection) {
 			this.invertSelection = document.createElement('div');
 			this.invertSelection.setAttribute('class', 'smallButton invertSelection');
+			$(this.invertSelection).css("float","left");
 			table.invertSelection.title = GeoTemConfig.getString('invertSelectionHelp');
 			selectors.appendChild(this.invertSelection);
 			this.invertSelection.onclick = function() {
@@ -145,6 +148,7 @@ Table.prototype = {
 		if (table.options.tableShowSelected) {
 			this.showSelected = document.createElement('div');
 			this.showSelected.setAttribute('class', 'smallButton showSelected');
+			$(this.showSelected).css("float","left");
 			table.showSelected.title = GeoTemConfig.getString('showSelectedHelp');
 			selectors.appendChild(this.showSelected);
 			this.showSelected.onclick = function() {
@@ -170,6 +174,7 @@ Table.prototype = {
 		
 		if (table.options.tableSelectByText) {
 			this.selectByTextDiv = document.createElement('div');
+			$(this.selectByTextDiv).css("float","left");
 			$(this.selectByTextDiv).css("vertical-align", "top");
 			//TODO: improve appearance (wrong margin)
 			$(this.selectByTextDiv).css("display", "inline-block");
@@ -194,6 +199,7 @@ Table.prototype = {
 		if (table.options.tableCreateNewFromSelected) {
 			this.createNewFromSelected = document.createElement('div');
 			this.createNewFromSelected.setAttribute('class', 'smallButton createNewRefined');
+			$(this.createNewFromSelected).css("float","left");
 			this.createNewFromSelected.title = GeoTemConfig.getString('createNewFromSelectedHelp');
 			selectors.appendChild(this.createNewFromSelected);
 			this.createNewFromSelected.onclick = function() {
@@ -222,12 +228,39 @@ Table.prototype = {
 		navigation.appendChild(results);
 
 		var pagination = document.createElement("td");
+		$(pagination).css('float', 'right');
 		navigation.appendChild(pagination);
 
 		this.resultsInfo = document.createElement('div');
 		this.resultsInfo.setAttribute('class', 'resultsInfo');
 		results.appendChild(this.resultsInfo);
 
+		this.resultsDropdown = document.createElement('div');
+		this.resultsDropdown.setAttribute('class', 'resultsDropdown');
+		pagination.appendChild(this.resultsDropdown);
+		var itemNumbers = [];
+		var addItemNumber = function(count, index) {
+			var setItemNumber = function() {
+				table.updateIndices(count);
+				table.update();
+			}
+			itemNumbers.push({
+				name : count,
+				onclick : setItemNumber
+			});
+		}
+		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
+			addItemNumber(table.options.validResultsPerPage[i], i);
+		}
+		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, 'selectMapType');
+		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
+			if (table.options.initialResultsPerPage == table.options.validResultsPerPage[i]) {
+				dropdown.setEntry(i);
+				break;
+			}
+		}
+		dropdown.div.title = GeoTemConfig.getString('paginationDropdownHelp');
+		
 		this.firstPage = document.createElement('div');
 		this.firstPage.setAttribute('class', 'paginationButton');
 		this.firstPage.title = GeoTemConfig.getString('paginationFirsPageHelp');
@@ -276,32 +309,6 @@ Table.prototype = {
 				table.update();
 			}
 		}
-
-		this.resultsDropdown = document.createElement('div');
-		this.resultsDropdown.setAttribute('class', 'resultsDropdown');
-		pagination.appendChild(this.resultsDropdown);
-		var itemNumbers = [];
-		var addItemNumber = function(count, index) {
-			var setItemNumber = function() {
-				table.updateIndices(count);
-				table.update();
-			}
-			itemNumbers.push({
-				name : count,
-				onclick : setItemNumber
-			});
-		}
-		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
-			addItemNumber(table.options.validResultsPerPage[i], i);
-		}
-		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, 'selectMapType');
-		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
-			if (table.options.initialResultsPerPage == table.options.validResultsPerPage[i]) {
-				dropdown.setEntry(i);
-				break;
-			}
-		}
-		dropdown.div.title = GeoTemConfig.getString('paginationDropdownHelp');
 
 		this.input = document.createElement("div");
 		this.input.style.overflow = 'auto';
