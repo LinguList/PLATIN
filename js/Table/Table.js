@@ -658,7 +658,18 @@ Table.prototype = {
 				var text = e.object.tableContent[key];
 				if (typeof text === "undefined")
 					text = "";
-				var cell = $("<td/>").appendTo(itemRow);
+				var cell = $("<td></td>").appendTo(itemRow);
+
+				//align the elements (if unset: "center")
+				if (typeof table.options.verticalAlign !== "undefined"){
+					if (table.options.verticalAlign === "top")
+						$(cell).attr("valign","top");
+					else if (table.options.verticalAlign === "center")
+						$(cell).attr("valign","center");
+					else if (table.options.verticalAlign === "bottom")
+						$(cell).attr("valign","bottom");
+				}
+
 				if (table.options.tableContentOffset && text.length < table.options.tableContentOffset) {
 					$(cell).html(text);
 				} else {

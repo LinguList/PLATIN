@@ -42,7 +42,8 @@ function TableConfig(options) {
 		tableInvertSelection : true, // show invert selection option
 		tableSelectByText : true, // select objects by full-text search
 		tableCreateNewFromSelected : true, // create new dataset from selected objects
-		unselectedCellColor : '#EEE' // color for an unselected row/tab
+		unselectedCellColor : '#EEE', // color for an unselected row/tab
+		verticalAlign : 'top', // vertical alignment of the table cells ('top','center','bottom')
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
