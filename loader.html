@@ -31,13 +31,28 @@
       </div>
     </noscript>
 
-	<fieldset id="dataloaderContainerDiv" style="position:relative;">
-		<legend>Load Data</legend>
-	</fieldset>
-	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
-		<legend>Load Overlay</legend>
-	</fieldset>
 	<table width=100%>
+		<tr >
+			<td width=50%>
+				<fieldset id="dataloaderContainerDiv" style="position:relative;">
+					<legend>Load Data</legend>
+				</fieldset>
+			</td>
+			<td rowspan=2 width=50% valign=top>
+				<fieldset style="position:relative;">
+					<legend>Data History</legend>
+					<div id="storytellingContainerDiv">
+					</div>
+				</fieldset>			
+			</td>
+		</tr>
+		<tr>
+			<td width=50%>
+				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+					<legend>Load Overlay</legend>
+				</fieldset>
+			</td>
+		</tr>
 		<tr>
 			<td width=50%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
@@ -87,6 +102,11 @@
 			
 			return value;
 		});
+
+		
+		var storytellingDiv = document.getElementById("storytellingContainerDiv");
+		var storytelling = new WidgetWrapper();
+		var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
 		/*
 		var kml1 = GeoTemConfig.getKml('data/heine.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
@@ -102,6 +122,7 @@
 			time.display(datasets);
 			table.display(datasets);
 			piechart.display(datasets);
+			storytelling.display(datasets);
 			
 			dataloaderWidget.loadFromURL();
 		});		
