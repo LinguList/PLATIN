@@ -260,15 +260,24 @@ GeoTemConfig.createKMLfromDataset = function(index){
 
 GeoTemConfig.createCSVfromDataset = function(index){
 	var csvContent = "";
-	
 	var header = ["name", "description", "weight"];
 	var tableContent = [];
 	
 	var firstDataObject = GeoTemConfig.datasets[index].objects[0];
 	
-	$.each(firstDataObject.tableContent,function(key){
-		tableContent.push(key);
-	});
+	for(var key in firstDataObject.tableContent){
+		var found = false;
+		$(header).each(function(index,val){
+			if (val === key){
+				found = true;
+				return false;
+			}				
+		});
+		if (found === true)
+			continue;
+		else
+			tableContent.push(key);
+	}
 	
 	var isFirst = true;
 	$(header).each(function(key,val){
@@ -277,6 +286,12 @@ GeoTemConfig.createCSVfromDataset = function(index){
 		} else {
 			csvContent += ",";
 		}
+
+		//Rename according to CSV import definition
+		if (val === "name")
+			val = "Name";
+		else if (val === "description")
+			val = "Description";
 		csvContent += "\""+val+"\"";
 	});
 	$(tableContent).each(function(key,val){
@@ -287,6 +302,9 @@ GeoTemConfig.createCSVfromDataset = function(index){
 		}
 		csvContent += "\""+val+"\"";
 	});
+	//Names according to CSV import definition
+	csvContent +=  ",\"Address\",\"Latitude\",\"Longitude\",\"TimeStamp\",\"TimeSpan:begin\",\"TimeSpan:end\"";
+	csvContent += "\n";
 	
 	var isFirstRow = true;
 	$(GeoTemConfig.datasets[index].objects).each(function(){
@@ -315,7 +333,43 @@ GeoTemConfig.createCSVfromDataset = function(index){
 			}
 			csvContent += "\""+elem.tableContent[val]+"\"";
 		});
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if (elem.isGeospatial){
+			csvContent += elem.locations[0].place;
+		}
+		csvContent += "\"";
 
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLatitude(0) !== "undefined") ){
+			csvContent += elem.getLatitude(0);
+		}
+		csvContent += "\"";
+
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLongitude(0) !== "undefined") ){
+			csvContent += elem.getLongitude(0);
+		}
+		csvContent += "\"";
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isTemporal) && (typeof elem.getDate(0) !== "undefined") ){
+			//TODO: not supported in IE8 switch to moment.js
+			csvContent += elem.getDate(0).toISOString();
+		}
+		csvContent += "\"";
+		
+		//TODO: fuzzy temporal not yet included
+		csvContent += ",";
+		csvContent += "\"";
+		csvContent += "\"";
+		csvContent += ",";
+		csvContent += "\"";
+		csvContent += "\"";
 	});
 	  
 	return(csvContent);
