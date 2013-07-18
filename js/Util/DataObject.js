@@ -47,9 +47,10 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	this.weight = weight;
 	this.tableContent = new Object();
 	var objectTableContent = this.tableContent;
-	$.each(tableContent,function(key,value){
+	for(key in tableContent){
+		value = tableContent[key];
 		objectTableContent[$.trim(key)]=$.trim(value);
-	});
+	}
 
 	this.percentage = 0;
 	this.setPercentage = function(percentage) {
