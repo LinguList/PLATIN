@@ -49,6 +49,7 @@ StorytellingWidget.prototype = {
 		$(gui.storytellingContainer).empty();
 		
 		var magneticLinkParam = "";
+		var datasetIndex = 0;
 		$(storytellingWidget.datasets).each(function(){
 			var dataset = this;
 			
@@ -75,10 +76,46 @@ StorytellingWidget.prototype = {
 				tableLinkDiv.setAttribute('class', 'externalLink');
 				paragraph.append(tableLinkDiv);
 			} else {
+				var uploadToDARIAH = document.createElement('a');
+				$(uploadToDARIAH).append("Upload to DARIAH Storage");
+				uploadToDARIAH.title = "";
+				uploadToDARIAH.href = dataset.url;
 				
+				var localDatasetIndex = new Number(datasetIndex);
+				$(uploadToDARIAH).click(function(){
+					var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
+					// taken from dariah.storage.js
+					var storageURL = "http://ref.dariah.eu/storage/"
+				    $.ajax({
+						url: storageURL,
+						type: 'POST',
+						contentType: 'text/csv',
+						data: csv,
+						success: function(data, status, xhr) {
+							var location = xhr.getResponseHeader('Location');
+							// the dariah storage id
+						    dsid = location.substring(location.lastIndexOf('/')+1);
+						    
+						    //add URL to dataset
+						    storytellingWidget.datasets[localDatasetIndex].url = location;
+						    //refresh list
+						    storytellingWidget.initWidget(storytellingWidget.datasets);
+						},
+						error: function (data, text, error) {
+							alert('error creating new file in dariah storage because ' + text);
+							console.log(data);
+							console.log(text);
+							console.log(error);
+						}
+				    });					
+					//discard link click-event
+					return(false);
+				});
+				paragraph.append(uploadToDARIAH);
 			}
 			
 			$(gui.storytellingContainer).append(paragraph);
+			datasetIndex++;
 		});
 		
 		var magneticLink = document.createElement('a');
