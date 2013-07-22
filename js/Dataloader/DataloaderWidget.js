@@ -84,7 +84,7 @@ DataloaderWidget.prototype = {
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var fileName = $.url(paramValue).attr('file');
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
 			if (typeof dataLoaderWidget.options.proxy != 'undefined')
 				paramValue = dataLoaderWidget.options.proxy + paramValue;
