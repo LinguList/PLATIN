@@ -59,6 +59,22 @@ Dataloader.prototype = {
 		$(this.parent.gui.loaderTypeSelect).change();
 	},
 	
+	getFileName : function(url) {
+		var fileName = $.url(url).attr('file');
+		if ( (typeof fileName === "undefined") || (fileName.length === 0) ){
+			fileName = $.url(url).attr('path');
+			//startsWith and endsWith defined in SIMILE Ajax (string.js) 
+			while (fileName.endsWith("/")){
+				fileName = fileName.substr(0,fileName.length-1);
+			}
+			if (fileName.length > 1)
+				fileName = fileName.substr(fileName.lastIndexOf("/")+1);
+			else
+				fileName = "unnamed dataset";
+		}
+		return fileName;
+	},
+	
 	distributeDataset : function(dataSet) {
 		GeoTemConfig.addDataset(dataSet);
 	},
@@ -80,7 +96,7 @@ Dataloader.prototype = {
 		$(this.loadKMLButton).click($.proxy(function(){
 			var kmlURL = $(this.kmlURL).val();
 			var origURL = kmlURL;
-			var fileName = $.url(kmlURL).attr('file');
+			var fileName = this.getFileName(kmlURL);
 			if (typeof this.options.proxy != 'undefined')
 				kmlURL = this.options.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
@@ -116,7 +132,7 @@ Dataloader.prototype = {
 			
 			var kmzURL = $(this.kmzURL).val();
 			var origURL = kmzURL;
-			var fileName = $.url(kmzURL).attr('file');
+			var fileName = dataLoader.getFileName(kmzURL);
 			if (typeof this.options.proxy != 'undefined')
 				kmzURL = this.options.proxy + kmzURL;
 			
@@ -152,7 +168,7 @@ Dataloader.prototype = {
 			
 			var csvURL = $(this.csvURL).val();
 			var origURL = csvURL;
-			var fileName = $.url(csvURL).attr('file');
+			var fileName = dataLoader.getFileName(csvURL);
 			if (typeof this.options.proxy != 'undefined')
 				csvURL = this.options.proxy + csvURL;
 			GeoTemConfig.getCsv(csvURL, function(json){
