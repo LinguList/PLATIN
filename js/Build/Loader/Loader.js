@@ -270,7 +270,11 @@ GeoTemCoLoader = {
 
 		GeoTemConfig.configure(GeoTemCoLoader.urlPrefix);
 		Publisher.Publish('GeoTemCoReady', '', null);
-
+		
+		//TODO: find more appropriate position for this
+		$(window).resize(function() {
+		    Publisher.Publish("resizeWidget");
+		});
 	}
 }
 
