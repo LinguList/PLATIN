@@ -33,7 +33,8 @@ function StorytellingGui(storytelling, div, options) {
 	this.parent = storytelling;
 	var storytellingGui = this;
 	
-	storytellingGui.storytellingContainer = div;
+	storytellingGui.storytellingContainer = document.createElement('div');
+	$(div).append(storytellingGui.storytellingContainer);
 	storytellingGui.storytellingContainer.style.position = 'relative';
 };
 
