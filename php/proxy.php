@@ -56,17 +56,21 @@
 			
 			$request_body = file_get_contents('php://input');
 			
-			$opts = array('http' =>
-					array(
-							'method'  => 'POST',
-							'header'  => 'Content-type: '.$_SERVER["CONTENT_TYPE"],
-							'content' => $request_body
-					)
-			);
+			if (empty($request_body)){
+				echo file_get_contents($address);
+			} else {
+				$opts = array('http' =>
+						array(
+								'method'  => 'POST',
+								'header'  => 'Content-type: '.$_SERVER["CONTENT_TYPE"],
+								'content' => $request_body
+						)
+				);
+				
+				$context = stream_context_create($opts);
 			
-			$context = stream_context_create($opts);
-			
-			echo file_get_contents($_REQUEST['address'], false, $context);			
+				echo file_get_contents($address, false, $context);
+			}							
 		}
 	}
 ?>
