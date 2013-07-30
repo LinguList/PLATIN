@@ -630,6 +630,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	display: inline-block;
 	height: 25px;
 	max-height: 25px;
+	white-space: nowrap;
 }
 
 .dropdownLeft {
@@ -649,6 +650,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	display: table-cell;	
 	vertical-align: middle;
 	background-image: url(../images/dropdownMiddle.png);
+	white-space: nowrap;
 }
 
 .dropdownButtonEnabled {
@@ -683,6 +685,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 .dropdownMenu dl {
 	margin: 0px;
 	display: block;
+	white-space: nowrap;
 }
 
 .dropdownMenu dt {
@@ -692,10 +695,12 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
   	text-align: center;
 	color: #6f6b68;
 	font-weight: normal;
+	white-space: nowrap;
 }
 
 .dropdownMenu dt:hover {
 	background: #DFDFDD;
+	white-space: nowrap;
 }
 
 .dropdownSelectedEntry {
@@ -704,6 +709,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	font-weight: normal;
 	display: table-cell;
 	vertical-align: middle;
+	white-space: nowrap;
 }
 
 .dropdownUnselectedEntry {
@@ -712,6 +718,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	font-weight: normal;
 	display: table-cell;
 	vertical-align: middle;
+	white-space: nowrap;
 }
 
 .ddbElementsCount {
