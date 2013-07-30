@@ -95,6 +95,8 @@ Dataloader.prototype = {
 
 		$(this.loadKMLButton).click($.proxy(function(){
 			var kmlURL = $(this.kmlURL).val();
+			if (kmlURL.length === 0)
+				return;
 			var origURL = kmlURL;
 			var fileName = this.getFileName(kmlURL);
 			if (typeof this.options.proxy != 'undefined')
@@ -131,6 +133,8 @@ Dataloader.prototype = {
 	    	var dataLoader = this;
 			
 			var kmzURL = $(this.kmzURL).val();
+			if (kmzURL.length === 0)
+				return;
 			var origURL = kmzURL;
 			var fileName = dataLoader.getFileName(kmzURL);
 			if (typeof this.options.proxy != 'undefined')
@@ -167,6 +171,8 @@ Dataloader.prototype = {
 			var dataLoader = this;
 			
 			var csvURL = $(this.csvURL).val();
+			if (csvURL.length === 0)
+				return;
 			var origURL = csvURL;
 			var fileName = dataLoader.getFileName(csvURL);
 			if (typeof this.options.proxy != 'undefined')
