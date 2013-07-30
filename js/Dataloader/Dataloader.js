@@ -48,6 +48,7 @@ Dataloader.prototype = {
 
 	initialize : function() {
 
+		this.addStaticLoader();
 		this.addKMLLoader();
 		this.addKMZLoader();
 		this.addCSVLoader();
@@ -77,6 +78,49 @@ Dataloader.prototype = {
 	
 	distributeDataset : function(dataSet) {
 		GeoTemConfig.addDataset(dataSet);
+	},
+	
+	addStaticLoader : function() {
+		if (this.options.staticKML.length > 0){
+			$(this.parent.gui.loaderTypeSelect).append("<option value='StaticLoader'>Static Data</option>");
+			
+			this.StaticLoaderTab = document.createElement("div");
+			$(this.StaticLoaderTab).attr("id","StaticLoader");
+			
+			this.staticKMLList = document.createElement("select");
+			$(this.StaticLoaderTab).append(this.staticKMLList);
+			
+			var staticKMLList = this.staticKMLList;
+			$(this.options.staticKML).each(function(){
+				var label = this.label;
+				var url = this.url;
+				$(staticKMLList).append("<option value='"+url+"'>"+label+"</option>");
+			});		
+			
+			this.loadStaticKMLButton = document.createElement("button");
+			$(this.loadStaticKMLButton).text("load");
+			$(this.StaticLoaderTab).append(this.loadStaticKMLButton);
+
+			$(this.loadStaticKMLButton).click($.proxy(function(){
+				var kmlURL = $(this.staticKMLList).find(":selected").attr("value");
+				if (kmlURL.length === 0)
+					return;
+				var origURL = kmlURL;
+				var fileName = this.getFileName(kmlURL);
+				if (typeof this.options.proxy != 'undefined')
+					kmlURL = this.options.proxy + kmlURL;
+				var kml = GeoTemConfig.getKml(kmlURL);
+				if ((typeof kml !== "undefined") && (kml != null)) {
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
+					
+					if (dataSet != null)
+						this.distributeDataset(dataSet);
+				} else
+					alert("Could not load file.");
+			},this));
+
+			$(this.parent.gui.loaders).append(this.StaticLoaderTab);
+		}
 	},
 	
 	addKMLLoader : function() {
