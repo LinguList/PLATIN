@@ -299,6 +299,23 @@ GeoTemConfig.convertCsv = function(text){
 		var innerArray = csvArray[i];
 		var dataObject = new Object();
 		var tableContent = new Object(); 
+		/* exclude lines with no content */
+		var hasContent = false;
+		for (var j = 0; j < innerArray.length; j++) {
+			if (typeof innerArray[j] !== "undefined"){
+				if (typeof innerArray[j] === "string"){
+					if (innerArray[j].length > 0)
+						hasContent = true;
+				} else {
+					hasContent = true;
+				}
+			}
+			
+			if (hasContent === true)
+				break;
+		}
+		if (hasContent === false)
+			continue;
 	   	/* loop inner array */
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
