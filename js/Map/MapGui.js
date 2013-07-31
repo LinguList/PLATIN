@@ -169,6 +169,10 @@ function MapGui(map, div, options, iid) {
 		this.container.appendChild(this.homeButton);
 		this.homeButton.style.left = "20px";
 		this.homeButton.onclick = function() {
+			if (map.mds.getAllObjects() == null){
+				map.openlayersMap.setCenter(new OpenLayers.LonLat(0, 0));
+				map.openlayersMap.zoomTo(0);
+			}
 			gui.map.drawObjectLayer(true);
 		}
 	}
