@@ -91,11 +91,22 @@ Dataloader.prototype = {
 			$(this.StaticLoaderTab).append(this.staticKMLList);
 			
 			var staticKMLList = this.staticKMLList;
+			var isFirstHeader = true;
 			$(this.options.staticKML).each(function(){
 				var label = this.label;
 				var url = this.url;
-				$(staticKMLList).append("<option value='"+url+"'>"+label+"</option>");
-			});		
+				var header = this.header;
+				if (typeof header !== "undefined"){
+					if (!isFirstHeader)
+						$(staticKMLList).append("</optgroup>");
+					$(staticKMLList).append("<optgroup label='"+header+"'>");
+					isFirstHeader = false;
+				} else
+					$(staticKMLList).append("<option value='"+url+"'>     "+label+"</option>");
+			});
+			//close last optgroup (if there were any)
+			if (!isFirstHeader)
+				$(staticKMLList).append("</optgroup>");
 			
 			this.loadStaticKMLButton = document.createElement("button");
 			$(this.loadStaticKMLButton).text("load");
