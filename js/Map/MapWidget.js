@@ -1444,18 +1444,27 @@ MapWidget.prototype = {
 		var gap = 0;
 		var x_s = this.gui.mapWindow.offsetWidth / 2 - gap;
 		var y_s = this.gui.mapWindow.offsetHeight / 2 - gap;
-		var xDist = Math.abs(p.x - closestPoint.x);
-		var yDist = Math.abs(p.y - closestPoint.y);
-		for (var i = 0; i < zoomLevels; i++) {
-			var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
-			if (xDist / resolution < x_s && yDist / resolution < y_s) {
-				this.openlayersMap.zoomTo(zoomLevels - i - 1);
-				if (this.zoomSlider) {
-					this.zoomSlider.setValue(this.openlayersMap.getZoom());
+		if (typeof closestPoint !== "undefined"){
+			var xDist = Math.abs(p.x - closestPoint.x);
+			var yDist = Math.abs(p.y - closestPoint.y);
+			for (var i = 0; i < zoomLevels; i++) {
+				var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
+				if (xDist / resolution < x_s && yDist / resolution < y_s) {
+					this.openlayersMap.zoomTo(zoomLevels - i - 1);
+					if (this.zoomSlider) {
+						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+					}
+					this.drawObjectLayer(false);
+					break;
 				}
-				this.drawObjectLayer(false);
-				break;
 			}
+		} else {
+			//if there are no points on the map, zoom to max 
+			this.openlayersMap.zoomTo(0);
+			if (this.zoomSlider) {
+				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			}
+			this.drawObjectLayer(false);
 		}
 	},
 
