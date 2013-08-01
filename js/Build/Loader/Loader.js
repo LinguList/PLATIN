@@ -58,7 +58,9 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/purl.min.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.remember.js'
-			}],GeoTemCoLoader.loadFlot);
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery-deparam.min.js'
+			},],GeoTemCoLoader.loadFlot);
 		}
 		else {
 			GeoTemCoLoader.loadFlot();
