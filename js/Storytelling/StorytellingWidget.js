@@ -33,9 +33,25 @@ function StorytellingWidget(core, div, options) {
 	this.datasets;
 	this.core = core;
 	this.core.setWidget(this);
+	this.currentStatus = new Object();
 
 	this.options = (new StorytellingConfig(options)).options;
 	this.gui = new StorytellingGui(this, div, this.options);
+	
+	this.datasetLink;
+	
+	Publisher.Subscribe('mapChanged', this, function(mapName) {
+		this.client.currentStatus["mapChanged"] = mapName;
+		this.client.createLink();
+	});
+	
+	var currentStatus = $.url().param("currentStatus");
+	if (typeof currentStatus !== "undefined"){
+		this.currentStatus = $.deparam(currentStatus);
+		$.each(this.currentStatus,function(action,data){
+			Publisher.Publish(action, data, this);
+		});
+	}
 }
 
 StorytellingWidget.prototype = {
@@ -118,12 +134,22 @@ StorytellingWidget.prototype = {
 			datasetIndex++;
 		});
 		
+		this.datasetLink = magneticLinkParam;
+		this.createLink();
+	},
+	
+	createLink : function() {
+		$(this.gui.storytellingContainer).find('a').remove();
+
 		var magneticLink = document.createElement('a');
 		$(magneticLink).append("Magnetic Link");
 		magneticLink.title = "Use this link to reload currently loaded (online) data.";
-		magneticLink.href = "?"+magneticLinkParam;
+		magneticLink.href = "?"+this.datasetLink;
+		var currentStatusParam = $.param(this.currentStatus);
+		if (currentStatusParam.length > 0)
+			magneticLink.href += "&currentStatus="+currentStatusParam;
 		magneticLink.target = '_';
-		$(gui.storytellingContainer).prepend(magneticLink);
+		$(this.gui.storytellingContainer).prepend(magneticLink);
 	},
 	
 	highlightChanged : function(objects) {
