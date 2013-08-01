@@ -540,6 +540,11 @@ MapWidget.prototype = {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
 			this.zoomSlider.setValue(this.openlayersMap.getZoom());
 		}
+		
+		Publisher.Subscribe('mapChanged', this, function(mapName) {
+			this.client.setBaseLayerByName(mapName);
+			this.client.gui.setMap();
+		});
 
 	},
 
@@ -1188,6 +1193,10 @@ MapWidget.prototype = {
 		this.core.triggerSelection(this.selection);
 		this.filterBar.reset(true);
 	},
+	
+	triggerMapChanged : function(mapName) {
+		Publisher.Publish('mapChanged', mapName, this);
+	},
 
 	/**
 	 * displays connections between data objects
@@ -1340,6 +1349,7 @@ MapWidget.prototype = {
 		} else {
 			this.gui.osmLink.style.visibility = 'hidden';
 		}
+		this.triggerMapChanged(this.baseLayers[index].name);
 	},
 
 	//vhz added title to buttons
