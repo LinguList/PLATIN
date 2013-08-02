@@ -73,6 +73,7 @@ function Dropdown(parent, elements, title) {
 	var entries = document.createElement("dl");
 	var addEntry = function(e) {
 		var entry = document.createElement("dt");
+		entry.setAttribute('class', 'dropdownUnselectedEntry');
 		entry.innerHTML = e.name;
 		entry.onclick = function() {
 			e.onclick();
