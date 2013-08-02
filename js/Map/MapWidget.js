@@ -654,6 +654,19 @@ MapWidget.prototype = {
 				resolutions : this.resolutions
 			}));
 		}
+		if (this.options.osmMapsMapQuest) {
+			this.baseLayers.push(new OpenLayers.Layer.OSM('Open Street Map (MapQuest)', 
+				["http://otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"], 
+	            {
+					sphericalMercator : true,
+					zoomOffset : 1,
+					resolutions : this.resolutions
+	            }
+			));
+		}
 		for (var i = 0; i < this.baseLayers.length; i++) {
 			this.openlayersMap.addLayers([this.baseLayers[i]]);
 		}
@@ -1348,6 +1361,11 @@ MapWidget.prototype = {
 			this.gui.osmLink.style.visibility = 'visible';
 		} else {
 			this.gui.osmLink.style.visibility = 'hidden';
+		}
+		if (this.baseLayers[index].name == 'Open Street Map (MapQuest)') {
+			this.gui.osmMapQuestLink.style.visibility = 'visible';
+		} else {
+			this.gui.osmMapQuestLink.style.visibility = 'hidden';
 		}
 		this.triggerMapChanged(this.baseLayers[index].name);
 	},
