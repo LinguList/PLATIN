@@ -1159,6 +1159,7 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=85)";
 	border-spacing: 0px;
 	height:47px;
+	overflow:auto;
 }
 
 .tableTab {
