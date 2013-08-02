@@ -139,7 +139,7 @@ StorytellingWidget.prototype = {
 	},
 	
 	createLink : function() {
-		$(this.gui.storytellingContainer).find('#magneticLink').remove();
+		$(this.gui.storytellingContainer).find('.magneticLink').remove();
 
 		var magneticLink = document.createElement('a');
 		magneticLink.setAttribute('class', 'magneticLink');
