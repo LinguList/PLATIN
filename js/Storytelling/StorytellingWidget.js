@@ -139,9 +139,10 @@ StorytellingWidget.prototype = {
 	},
 	
 	createLink : function() {
-		$(this.gui.storytellingContainer).find('a').remove();
+		$(this.gui.storytellingContainer).find('#magneticLink').remove();
 
 		var magneticLink = document.createElement('a');
+		magneticLink.setAttribute('class', 'magneticLink');
 		$(magneticLink).append("Magnetic Link");
 		magneticLink.title = "Use this link to reload currently loaded (online) data.";
 		magneticLink.href = "?"+this.datasetLink;
