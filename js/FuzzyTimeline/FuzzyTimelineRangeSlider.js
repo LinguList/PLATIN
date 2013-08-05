@@ -35,8 +35,6 @@ function FuzzyTimelineRangeSlider(parent) {
 	
 	this.spans;
 	
-	this.overallMin;
-	this.overallMax;
 	this.datasets;
 	
 	this.sliderParentDiv = this.parent.gui.sliderDiv;
@@ -48,10 +46,8 @@ function FuzzyTimelineRangeSlider(parent) {
 
 FuzzyTimelineRangeSlider.prototype = {
 
-	initialize : function(overallMin,overallMax,datasets) {
+	initialize : function(datasets) {
 		var rangeSlider = this;
-		rangeSlider.overallMin = overallMin;
-		rangeSlider.overallMax = overallMax;
 		rangeSlider.datasets = datasets;
 
 		//reset values

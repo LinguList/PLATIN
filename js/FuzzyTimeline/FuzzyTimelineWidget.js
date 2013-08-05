@@ -94,16 +94,16 @@ FuzzyTimelineWidget.prototype = {
 				});
 			});
 			
-			fuzzyTimeline.density.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
-			fuzzyTimeline.rangeBars.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
-			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,fuzzyTimeline.datasets);
+			fuzzyTimeline.density.initialize(fuzzyTimeline.datasets);
+			fuzzyTimeline.rangeBars.initialize(fuzzyTimeline.datasets);
+			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);
 		}
 	},
 	
 	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
 		var fuzzyTimeline = this;
 		//redraw density plot
-		fuzzyTimeline.density.initialize(fuzzyTimeline.overallMin,fuzzyTimeline.overallMax,shownDatasets);
+		fuzzyTimeline.density.initialize(shownDatasets);
 		//redraw range plot
 		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,spanWidth);
 		//redraw pie charts

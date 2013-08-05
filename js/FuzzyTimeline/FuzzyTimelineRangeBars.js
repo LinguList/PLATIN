@@ -34,8 +34,6 @@ function FuzzyTimelineRangeBars(parent) {
 	this.options = parent.options;
 	
 	this.datasets;
-	this.overallMin;
-	this.overallMax;
 	
 	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
 	this.plotDiv = document.createElement("div");
@@ -51,11 +49,9 @@ function FuzzyTimelineRangeBars(parent) {
 
 FuzzyTimelineRangeBars.prototype = {
 
-	initialize : function(overallMin,overallMax,datasets) {
+	initialize : function(datasets) {
 		var rangeBar = this;
 		
-		rangeBar.overallMin = overallMin;
-		rangeBar.overallMax = overallMax;
 		rangeBar.datasets = datasets;
 
 		rangeBar.deletePieCharts();
@@ -63,11 +59,11 @@ FuzzyTimelineRangeBars.prototype = {
 	
 	drawRangeBarChart : function(shownDatasets, spanWidth){
 		var rangeBar = this;
-		var tickCount = Math.ceil((rangeBar.overallMax-rangeBar.overallMin)/spanWidth);
+		var tickCount = Math.ceil((rangeBar.parent.overallMax-rangeBar.parent.overallMin)/spanWidth);
 		
 		if (tickCount > 100){
 			tickCount = 100;
-			spanWidth = (rangeBar.overallMax-rangeBar.overallMin)/tickCount;
+			spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
 		}
 		
 		var plots = [];
@@ -87,7 +83,7 @@ FuzzyTimelineRangeBars.prototype = {
 		}
 		
 		for (var i = 0; i < tickCount; i++){
-			ticks[i] = [i,moment(rangeBar.overallMin+i*spanWidth).format(axisFormatString)];
+			ticks[i] = [i,moment(rangeBar.parent.overallMin+i*spanWidth).format(axisFormatString)];
 		}
 		
 		$(shownDatasets).each(function(){
@@ -140,8 +136,8 @@ FuzzyTimelineRangeBars.prototype = {
 		        tooltip: true,
 		        tooltipOpts: {
 		            content: function(xval, yval){
-		            	highlightString =	moment(rangeBar.overallMin+xval*spanWidth).format(axisFormatString)	+ " - " +
-		            						moment(rangeBar.overallMin+(xval+1)*spanWidth).format(axisFormatString) + " : ";
+		            	highlightString =	moment(rangeBar.parent.overallMin+xval*spanWidth).format(axisFormatString)	+ " - " +
+		            						moment(rangeBar.parent.overallMin+(xval+1)*spanWidth).format(axisFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 

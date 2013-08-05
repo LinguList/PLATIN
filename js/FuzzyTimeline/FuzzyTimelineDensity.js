@@ -30,8 +30,6 @@ function FuzzyTimelineDensity(parent,div) {
 
 	this.index;
 	this.fuzzyTimeline = this;
-	this.overallMin;
-	this.overallMax;
 	this.singleTickWidth;
 	this.singleTickCenter = function(){return this.singleTickWidth/2;};
 	//TODO: experiment with number of ticks, 500 seems to be ok for now
@@ -57,15 +55,15 @@ FuzzyTimelineDensity.prototype = {
 		density = this;
 		var chartData = [];
 
-		chartData.push([density.overallMin,0]);
+		chartData.push([density.parent.overallMin,0]);
 		$.each(data, function(name,val){
-			var tickCenterTime = density.overallMin+name*density.singleTickWidth+density.singleTickCenter();
+			var tickCenterTime = density.parent.overallMin+name*density.singleTickWidth+density.singleTickCenter();
 			var dateObj = moment(tickCenterTime);
 			chartData.push([dateObj,val]);
 		});
 		var maxPlotedDate = chartData[chartData.length-1][0];
-		if (density.overallMax > maxPlotedDate){
-			chartData.push([density.overallMax,0]);
+		if (density.parent.overallMax > maxPlotedDate){
+			chartData.push([density.parent.overallMax,0]);
 		} else {
 			chartData.push([maxPlotedDate+1,0]);
 		}
@@ -75,11 +73,9 @@ FuzzyTimelineDensity.prototype = {
 		return chartData;
 	},
 	
-	initialize : function(overallMin, overallMax, datasets, tickWidth) {
+	initialize : function(datasets, tickWidth) {
 		var density = this;
 		density.datasets = datasets;
-		density.overallMin = overallMin;
-		density.overallMax = overallMax;
 
 		density.plots = [];
 		//calculate tick width (will be in ms)
@@ -87,11 +83,11 @@ FuzzyTimelineDensity.prototype = {
 		delete density.singleTickWidth;
 		if (typeof tickWidth !== "undefined"){
 			density.singleTickWidth = tickWidth;
-			density.tickCount = Math.ceil((density.overallMax-density.overallMin)/tickWidth);
+			density.tickCount = Math.ceil((density.parent.overallMax-density.parent.overallMin)/tickWidth);
 		} 
 		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
 			density.tickCount = density.maxTickCount;
-			density.singleTickWidth = (density.overallMax-density.overallMin)/density.tickCount;
+			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
 		}
 
 		//Gleichverteilung	
