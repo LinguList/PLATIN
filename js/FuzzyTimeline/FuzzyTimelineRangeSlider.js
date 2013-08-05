@@ -63,7 +63,7 @@ FuzzyTimelineRangeSlider.prototype = {
 						//smallest span = 1ms
 						rangeSlider.spans.push(1000);
 				} else if (dataObject.isFuzzyTemporal){
-					var span = dataObject.TimeSpanEnd - dataObject.TimeSpanBegin;
+					var span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin).asMilliseconds();
 					if ($.inArray(span,rangeSlider.spans)==-1)
 						rangeSlider.spans.push(span);
 				} 
@@ -73,25 +73,25 @@ FuzzyTimelineRangeSlider.prototype = {
 		rangeSlider.spans.sort(function(a,b){return a-b;});
 
 		var fixedSpans = [
-		    moment.duration(1, 'seconds'),
-			moment.duration(1, 'minutes'),
-			moment.duration(10, 'minutes'),
-			moment.duration(15, 'minutes'),
-			moment.duration(30, 'minutes'),
-			moment.duration(1, 'hours'),
-			moment.duration(5, 'hours'),
-			moment.duration(10, 'hours'),
-			moment.duration(12, 'hours'),
-			moment.duration(1, 'days'),
-			moment.duration(7, 'days'),
-			moment.duration(1, 'weeks'),
-			moment.duration(1, 'months'),
-			moment.duration(3, 'months'),
-			moment.duration(6, 'months'),
-			moment.duration(1, 'years'),
-			moment.duration(10, 'years'),
-			moment.duration(100, 'years'),
-			moment.duration(1000, 'years')];
+		    moment.duration(1, 'seconds').asMilliseconds(),
+			moment.duration(1, 'minutes').asMilliseconds(),
+			moment.duration(10, 'minutes').asMilliseconds(),
+			moment.duration(15, 'minutes').asMilliseconds(),
+			moment.duration(30, 'minutes').asMilliseconds(),
+			moment.duration(1, 'hours').asMilliseconds(),
+			moment.duration(5, 'hours').asMilliseconds(),
+			moment.duration(10, 'hours').asMilliseconds(),
+			moment.duration(12, 'hours').asMilliseconds(),
+			moment.duration(1, 'days').asMilliseconds(),
+			moment.duration(7, 'days').asMilliseconds(),
+			moment.duration(1, 'weeks').asMilliseconds(),
+			moment.duration(1, 'months').asMilliseconds(),
+			moment.duration(3, 'months').asMilliseconds(),
+			moment.duration(6, 'months').asMilliseconds(),
+			moment.duration(1, 'years').asMilliseconds(),
+			moment.duration(10, 'years').asMilliseconds(),
+			moment.duration(100, 'years').asMilliseconds(),
+			moment.duration(1000, 'years').asMilliseconds(),
 		
 		//add the fixed spans, that are longer than minimum span and not already contained
 		for (var i = 0; i < fixedSpans.length; i++){
