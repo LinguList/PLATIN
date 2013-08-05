@@ -92,6 +92,10 @@ FuzzyTimelineRangeSlider.prototype = {
 			moment.duration(10, 'years').asMilliseconds(),
 			moment.duration(100, 'years').asMilliseconds(),
 			moment.duration(1000, 'years').asMilliseconds(),
+			moment.duration(2000, 'years').asMilliseconds(),
+			moment.duration(5000, 'years').asMilliseconds(),
+			moment.duration(10000, 'years').asMilliseconds(),
+			];
 		
 		//add the fixed spans, that are longer than minimum span and not already contained
 		for (var i = 0; i < fixedSpans.length; i++){
