@@ -34,22 +34,16 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.options = parent.options;
 	
 	this.spans;
-	this.spanHash;
 	
 	this.overallMin;
 	this.overallMax;
 	this.datasets;
 	
 	this.sliderParentDiv = this.parent.gui.sliderDiv;
-	this.sliderDiv = document.createElement("div");
-	$(this.sliderParentDiv).append(this.sliderDiv);
-	$(this.sliderDiv).css("float","left");
-	$(this.sliderDiv).width("90%");
-	this.sliderValue = document.createElement("div");
-	$(this.sliderParentDiv).append(this.sliderValue);
-	this.sliderValue.align = "right";
-	$(this.sliderValue).css("float","right");
-	$(this.sliderValue).width("10%");
+	this.rangeStart = document.createElement("select");
+	$(this.sliderParentDiv).append(this.rangeStart);
+	this.rangeDropdown = document.createElement("select");
+	$(this.sliderParentDiv).append(this.rangeDropdown);
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -113,67 +107,93 @@ FuzzyTimelineRangeSlider.prototype = {
 		rangeSlider.spans.sort(function(a,b){return a-b;});
 		
 		if (rangeSlider.spans.length > 0){
-			//create empty hash map (span -> DataObjects)
+			$(rangeSlider.rangeDropdown).empty();
+			
 			$(rangeSlider.spans).each(function(){
-				var emptyObjectArray = [];
-				$(rangeSlider.datasets).each(function(){
-					emptyObjectArray.push([]);
-				});
-				rangeSlider.spanHash.push(emptyObjectArray);
+				var duration = moment.duration(Number(this));
+				var humanizedSpan = "";
+				if (duration < moment.duration(1,'second'))
+					humanizedSpan = duration.milliseconds() + "ms";
+				else if (duration < moment.duration(1,'minute'))
+					humanizedSpan = duration.seconds() + "s";
+				else if (duration < moment.duration(1,'hour'))
+					humanizedSpan = duration.minutes() + "min";
+				else if (duration < moment.duration(1,'day'))
+					humanizedSpan = duration.hours() + "h";
+				else if (duration < moment.duration(1,'month'))
+					humanizedSpan = duration.days() + " days";
+				else if (duration < moment.duration(1,'year'))
+					humanizedSpan = duration.months() + " months";
+				else 
+					humanizedSpan = duration.years() + " years";
+				$(rangeSlider.rangeDropdown).append("<option>"+humanizedSpan+"</option>");
 			});
 
-			//build hash map (span -> DataObjects)
-			var datasetIndex = 0;
-			$(rangeSlider.datasets).each(function(){
-				$(this.objects).each(function(){
-					var dataObject = this;
-					var span;
-					if (dataObject.isTemporal){
-						//smallest span = 1ms
-						span = 1000;
-					} else if (dataObject.isFuzzyTemporal){
-						span = dataObject.TimeSpanEnd - dataObject.TimeSpanBegin;
-					}
-					
-					if (typeof span !== "undefined"){
-						var spanIndex = rangeSlider.spans.indexOf(span);
-						//has to be in array, so no check for -1
-						rangeSlider.spanHash[spanIndex][datasetIndex].push(dataObject);
-					}
-				});
-				datasetIndex++;
-			});
-			
-			$(rangeSlider.sliderDiv).slider({
-				min:0,
-				max:rangeSlider.spans.length-1,
-				step:1,
-				value:0
-			});
-			
-			var onSlideFunction = function( event, ui ){
-				//redraw span "name"
-				var handlePosition = ui.value;
-				$(rangeSlider.sliderValue).empty();
-				$(rangeSlider.sliderValue).append(moment.duration(rangeSlider.spans[handlePosition]).humanize());
-				var shownDatasets = rangeSlider.spanHash[0];
-				for (var i = 1; i < handlePosition; i++){
-					shownDatasets = GeoTemConfig.mergeObjects(shownDatasets,rangeSlider.spanHash[i]);
-				}
+			$(rangeSlider.rangeDropdown).change(function( eventObject ){
+				var handlePosition = rangeSlider.rangeDropdown.selectedIndex;
+				var span = rangeSlider.spans[handlePosition];
+				
+				var shownDatasets = [];
 				var hiddenDatasets = [];
+				
+				var datasetIndex = 0;
 				$(rangeSlider.datasets).each(function(){
-					hiddenDatasets.push([]);
+					var shownSingleDataset = [];
+					var hiddenSingleDataset = [];
+					$(this.objects).each(function(){
+						var dataObject = this;
+						var ticks = rangeSlider.parent.getTicks(dataObject, span);
+						if (typeof ticks === "undefined") 
+							return;
+						if (ticks.firstTick == ticks.lastTick) {
+							shownSingleDataset.push(dataObject);
+						} else {
+							hiddenSingleDataset.push(dataObject);
+						}
+					});
+					shownDatasets.push(shownSingleDataset);
+					hiddenDatasets.push(hiddenSingleDataset);
+					datasetIndex++;
 				});
-				for (var i = handlePosition+1; i < rangeSlider.spanHash.length; i++){
-					hiddenDatasets = GeoTemConfig.mergeObjects(hiddenDatasets,rangeSlider.spanHash[i]);
-				}
+			
+				$(rangeSlider.sliderValue).empty();
+				$(rangeSlider.sliderValue).append(moment.duration(span).humanize());
 				
 				rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
-			};
+			});
 			
-			$(rangeSlider.sliderDiv).on( "slide", onSlideFunction);
+			$(rangeSlider.rangeDropdown).change();
+
+			$(rangeSlider.rangeStart).empty();
+			//TODO: add Months/Days/etc.
+			var starts = [];
+			var overallMin = rangeSlider.parent.overallMin;
+			var last = moment(overallMin).year();
+			starts.push(last);
+			for (i = 1;;i++){
+				var date = moment(overallMin).year();
+				date = date/Math.pow(10,i);
+				if (Math.abs(date)<1)
+					break;
+				date = Math.floor(date);
+				date = date*Math.pow(10,i);
+				if (date != last)
+					starts.push(date);
+				last = date;
+			}
+			$(starts).each(function(){
+				$(rangeSlider.rangeStart).append("<option>"+this+"</option>");				
+			});
+
+			$(rangeSlider.rangeStart).change(function( eventObject ){
+				var handlePosition = rangeSlider.rangeStart.selectedIndex;
+				var start = starts[handlePosition];
+				
+				rangeSlider.parent.overallMin = moment().year(start);
+				$(rangeSlider.rangeDropdown).change();
+			});
 			
-			onSlideFunction({},{value:0});
+			$(rangeSlider.rangerangeStart).change();
 		}
 	},
 			
