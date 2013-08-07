@@ -54,64 +54,60 @@ FuzzyTimelineRangeSlider.prototype = {
 		rangeSlider.spans = [];
 		rangeSlider.spanHash = [];
 
-		//get all distinct time-spans
+		//find smallest (most accurate) time-span
+		var smallestSpan;
 		$(this.datasets).each(function(){
 			$(this.objects).each(function(){
 				var dataObject = this;
+				var span;
 				if (dataObject.isTemporal){
-					if ($.inArray(0,rangeSlider.spans)==-1)
-						//smallest span = 1ms
-						rangeSlider.spans.push(1000);
+					smallestSpan = moment.duration(1,'milliseconds');
 				} else if (dataObject.isFuzzyTemporal){
-					var span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin).asMilliseconds();
-					if ($.inArray(span,rangeSlider.spans)==-1)
-						rangeSlider.spans.push(span);
-				} 
+					span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin);
+					if ( (typeof smallestSpan === 'undefined') || (span < smallestSpan))
+						smallestSpan = span;
+				}
 			});
+			if ((typeof smallestSpan !== 'undefined') && (smallestSpan.asMilliseconds() === 1))
+				return false;
 		});
-		//sort the spans
-		rangeSlider.spans.sort(function(a,b){return a-b;});
 
 		var fixedSpans = [
-		    moment.duration(1, 'seconds').asMilliseconds(),
-			moment.duration(1, 'minutes').asMilliseconds(),
-			moment.duration(10, 'minutes').asMilliseconds(),
-			moment.duration(15, 'minutes').asMilliseconds(),
-			moment.duration(30, 'minutes').asMilliseconds(),
-			moment.duration(1, 'hours').asMilliseconds(),
-			moment.duration(5, 'hours').asMilliseconds(),
-			moment.duration(10, 'hours').asMilliseconds(),
-			moment.duration(12, 'hours').asMilliseconds(),
-			moment.duration(1, 'days').asMilliseconds(),
-			moment.duration(7, 'days').asMilliseconds(),
-			moment.duration(1, 'weeks').asMilliseconds(),
-			moment.duration(1, 'months').asMilliseconds(),
-			moment.duration(3, 'months').asMilliseconds(),
-			moment.duration(6, 'months').asMilliseconds(),
-			moment.duration(1, 'years').asMilliseconds(),
-			moment.duration(10, 'years').asMilliseconds(),
-			moment.duration(100, 'years').asMilliseconds(),
-			moment.duration(1000, 'years').asMilliseconds(),
-			moment.duration(2000, 'years').asMilliseconds(),
-			moment.duration(5000, 'years').asMilliseconds(),
-			moment.duration(10000, 'years').asMilliseconds(),
+		    moment.duration(1, 'seconds'),
+			moment.duration(1, 'minutes'),
+			moment.duration(10, 'minutes'),
+			moment.duration(15, 'minutes'),
+			moment.duration(30, 'minutes'),
+			moment.duration(1, 'hours'),
+			moment.duration(5, 'hours'),
+			moment.duration(10, 'hours'),
+			moment.duration(12, 'hours'),
+			moment.duration(1, 'days'),
+			moment.duration(7, 'days'),
+			moment.duration(1, 'weeks'),
+			moment.duration(1, 'months'),
+			moment.duration(3, 'months'),
+			moment.duration(6, 'months'),
+			moment.duration(1, 'years'),
+			moment.duration(10, 'years'),
+			moment.duration(100, 'years'),
+			moment.duration(1000, 'years'),
+			moment.duration(2000, 'years'),
+			moment.duration(5000, 'years'),
+			moment.duration(10000, 'years'),
 			];
 		
-		//add the fixed spans, that are longer than minimum span and not already contained
+		//only add spans that are not too small for the data
 		for (var i = 0; i < fixedSpans.length; i++){
-			if ((fixedSpans[i] > rangeSlider.spans[0]) && ($.inArray(fixedSpans[i],rangeSlider.spans) == -1))
+			if (fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.1))
 				rangeSlider.spans.push(fixedSpans[i]);
 		}
-
-		//and sort again to fit the fixed spans in
-		rangeSlider.spans.sort(function(a,b){return a-b;});
 		
 		if (rangeSlider.spans.length > 0){
 			$(rangeSlider.rangeDropdown).empty();
 			
 			$(rangeSlider.spans).each(function(){
-				var duration = moment.duration(Number(this));
-				var humanizedSpan = "";
+				var duration = this;
 				if (duration < moment.duration(1,'second'))
 					humanizedSpan = duration.milliseconds() + "ms";
 				else if (duration < moment.duration(1,'minute'))
