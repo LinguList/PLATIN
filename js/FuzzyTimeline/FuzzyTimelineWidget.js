@@ -45,6 +45,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.density;
 	this.rangeSlider;
 	this.rangeBars;
+	this.spanHash = [];
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -130,6 +131,27 @@ FuzzyTimelineWidget.prototype = {
 		this.rangeBars.selectionChanged(objects);
 	},
 	
+	buildSpanArray : function(spanWidth) {
+		var spanArray = [];
+		var tickStart = moment(this.overallMin);		 
+		do{
+			spanArray.push(moment(tickStart));
+			tickStart.add(spanWidth);
+		} while (tickStart <= this.overallMax);
+		
+		this.spanHash.push({spanWidth:spanWidth,spanArray:spanArray});
+		return(spanArray);
+	},
+	
+	getSpanArray : function(spanWidth){
+		for (var i = 0; i < this.spanHash.length; i++){
+			var element = this.spanHash[i];
+			if (spanWidth._data.years === element.spanWidth._data.years)
+				return element.spanArray;
+		}
+		return this.buildSpanArray(spanWidth);
+	},
+	
 	getTicks : function(dataObject, spanWidth) {
 		var datemin,datemax;
 		if (dataObject.isTemporal){
@@ -142,16 +164,44 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		
-		var firstTick = Math.floor((datemin-this.overallMin)/spanWidth);
-		var lastTick = Math.floor((datemax-this.overallMin)/spanWidth);
-		//calculate how much the first (and last) tick and the time-span overlap
-		var firstTickPercentage = 1;
-		var lastTickPercentage = 1;
-		if (firstTick != lastTick){
-			var secondTickStart = this.overallMin+(firstTick+1)*spanWidth;
-			var lastTickStart = this.overallMin+lastTick*spanWidth;
-			firstTickPercentage = (secondTickStart-datemin)/spanWidth;
-			lastTickPercentage = (datemax-lastTickStart)/spanWidth;
+		if (typeof spanWidth._data === "undefined"){
+			//This does only work with millisecond spans, as the length of years is (very) inaccurate.
+			//(e.g. 100-0 = 99, 2000-1000 = 1001, 5000-0 = 5003, and so on and even more: duration(5000a) = 4932a)
+			//So the time consuming loop below is needed for accurate dates, when years/months/days etc. are supplied
+			var firstTick = Math.floor((datemin-this.overallMin)/spanWidth);
+			var lastTick = Math.floor((datemax-this.overallMin)/spanWidth);
+			//calculate how much the first (and last) tick and the time-span overlap
+			var firstTickPercentage = 1;
+			var lastTickPercentage = 1;
+			if (firstTick != lastTick){
+				var secondTickStart = this.overallMin+(firstTick+1)*spanWidth;
+				var lastTickStart = this.overallMin+lastTick*spanWidth;
+				firstTickPercentage = (secondTickStart-datemin)/spanWidth;
+				lastTickPercentage = (datemax-lastTickStart)/spanWidth;
+			}
+		} else {
+			var spanArray = this.getSpanArray(spanWidth);
+			var firstTick, lastTick;
+			var tickCount = 0;
+			var tickStart = spanArray[0];
+			var lastTickStart;
+			do{
+				lastTickStart = spanArray[tickCount];
+				tickCount++;
+				tickStart = spanArray[tickCount];
+				if ( (typeof firstTick === "undefined") && (datemin <= tickStart) ){
+					firstTick = tickCount-1;
+					firstTickPercentage = (tickStart - datemin)/spanWidth;
+				}
+				if ( (typeof lastTick === "undefined") && (datemax <= tickStart) ){
+					lastTick = tickCount-1;
+					lastTickPercentage = (datemax - lastTickStart)/spanWidth;
+				}
+			} while (tickStart <= datemax);
+			if (firstTick == lastTick){
+				firstTickPercentage = 1;
+				lastTickPercentage = 1;
+			}
 		}
 		
 		return({	firstTick:firstTick,
