@@ -92,7 +92,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	}
 	
 	this.isGeospatial = false;
-	if (this.locations.length > 0) {
+	if ((typeof this.locations !== "undefined") && (this.locations.length > 0)) {
 		this.isGeospatial = true;
 	}
 
@@ -118,7 +118,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 
 	this.dates = dates;
 	this.isTemporal = false;
-	if (this.dates.length > 0) {
+	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
 	}
 
