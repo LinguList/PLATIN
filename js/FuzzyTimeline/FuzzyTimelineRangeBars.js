@@ -39,7 +39,7 @@ function FuzzyTimelineRangeBars(parent) {
 	this.plotDiv = document.createElement("div");
 	$(this.rangeDiv).append(this.plotDiv);
 	$(this.plotDiv).width("100%");
-	$(this.plotDiv).height("98%");
+	$(this.plotDiv).height("100%");
 
 	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
 
