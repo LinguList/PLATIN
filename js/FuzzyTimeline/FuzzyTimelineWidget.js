@@ -146,7 +146,7 @@ FuzzyTimelineWidget.prototype = {
 	getSpanArray : function(spanWidth){
 		for (var i = 0; i < this.spanHash.length; i++){
 			var element = this.spanHash[i];
-			if (spanWidth._data.years === element.spanWidth._data.years)
+			if ((this.overallMin-element.overallMin)===0)
 				return element.spanArray;
 		}
 		return this.buildSpanArray(spanWidth);
