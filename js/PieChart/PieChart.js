@@ -77,6 +77,7 @@ PieChart.prototype = {
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 
+			$(this.pieChartDiv).unbind();
 		    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
 		        if (item) {
 					//item.series.label contains the column element
