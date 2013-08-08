@@ -107,8 +107,6 @@ FuzzyTimelineWidget.prototype = {
 		fuzzyTimeline.density.initialize(shownDatasets);
 		//redraw range plot
 		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,spanWidth);
-		//redraw pie charts
-		fuzzyTimeline.rangeBars.drawRangePieChart(shownDatasets,hiddenDatasets);
 	},
 
 	highlightChanged : function(objects) {

@@ -42,6 +42,8 @@ function FuzzyTimelineRangeSlider(parent) {
 	$(this.sliderParentDiv).append(this.rangeStart);
 	this.rangeDropdown = document.createElement("select");
 	$(this.sliderParentDiv).append(this.rangeDropdown);
+	
+	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -154,6 +156,8 @@ FuzzyTimelineRangeSlider.prototype = {
 			
 				$(rangeSlider.sliderValue).empty();
 				$(rangeSlider.sliderValue).append(moment.duration(span).humanize());
+				
+				rangeSlider.drawRangePieChart(shownDatasets,hiddenDatasets);
 				
 				rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
 			});

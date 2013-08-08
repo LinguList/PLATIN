@@ -41,10 +41,7 @@ function FuzzyTimelineRangeBars(parent) {
 	$(this.plotDiv).width("100%");
 	$(this.plotDiv).height("100%");
 
-	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
-
 	this.plot;
-	this.pieCharts = [];
 }
 
 FuzzyTimelineRangeBars.prototype = {
@@ -53,8 +50,6 @@ FuzzyTimelineRangeBars.prototype = {
 		var rangeBar = this;
 		
 		rangeBar.datasets = datasets;
-
-		rangeBar.deletePieCharts();
 	},
 	
 	drawRangeBarChart : function(shownDatasets, spanWidth){
@@ -154,31 +149,6 @@ FuzzyTimelineRangeBars.prototype = {
 			};
 		$(rangeBar.plotDiv).unbind();		
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), plots, options);
-	},
-
-	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
-		var rangeBar = this;
-
-		var parentDiv = rangeBar.pieChartDiv;
-		rangeBar.deletePieCharts();
-		var datasetIndex = 0;
-		$(GeoTemConfig.datasets).each(function(){
-			var div = document.createElement("div");
-			$(parentDiv).append(div);
-			$(div).height($(parentDiv).height()/GeoTemConfig.datasets.length);
-
-			rangeBar.pieCharts.push(new FuzzyTimelineRangePiechart(rangeBar.parent,div,datasetIndex,shownDatasets,hiddenDatasets));
-			datasetIndex++;
-		});
-	},
-	
-	deletePieCharts : function(){
-		var rangeBar = this;
-		$(rangeBar.pieChartDiv).empty();
-		for (var piechart in rangeBar.pieCharts){
-			delete piechart;
-		}
-		rangeBar.pieCharts = [];
 	},
 	
 	highlightChanged : function(objects) {
