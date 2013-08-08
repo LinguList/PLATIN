@@ -59,11 +59,15 @@ FuzzyTimelineRangeBars.prototype = {
 	
 	drawRangeBarChart : function(shownDatasets, spanWidth){
 		var rangeBar = this;
-		var tickCount = Math.ceil((rangeBar.parent.overallMax-rangeBar.parent.overallMin)/spanWidth);
+		var tickSpans = rangeBar.parent.getSpanArray(spanWidth);
+		//-1 because last span is always empty (only there to have the ending date)
+		var tickCount = tickSpans.length-1;
 		
 		if (tickCount > 100){
 			tickCount = 100;
 			spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
+			tickSpans = rangeBar.parent.getSpanArray(spanWidth);
+			tickCount = tickSpans.length-1;
 		}
 		
 		var plots = [];
@@ -83,7 +87,7 @@ FuzzyTimelineRangeBars.prototype = {
 		}
 		
 		for (var i = 0; i < tickCount; i++){
-			ticks[i] = [i,moment(rangeBar.parent.overallMin+i*spanWidth).format(axisFormatString)];
+			ticks[i] = [i,tickSpans[i].format(axisFormatString)];
 		}
 		
 		$(shownDatasets).each(function(){
@@ -136,8 +140,8 @@ FuzzyTimelineRangeBars.prototype = {
 		        tooltip: true,
 		        tooltipOpts: {
 		            content: function(xval, yval){
-		            	highlightString =	moment(rangeBar.parent.overallMin+xval*spanWidth).format(axisFormatString)	+ " - " +
-		            						moment(rangeBar.parent.overallMin+(xval+1)*spanWidth).format(axisFormatString) + " : ";
+		            	highlightString =	tickSpans[xval].format(axisFormatString) + " - " +
+		            						tickSpans[xval+1].format(axisFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 
