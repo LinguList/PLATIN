@@ -138,6 +138,7 @@ FuzzyTimelineWidget.prototype = {
 			spanArray.push(moment(tickStart));
 			tickStart.add(spanWidth);
 		} while (tickStart <= this.overallMax);
+		spanArray.push(moment(tickStart));
 		
 		this.spanHash.push({spanWidth:spanWidth,overallMin:moment(this.overallMin),spanArray:spanArray});
 		return(spanArray);
