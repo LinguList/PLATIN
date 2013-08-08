@@ -179,6 +179,14 @@ FuzzyTimelineWidget.prototype = {
 				firstTickPercentage = (secondTickStart-datemin)/spanWidth;
 				lastTickPercentage = (datemax-lastTickStart)/spanWidth;
 			}
+			if (firstTickPercentage === 0){
+				firstTick++;
+				firstTickPercentage = 1;
+			}
+			if (lastTickPercentage === 0){
+				lastTick--;
+				lastTickPercentage = 1;
+			}
 		} else {
 			var spanArray = this.getSpanArray(spanWidth);
 			var firstTick, lastTick;
