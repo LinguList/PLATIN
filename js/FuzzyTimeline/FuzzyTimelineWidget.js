@@ -139,14 +139,15 @@ FuzzyTimelineWidget.prototype = {
 			tickStart.add(spanWidth);
 		} while (tickStart <= this.overallMax);
 		
-		this.spanHash.push({spanWidth:spanWidth,spanArray:spanArray});
+		this.spanHash.push({spanWidth:spanWidth,overallMin:moment(this.overallMin),spanArray:spanArray});
 		return(spanArray);
 	},
 	
 	getSpanArray : function(spanWidth){
 		for (var i = 0; i < this.spanHash.length; i++){
 			var element = this.spanHash[i];
-			if ((this.overallMin-element.overallMin)===0)
+			if (	((this.overallMin-element.overallMin)===0) &&
+					((spanWidth-element.spanWidth)===0))
 				return element.spanArray;
 		}
 		return this.buildSpanArray(spanWidth);
