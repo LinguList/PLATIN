@@ -35,7 +35,9 @@ function FuzzyTimelineDensity(parent,div) {
 	//TODO: experiment with number of ticks, 500 seems to be ok for now
 	this.maxTickCount = 250;
 	//contains all data
-	this.plots = [];
+	this.shownDatasetsPlot;
+	this.hiddenDatasetsPlot;
+	this.combinedDatasetsPlot;
 	//contains selected data
 	this.selected = [];
 	//contains the last selected "date"
@@ -73,25 +75,11 @@ FuzzyTimelineDensity.prototype = {
 		return chartData;
 	},
 	
-	initialize : function(datasets, tickWidth) {
+	//uniform distribution (UD)	
+	createUDData : function(datasets) {
 		var density = this;
-		density.datasets = datasets;
-
-		density.plots = [];
-		//calculate tick width (will be in ms)
-		delete density.tickCount;
-		delete density.singleTickWidth;
-		if (typeof tickWidth !== "undefined"){
-			density.singleTickWidth = tickWidth;
-			density.tickCount = Math.ceil((density.parent.overallMax-density.parent.overallMin)/tickWidth);
-		} 
-		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
-			density.tickCount = density.maxTickCount;
-			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
-		}
-
-		//Gleichverteilung	
-		$(density.datasets).each(function(){
+		var plots = [];
+		$(datasets).each(function(){
 			var chartDataCounter = new Object();
 
 			for (var i = 0; i < density.tickCount; i++){
@@ -124,8 +112,38 @@ FuzzyTimelineDensity.prototype = {
 			
 			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
-				density.plots.push(udChartData);
+				plots.push(udChartData);
 		});
+		
+		return plots;
+	},
+	
+	initialize : function(shownDatasets, hiddenDatasets, tickWidth) {
+		var density = this;
+
+		//calculate tick width (will be in ms)
+		delete density.tickCount;
+		delete density.singleTickWidth;
+		if (typeof tickWidth !== "undefined"){
+			density.singleTickWidth = tickWidth;
+			density.tickCount = Math.ceil((density.parent.overallMax-density.parent.overallMin)/tickWidth);
+		} 
+		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
+			density.tickCount = density.maxTickCount;
+			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
+		}
+		
+		density.shownDatasetsPlot = density.createUDData(shownDatasets);
+		density.hiddenDatasetsPlot = density.createUDData(hiddenDatasets);
+
+		density.combinedDatasetsPlot = [];
+		for (var i = 0; i < density.hiddenDatasetsPlot.length; i++){
+			var singlePlot = [];
+			for (var j = 0; j < density.hiddenDatasetsPlot[i].length; j++){
+				singlePlot[j] = [j, density.hiddenDatasetsPlot[i][j][1] + density.shownDatasetsPlot[i][j][1]];
+			}
+			density.combinedDatasetsPlot.push(singlePlot);
+		}
 		
 		var axisFormatString = "%Y";
 		var tooltipFormatString = "YYYY";
@@ -174,7 +192,7 @@ FuzzyTimelineDensity.prototype = {
 				}
 			};
 		
-		density.plot = $.plot($(density.div), density.plots, options);
+		density.plot = $.plot($(density.div), density.combinedDatasetsPlot, options);
 		
 		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {

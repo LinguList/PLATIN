@@ -35,12 +35,18 @@ function FuzzyTimelineRangeBars(parent) {
 	
 	this.datasets;
 	
+	this.hiddenDatasetsPlot;
+	this.shownDatasetsPlot;
+	this.combinedDatasetsPlot;
+	
 	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
 	this.plotDiv = document.createElement("div");
 	$(this.rangeDiv).append(this.plotDiv);
 	$(this.plotDiv).width("100%");
 	$(this.plotDiv).height("100%");
 
+	this.spanWidth;
+	this.tickSpans;
 	this.plot;
 }
 
@@ -52,7 +58,7 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.datasets = datasets;
 	},
 	
-	createPlot : function(datasets, tickCount, spanWidth) {
+	createPlot : function(datasets, tickCount) {
 		var rangeBar = this;
 		var plots = [];
 		
@@ -69,7 +75,7 @@ FuzzyTimelineRangeBars.prototype = {
 			if (typeof this.objects !== "undefined")
 				datasetObjects = this.objects;
 			$(datasetObjects).each(function(){
-				var ticks = rangeBar.parent.getTicks(this, spanWidth);
+				var ticks = rangeBar.parent.getTicks(this, rangeBar.spanWidth);
 				if (typeof ticks !== "undefined"){
 					var exactTickCount = 
 						ticks.firstTickPercentage+
@@ -95,40 +101,27 @@ FuzzyTimelineRangeBars.prototype = {
 		return plots;
 	},
 	
-	drawRangeBarChart : function(shownDatasets, spanWidth){
+	showPlot : function(plots){
 		var rangeBar = this;
-		var tickSpans = rangeBar.parent.getSpanArray(spanWidth);
-		//-1 because last span is always empty (only there to have the ending date)
-		var tickCount = tickSpans.length-1;
-		
-		if (tickCount > 100){
-			tickCount = 100;
-			spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
-			tickSpans = rangeBar.parent.getSpanArray(spanWidth);
-			tickCount = tickSpans.length-1;
-		}
-		
-		var plots = [];
+		var tickCount = rangeBar.tickSpans.length-1;
 		var ticks = [];
 		
 		var axisFormatString = "YYYY";
-		if (spanWidth<60*1000){
+		if (rangeBar.spanWidth<60*1000){
 			axisFormatString = "YYYY/MM/DD HH:mm:ss";
-		} else if (spanWidth<60*60*1000) {
+		} else if (rangeBar.spanWidth<60*60*1000) {
 			axisFormatString = "YYYY/MM/DD HH:mm";
-		} else if (spanWidth<24*60*60*1000){
+		} else if (rangeBar.spanWidth<24*60*60*1000){
 			axisFormatString = "YYYY/MM/DD HH";
-		} else if (spanWidth<31*24*60*60*1000){
+		} else if (rangeBar.spanWidth<31*24*60*60*1000){
 			axisFormatString = "YYYY/MM/DD";
-		} else if (spanWidth<12*31*24*60*60*1000){
+		} else if (rangeBar.spanWidth<12*31*24*60*60*1000){
 			axisFormatString = "YYYY/MM";
 		}
 		
 		for (var i = 0; i < tickCount; i++){
-			ticks[i] = [i,tickSpans[i].format(axisFormatString)];
+			ticks[i] = [i,rangeBar.tickSpans[i].format(axisFormatString)];
 		}
-		
-		plots = rangeBar.createPlot(shownDatasets, tickCount, spanWidth);
 		
 		var options = {
 				series:{
@@ -144,8 +137,8 @@ FuzzyTimelineRangeBars.prototype = {
 		        tooltip: true,
 		        tooltipOpts: {
 		            content: function(xval, yval){
-		            	highlightString =	tickSpans[xval].format(axisFormatString) + " - " +
-		            						tickSpans[xval+1].format(axisFormatString) + " : ";
+		            	highlightString =	rangeBar.tickSpans[xval].format(axisFormatString) + " - " +
+		            						rangeBar.tickSpans[xval+1].format(axisFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 
@@ -158,6 +151,35 @@ FuzzyTimelineRangeBars.prototype = {
 			};
 		$(rangeBar.plotDiv).unbind();		
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), plots, options);
+	},
+	
+	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
+		var rangeBar = this;
+		rangeBar.spanWidth = spanWidth; 
+		rangeBar.tickSpans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
+		//-1 because last span is always empty (only there to have the ending date)
+		var tickCount = rangeBar.tickSpans.length-1;
+		
+		if (tickCount > 100){
+			tickCount = 100;
+			rangeBar.spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
+			rangeBar.tickSpans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
+			tickCount = rangeBar.tickSpans.length-1;
+		}
+		
+		rangeBar.shownDatasetsPlot = rangeBar.createPlot(shownDatasets, tickCount, rangeBar.spanWidth);
+		rangeBar.hiddenDatasetsPlot = rangeBar.createPlot(hiddenDatasets, tickCount, spanWidth);
+		
+		rangeBar.combinedDatasetsPlot = [];
+		for (var i = 0; i < rangeBar.hiddenDatasetsPlot.length; i++){
+			var singlePlot = [];
+			for (var j = 0; j < rangeBar.hiddenDatasetsPlot[i].length; j++){
+				singlePlot[j] = [j, rangeBar.hiddenDatasetsPlot[i][j][1] + rangeBar.shownDatasetsPlot[i][j][1]];
+			}
+			rangeBar.combinedDatasetsPlot.push(singlePlot);
+		}
+		
+		rangeBar.showPlot(rangeBar.combinedDatasetsPlot);
 	},
 	
 	highlightChanged : function(objects) {

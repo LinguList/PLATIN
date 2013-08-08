@@ -104,9 +104,9 @@ FuzzyTimelineWidget.prototype = {
 	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
 		var fuzzyTimeline = this;
 		//redraw density plot
-		fuzzyTimeline.density.initialize(shownDatasets);
+		fuzzyTimeline.density.initialize(shownDatasets,hiddenDatasets);
 		//redraw range plot
-		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,spanWidth);
+		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
 	},
 
 	highlightChanged : function(objects) {
