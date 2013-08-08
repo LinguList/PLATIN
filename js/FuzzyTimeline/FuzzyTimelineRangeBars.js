@@ -52,40 +52,11 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.datasets = datasets;
 	},
 	
-	drawRangeBarChart : function(shownDatasets, spanWidth){
+	createPlot : function(datasets, tickCount, spanWidth) {
 		var rangeBar = this;
-		var tickSpans = rangeBar.parent.getSpanArray(spanWidth);
-		//-1 because last span is always empty (only there to have the ending date)
-		var tickCount = tickSpans.length-1;
-		
-		if (tickCount > 100){
-			tickCount = 100;
-			spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
-			tickSpans = rangeBar.parent.getSpanArray(spanWidth);
-			tickCount = tickSpans.length-1;
-		}
-		
 		var plots = [];
-		var ticks = [];
 		
-		var axisFormatString = "YYYY";
-		if (spanWidth<60*1000){
-			axisFormatString = "YYYY/MM/DD HH:mm:ss";
-		} else if (spanWidth<60*60*1000) {
-			axisFormatString = "YYYY/MM/DD HH:mm";
-		} else if (spanWidth<24*60*60*1000){
-			axisFormatString = "YYYY/MM/DD HH";
-		} else if (spanWidth<31*24*60*60*1000){
-			axisFormatString = "YYYY/MM/DD";
-		} else if (spanWidth<12*31*24*60*60*1000){
-			axisFormatString = "YYYY/MM";
-		}
-		
-		for (var i = 0; i < tickCount; i++){
-			ticks[i] = [i,tickSpans[i].format(axisFormatString)];
-		}
-		
-		$(shownDatasets).each(function(){
+		$(datasets).each(function(){
 			var chartDataCounter = [];
 			
 			for (var i = 0; i < tickCount; i++){
@@ -120,6 +91,44 @@ FuzzyTimelineRangeBars.prototype = {
 			
 			plots.push(chartDataCounter);
 		});
+		
+		return plots;
+	},
+	
+	drawRangeBarChart : function(shownDatasets, spanWidth){
+		var rangeBar = this;
+		var tickSpans = rangeBar.parent.getSpanArray(spanWidth);
+		//-1 because last span is always empty (only there to have the ending date)
+		var tickCount = tickSpans.length-1;
+		
+		if (tickCount > 100){
+			tickCount = 100;
+			spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
+			tickSpans = rangeBar.parent.getSpanArray(spanWidth);
+			tickCount = tickSpans.length-1;
+		}
+		
+		var plots = [];
+		var ticks = [];
+		
+		var axisFormatString = "YYYY";
+		if (spanWidth<60*1000){
+			axisFormatString = "YYYY/MM/DD HH:mm:ss";
+		} else if (spanWidth<60*60*1000) {
+			axisFormatString = "YYYY/MM/DD HH:mm";
+		} else if (spanWidth<24*60*60*1000){
+			axisFormatString = "YYYY/MM/DD HH";
+		} else if (spanWidth<31*24*60*60*1000){
+			axisFormatString = "YYYY/MM/DD";
+		} else if (spanWidth<12*31*24*60*60*1000){
+			axisFormatString = "YYYY/MM";
+		}
+		
+		for (var i = 0; i < tickCount; i++){
+			ticks[i] = [i,tickSpans[i].format(axisFormatString)];
+		}
+		
+		plots = rangeBar.createPlot(shownDatasets, tickCount, spanWidth);
 		
 		var options = {
 				series:{
