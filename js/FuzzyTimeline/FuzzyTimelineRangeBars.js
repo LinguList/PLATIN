@@ -152,7 +152,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        	mode: "x"
 		        }
 			};
-
+		$(rangeBar.plotDiv).unbind();		
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), plots, options);
 	},
 
