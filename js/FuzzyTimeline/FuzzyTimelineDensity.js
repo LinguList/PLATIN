@@ -340,8 +340,18 @@ FuzzyTimelineDensity.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
+		var emptyHighlight = true;
+		$(objects).each(function(){
+			if ((this instanceof Array) && (this.length > 0)){
+				emptyHighlight = false;
+				return false;
+			}
+		});
 		var density = this;
-		density.highlightedDatasetsPlot = density.createUDData(GeoTemConfig.mergeObjects(objects,density.selected));
+		if (emptyHighlight)
+			density.highlightedDatasetsPlot = [];
+		else
+			density.highlightedDatasetsPlot = density.createUDData(GeoTemConfig.mergeObjects(objects,density.selected));
 		density.redrawPlot();
 	},
 	
