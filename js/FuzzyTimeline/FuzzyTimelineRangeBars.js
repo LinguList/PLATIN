@@ -34,12 +34,16 @@ function FuzzyTimelineRangeBars(parent) {
 	this.options = parent.options;
 	
 	this.datasets;
+	//contains selected data
+	this.selected = [];
 	
 	this.hiddenDatasetsPlot;
 	this.shownDatasetsPlot;
 	this.combinedDatasetsPlot;
+	this.highlightedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
+	this.displayType;
 	
 	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
 	this.plotDiv = document.createElement("div");
@@ -58,11 +62,15 @@ FuzzyTimelineRangeBars.prototype = {
 		var rangeBar = this;
 		
 		rangeBar.datasets = datasets;
+		rangeBar.selected = [];
 	},
 	
-	createPlot : function(datasets, tickCount) {
+	createPlot : function(datasets) {
 		var rangeBar = this;
 		var plots = [];
+		
+		//-1 because last span is always empty (only there to have the ending date)
+		var tickCount = rangeBar.tickSpans.length-1;
 		
 		$(datasets).each(function(){
 			var chartDataCounter = [];
@@ -103,8 +111,14 @@ FuzzyTimelineRangeBars.prototype = {
 		return plots;
 	},
 	
+	redrawPlot : function(){
+		var rangeBar = this;
+		rangeBar.showPlotByType(rangeBar.displayType);
+	},
+	
 	showPlotByType : function(type){
 		var rangeBar = this;
+		rangeBar.displayType = type;
 		if (type === 'shown'){
 			rangeBar.showPlot(rangeBar.shownDatasetsPlot);
 		} else if (type === 'hidden'){
@@ -114,8 +128,14 @@ FuzzyTimelineRangeBars.prototype = {
 		}
 	},
 	
-	showPlot : function(plots){
+	showPlot : function(plot){
 		var rangeBar = this;
+		var highlight_select_plot = $.merge([],plot);
+		
+		if (density.highlightedDatasetsPlot instanceof Array){
+			highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedDatasetsPlot);
+		}
+		
 		var tickCount = rangeBar.tickSpans.length-1;
 		var ticks = [];
 		
@@ -167,7 +187,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        }
 			};
 		$(rangeBar.plotDiv).unbind();		
-		rangeBar.plot = $.plot($(rangeBar.plotDiv), plots, options);
+		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot, options);
 	},
 	
 	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
@@ -187,8 +207,10 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.yValMin = 0;
 		rangeBar.yValMax = 0;
 		
-		rangeBar.shownDatasetsPlot = rangeBar.createPlot(shownDatasets, tickCount, rangeBar.spanWidth);
-		rangeBar.hiddenDatasetsPlot = rangeBar.createPlot(hiddenDatasets, tickCount, spanWidth);
+		rangeBar.shownDatasetsPlot = rangeBar.createPlot(shownDatasets);
+		rangeBar.hiddenDatasetsPlot = rangeBar.createPlot(hiddenDatasets);
+		//redraw selected plot to fit (possible) new scale
+		rangeBar.selectionChanged(rangeBar.selected);
 		
 		rangeBar.combinedDatasetsPlot = [];
 		for (var i = 0; i < rangeBar.hiddenDatasetsPlot.length; i++){
@@ -223,16 +245,19 @@ FuzzyTimelineRangeBars.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
-		if ( (typeof objects === "undefined") || (objects.length == 0) ){
-			return;
-		}
+		var rangeBar = this;
+		
+		rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(GeoTemConfig.mergeObjects(objects,rangeBar.selected));
+		rangeBar.redrawPlot();
 	},
-
-	selectionChanged : function(selection) {
+	
+	selectionChanged : function(objects) {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		var objects = selection.objects;
+		var rangeBar = this;
+		rangeBar.selected = objects;
+		rangeBar.highlightChanged([]);
 	},
 	
 	triggerHighlight : function(columnElement) {

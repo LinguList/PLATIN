@@ -38,8 +38,10 @@ function FuzzyTimelineDensity(parent,div) {
 	this.shownDatasetsPlot;
 	this.hiddenDatasetsPlot;
 	this.combinedDatasetsPlot;
+	this.highlightedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
+	this.displayType;
 	//contains selected data
 	this.selected = [];
 	//contains the last selected "date"
@@ -120,8 +122,14 @@ FuzzyTimelineDensity.prototype = {
 		return plots;
 	},
 	
+	redrawPlot : function(){
+		var density = this;
+		density.showPlotByType(density.displayType);
+	},
+	
 	showPlotByType : function(type){
 		var density = this;
+		density.displayType = type;
 		if (type === 'shown'){
 			density.showPlot(density.shownDatasetsPlot);
 		} else if (type === 'hidden'){
@@ -133,6 +141,11 @@ FuzzyTimelineDensity.prototype = {
 	
 	showPlot : function(plot) {
 		var density = this;
+		var highlight_select_plot = $.merge([],plot);
+		
+		if (density.highlightedDatasetsPlot instanceof Array){
+			highlight_select_plot = $.merge(highlight_select_plot,density.highlightedDatasetsPlot);
+		}
 		
 		var axisFormatString = "%Y";
 		var tooltipFormatString = "YYYY";
@@ -185,7 +198,7 @@ FuzzyTimelineDensity.prototype = {
 		        },
 			};
 		
-		density.plot = $.plot($(density.div), plot, options);
+		density.plot = $.plot($(density.div), highlight_select_plot, options);
 		
 		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {
@@ -295,47 +308,22 @@ FuzzyTimelineDensity.prototype = {
 		this.parent.core.triggerSelection(selection);
 	},
 	
-	clearHighlighted : function() {
-		var density = this;
-		if (density.plot instanceof Object)
-			density.plot.unhighlight();
-	},
-	
-	drawHighlighted : function(objects) {
-		var density = this;
-		var datasetIndex = 0;
-		$(objects).each(function(){
-			var dataset = this;
-			$(dataset).each(function(){
-				var dataObject = this;
-				var ticks = density.parent.getTicks(dataObject, density.singleTickWidth);
-				if (typeof ticks !== "undefined"){
-					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
-						//the addition of "boundary points", that will always be zero,
-						//inserts invalid points that have to be skipped
-						//(see createPlot and the points for overallMin and overallMax)						
-						density.plot.highlight(datasetIndex,i+1);
-					}
-				}
-			});
-			datasetIndex++;
-		});
-	},
-	
 	highlightChanged : function(objects) {
-		var density = this;
-		if (density.plot instanceof Object){
-			density.clearHighlighted();
-			density.drawHighlighted(density.selected);
-			density.drawHighlighted(objects);
+		if( !GeoTemConfig.highlightEvents ){
+			return;
 		}
+		var density = this;
+		density.highlightedDatasetsPlot = density.createUDData(GeoTemConfig.mergeObjects(objects,density.selected));
+		density.redrawPlot();
 	},
 	
 	selectionChanged : function(objects) {
+		if( !GeoTemConfig.selectionEvents ){
+			return;
+		}
 		var density = this;
-		density.clearHighlighted();
 		density.selected = objects;
-		density.drawHighlighted(density.selected);
+		density.highlightChanged([]);
 	},
 
 	deselection : function() {
