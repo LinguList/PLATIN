@@ -238,6 +238,7 @@ FuzzyTimelineDensity.prototype = {
 		for (var i = 0; i < density.hiddenDatasetsPlot.length; i++){
 			var singlePlot = [];
 			for (var j = 0; j < density.hiddenDatasetsPlot[i].length; j++){
+				var date = moment(density.hiddenDatasetsPlot[i][j][0]);
 				var hiddenVal = density.hiddenDatasetsPlot[i][j][1];
 				var shownVal = density.shownDatasetsPlot[i][j][1];
 				var combinedVal = hiddenVal + shownVal;
