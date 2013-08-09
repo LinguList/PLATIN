@@ -73,6 +73,9 @@ FuzzyTimelineRangeSlider.prototype = {
 			if ((typeof smallestSpan !== 'undefined') && (smallestSpan.asMilliseconds() === 1))
 				return false;
 		});
+		
+		if (typeof smallestSpan === 'undefined')
+			return;
 
 		var fixedSpans = [
 		    moment.duration(1, 'seconds'),
