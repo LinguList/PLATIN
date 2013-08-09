@@ -186,8 +186,31 @@ FuzzyTimelineRangeBars.prototype = {
 		        	mode: "x"
 		        }
 			};
+		
+		var highlight_select_plot_colors = [];		
+		var i = 0;
+		$(highlight_select_plot).each(function(){
+			var color;
+			if (i < GeoTemConfig.datasets.length){
+				var datasetColors = GeoTemConfig.getColor(i);
+				if (highlight_select_plot.length>GeoTemConfig.datasets.length)
+					color = "rgb("+datasetColors.r0+","+datasetColors.g0+","+datasetColors.b0+")";
+				else 
+					color = "rgb("+datasetColors.r1+","+datasetColors.g1+","+datasetColors.b1+")";
+			} else {
+				var datasetColors = GeoTemConfig.getColor(i-GeoTemConfig.datasets.length);
+				color = "rgb("+datasetColors.r1+","+datasetColors.g1+","+datasetColors.b1+")";
+			}			
+			
+			highlight_select_plot_colors.push({
+				color : color,
+				data : this
+			});
+			i++;
+		});		
+		
 		$(rangeBar.plotDiv).unbind();		
-		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot, options);
+		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot_colors, options);
 	},
 	
 	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
