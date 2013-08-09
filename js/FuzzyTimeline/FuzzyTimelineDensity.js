@@ -38,6 +38,8 @@ function FuzzyTimelineDensity(parent,div) {
 	this.shownDatasetsPlot;
 	this.hiddenDatasetsPlot;
 	this.combinedDatasetsPlot;
+	this.yValMin;
+	this.yValMax;
 	//contains selected data
 	this.selected = [];
 	//contains the last selected "date"
