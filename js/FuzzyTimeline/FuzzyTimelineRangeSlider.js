@@ -111,7 +111,7 @@ FuzzyTimelineRangeSlider.prototype = {
 		
 		//only add spans that are not too small for the data
 		for (var i = 0; i < fixedSpans.length; i++){
-			if (fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.1))
+			if (fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5))
 				rangeSlider.spans.push(fixedSpans[i]);
 		}
 		
