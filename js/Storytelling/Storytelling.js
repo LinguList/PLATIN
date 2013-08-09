@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* Storytelling.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,21 +20,55 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class Storytelling
+ * Implementation of story telling "storage"
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {HTML object} parent div to append the Storytelling widget
  */
-function DataloaderConfig(options) {
+function Storytelling(parent) {
 
-	this.options = {
-			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
-	};
-	if ( typeof options != 'undefined') {
-		$.extend(this.options, options);
+	this.index;
+	this.storytelling = this;
+	
+	this.parent = parent;
+	this.options = parent.options;
+
+	this.initialize();
+}
+
+Storytelling.prototype = {
+
+	remove : function() {
+	},
+	
+	initialize : function() {
+	},
+	
+	triggerHighlight : function(columnElement) {
+	},
+
+	triggerSelection : function(columnElement) {
+	},
+
+	deselection : function() {
+	},
+
+	filtering : function() {
+	},
+
+	inverseFiltering : function() {
+	},
+
+	triggerRefining : function() {
+	},
+
+	reset : function() {
+	},
+	
+	show : function() {		
+	},
+
+	hide : function() {
 	}
-
 };

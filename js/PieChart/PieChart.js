@@ -77,6 +77,7 @@ PieChart.prototype = {
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 
+			$(this.pieChartDiv).unbind();
 		    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
 		        if (item) {
 					//item.series.label contains the column element
@@ -158,8 +159,16 @@ PieChart.prototype = {
 			
 			var chartData = [];
 			$.each(chartDataCounter, function(name,val){
-				chartData.push({label:name,data:val});
+				//get rgb-color (24bit = 6 hex digits) from hash
+				var color = '#'+hex_md5(name).substr(0,6);
+				chartData.push({label:name,data:val,color:color});
 			});
+			
+			var sortByVal = function(a,b){
+				return (b.data-a.data);
+			};
+			
+			chartData.sort(sortByVal);
 			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
@@ -172,6 +181,8 @@ PieChart.prototype = {
 						pieChartCount++;
 				});
 				var height = (parentHeight/pieChartCount) - $(this.informationDIV).outerHeight(true);
+				if (pieChart.options.restrictPieChartSize !== false)
+					height = Math.min(height, $(window).height() * pieChart.options.restrictPieChartSize);
 				$(this.pieChartDiv).height(height);
 	
 				$.plot($(this.pieChartDiv), chartData,
@@ -189,7 +200,7 @@ PieChart.prototype = {
 				        },
 				        tooltip: true,
 				        tooltipOpts: {
-				            content: "%s"
+				            content: "%s %p.1%"
 				        }
 					}
 				);
@@ -235,8 +246,13 @@ PieChart.prototype = {
 
 		this.parent.core.triggerSelection(selection);
 		
-		if (!selection.valid())
+		if (!selection.valid()){
 			selection.loadAllObjects();
+			//"undo" selection (click next to piechart)
+			//so also redraw this dataset
+			this.preHighlightObjects = selection.objects;
+			this.redrawPieChart(selection.objects);
+		}			
 		
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){

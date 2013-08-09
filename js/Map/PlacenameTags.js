@@ -49,7 +49,38 @@ function PlacenameTags(circle, map) {
 		var k = this.circle.search;
 		var weight = 0;
 		var labels = [];
-		var levelOfDetail = this.map.getLevelOfDetail();
+		
+		var levelOfDetail = 0;
+		if (this.map.options.placenameTagsStyle === 'zoom')
+			levelOfDetail = this.map.getLevelOfDetail();
+
+		if (this.map.options.placenameTagsStyle === 'value'){
+			//find max level that _all_ elements have a value for
+			var maxLevel;
+			for (var i = 0; i < elements.length; i++) {
+				var level = elements[i].placeDetails[this.map.options.mapIndex].length-1;
+				 
+				if (typeof maxLevel === "undefined")
+					maxLevel = level;
+				if (maxLevel > level)
+					maxLevel = level;
+				//smallest level anyway, no need to look any further
+				if (level == 0)
+					break;
+			}
+			//search for highest level where the values differ
+			for (levelOfDetail = 0; levelOfDetail < maxLevel; levelOfDetail++){
+				var differenceFound = false;
+				for (var i = 0; i < (elements.length-1); i++) {
+					if (	elements[i].getPlace(this.map.options.mapIndex, levelOfDetail) !== 
+							elements[i+1].getPlace(this.map.options.mapIndex, levelOfDetail))
+						differenceFound = true;
+				}
+				if (differenceFound === true) 
+					break;
+			}			
+		}
+		
 		for (var i = 0; i < elements.length; i++) {
 			weight += elements[i].weight;
 			var found = false;

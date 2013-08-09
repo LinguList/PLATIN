@@ -190,6 +190,8 @@ Overlayloader.prototype = {
 
 		$(this.loadKMLButton).click($.proxy(function(){
 			var kmlURL = $(this.kmlURL).val();
+			if (kmlURL.length == 0)
+				return;
 			if (typeof this.options.proxy != 'undefined')
 				kmlURL = this.options.proxy + kmlURL;
 			
@@ -215,6 +217,8 @@ Overlayloader.prototype = {
 
 		$(this.loadKMZButton).click($.proxy(function(){
 			var kmzURL = $(this.kmzURL).val();
+			if (kmzURL.length == 0)
+				return;
 			if (typeof this.options.proxy != 'undefined')
 				kmzURL = this.options.proxy + kmzURL;
 			
@@ -249,6 +253,8 @@ Overlayloader.prototype = {
 		$(this.loadArcGISWMSButton).click($.proxy(function(){
 			var wmsURL = $(this.wmsURL).val();
 			var wmsLayer = $(this.wmsLayer).val();
+			if (wmsURL.length == 0)
+				return;
 			
 			this.distributeArcGISWMS(wmsURL, wmsLayer);
 		},this));
@@ -274,6 +280,8 @@ Overlayloader.prototype = {
 
 		$(this.loadXYZButton).click($.proxy(function(){
 			var xyzURL = $(this.xyzURL).val();
+			if (xyzURL.length == 0)
+				return;
 			
 			this.distributeXYZ(xyzURL);
 		},this));
@@ -306,7 +314,7 @@ Overlayloader.prototype = {
 
 		this.DARIAHMapSelect = document.createElement("select");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1994'>Contemporary Map (1994)</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1994'>Historical Map of 1945</option>");
+		$(this.DARIAHMapSelect).append("<option value='historic:cntry1945'>Historical Map of 1945</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1938'>Historical Map of 1938</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1920'>Historical Map of 1920</option>");
 		$(this.DARIAHMapSelect).append("<option value='historic:cntry1914'>Historical Map of 1914</option>");

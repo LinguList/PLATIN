@@ -20,7 +20,7 @@
 * MA 02110-1301  USA
 */
 
-	//Hosts that are allowed to download from in RegEx form. (e.g. "/*.dropbox\.com/")
+	//Hosts that are allowed to download from in RegEx form. (e.g. "/.*dropbox\.com/")
 	//If this array is empty, all hosts are allowed.
 	$validHosts = array(
 			"/localhost/",
@@ -39,7 +39,38 @@
 			}
 		}
 		
-		if ((count($validHosts)==0) || ($found==1))
-			echo file_get_contents($_REQUEST['address']);
+		if ((count($validHosts)==0) || ($found==1)){
+			$address = $_REQUEST['address'];
+			$isFirst = 1;
+			foreach($_REQUEST as $key => $value){
+				if ($key == 'address')
+					continue;
+				if ($isFirst == 1){
+					$isFirst = 0;
+					$address .= "?";
+				} else {
+					$address .= "&";
+				}
+				$address .= $key . "=" . $value;
+			}
+			
+			$request_body = file_get_contents('php://input');
+			
+			if (empty($request_body)){
+				echo file_get_contents($address);
+			} else {
+				$opts = array('http' =>
+						array(
+								'method'  => 'POST',
+								'header'  => 'Content-type: '.$_SERVER["CONTENT_TYPE"],
+								'content' => $request_body
+						)
+				);
+				
+				$context = stream_context_create($opts);
+			
+				echo file_get_contents($address, false, $context);
+			}							
+		}
 	}
 ?>

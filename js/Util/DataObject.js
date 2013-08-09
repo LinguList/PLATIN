@@ -47,9 +47,10 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	this.weight = weight;
 	this.tableContent = new Object();
 	var objectTableContent = this.tableContent;
-	$.each(tableContent,function(key,value){
+	for(key in tableContent){
+		value = tableContent[key];
 		objectTableContent[$.trim(key)]=$.trim(value);
-	});
+	}
 
 	this.percentage = 0;
 	this.setPercentage = function(percentage) {
@@ -91,7 +92,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	}
 	
 	this.isGeospatial = false;
-	if (this.locations.length > 0) {
+	if ((typeof this.locations !== "undefined") && (this.locations.length > 0)) {
 		this.isGeospatial = true;
 	}
 
@@ -117,7 +118,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 
 	this.dates = dates;
 	this.isTemporal = false;
-	if (this.dates.length > 0) {
+	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
 	}
 
@@ -263,3 +264,4 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		return color;
 	};
 };
+
