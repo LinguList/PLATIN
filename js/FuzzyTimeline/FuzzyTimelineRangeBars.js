@@ -220,8 +220,8 @@ FuzzyTimelineRangeBars.prototype = {
 		//-1 because last span is always empty (only there to have the ending date)
 		var tickCount = rangeBar.tickSpans.length-1;
 		
-		if (tickCount > 50){
-			tickCount = 50;
+		if (tickCount > rangeBar.options.maxBars){
+			tickCount = rangeBar.options.maxBars;
 			rangeBar.spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
 			rangeBar.tickSpans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
 			tickCount = rangeBar.tickSpans.length-1;

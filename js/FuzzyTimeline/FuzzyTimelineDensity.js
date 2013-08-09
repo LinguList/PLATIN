@@ -32,8 +32,6 @@ function FuzzyTimelineDensity(parent,div) {
 	this.fuzzyTimeline = this;
 	this.singleTickWidth;
 	this.singleTickCenter = function(){return this.singleTickWidth/2;};
-	//TODO: experiment with number of ticks, 150 seems to be ok for now
-	this.maxTickCount = 150;
 	//contains all data
 	this.shownDatasetsPlot;
 	this.hiddenDatasetsPlot;
@@ -51,6 +49,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.div = div;
 	this.options = parent.options;
 	this.plot;
+	this.maxTickCount = this.options.maxDensityTicks;
 	
 	this.datasets;
 }

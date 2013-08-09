@@ -27,7 +27,10 @@
 function FuzzyTimelineConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address='
+			proxy : 'php/proxy.php?address=',
+			//TODO: experiment with number of ticks, 150 seems to be ok for now
+			maxBars : 50,
+			maxDensityTicks : 150
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
