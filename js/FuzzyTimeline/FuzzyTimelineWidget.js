@@ -53,6 +53,9 @@ FuzzyTimelineWidget.prototype = {
 	initWidget : function(data) {
 		var fuzzyTimeline = this;
 		
+		delete fuzzyTimeline.overallMin;
+		delete fuzzyTimeline.overallMax;
+		
 		$(fuzzyTimeline.gui.densityDiv).empty();
 		delete fuzzyTimeline.density;
 		$(fuzzyTimeline.gui.rangeTimelineDiv).empty();
