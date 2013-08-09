@@ -268,18 +268,19 @@ FuzzyTimelineRangeBars.prototype = {
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
+		var rangeBar = this;
 		var emptyHighlight = true;
-		$(objects).each(function(){
+		var selected_highlighted = GeoTemConfig.mergeObjects(objects,rangeBar.selected);
+		$(selected_highlighted).each(function(){
 			if ((this instanceof Array) && (this.length > 0)){
 				emptyHighlight = false;
 				return false;
 			}
 		});
-		var rangeBar = this;
 		if (emptyHighlight)
 			rangeBar.highlightedDatasetsPlot = [];
 		else
-			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(GeoTemConfig.mergeObjects(objects,rangeBar.selected));
+			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
 		rangeBar.redrawPlot();
 	},
 	
