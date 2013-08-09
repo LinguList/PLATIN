@@ -48,8 +48,8 @@ FuzzyTimelineRangePiechart.prototype = {
 		var piechart = this;
 		
 		var chartData = [];
-		chartData.push({label:"shown",data:piechart.shownDatasets[piechart.datasetIndex].length});
-		chartData.push({label:"hidden",data:piechart.hiddenDatasets[piechart.datasetIndex].length});
+		chartData.push({label:"fit",data:piechart.shownDatasets[piechart.datasetIndex].length});
+		chartData.push({label:"overlap",data:piechart.hiddenDatasets[piechart.datasetIndex].length});
 		
 		$.plot($(piechart.div), chartData,
 			{
@@ -70,6 +70,31 @@ FuzzyTimelineRangePiechart.prototype = {
 		        }
 			}
 		);
+		
+		$(piechart.div).unbind();
+	    $(piechart.div).bind("plothover", function (event, pos, item) {
+	        if (item) {
+	        	if (item.seriesIndex === 0){
+	        		piechart.parent.density.showPlotByType('shown');
+	        		piechart.parent.rangeBars.showPlotByType('shown');
+	        	}
+	        	else if (item.seriesIndex === 1){
+	        		piechart.parent.density.showPlotByType('hidden');
+	        		piechart.parent.rangeBars.showPlotByType('hidden');
+	        	}
+	        } else {
+        		piechart.parent.density.showPlotByType('combined');
+        		piechart.parent.rangeBars.showPlotByType('combined');
+	        }
+	    });
+	    $(piechart.div).bind("plotclick", function (event, pos, item) {
+	        if (item) {
+				//item.series.label contains the column element
+				pieChart.triggerSelection(item.series.label);                              
+	        } else {
+	        	pieChart.triggerSelection();
+	        }
+	    });		
 	},
 		
 	triggerHighlight : function(columnElement) {

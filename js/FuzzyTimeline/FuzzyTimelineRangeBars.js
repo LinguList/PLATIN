@@ -38,6 +38,8 @@ function FuzzyTimelineRangeBars(parent) {
 	this.hiddenDatasetsPlot;
 	this.shownDatasetsPlot;
 	this.combinedDatasetsPlot;
+	this.yValMin;
+	this.yValMax;
 	
 	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
 	this.plotDiv = document.createElement("div");
@@ -101,6 +103,17 @@ FuzzyTimelineRangeBars.prototype = {
 		return plots;
 	},
 	
+	showPlotByType : function(type){
+		var rangeBar = this;
+		if (type === 'shown'){
+			rangeBar.showPlot(rangeBar.shownDatasetsPlot);
+		} else if (type === 'hidden'){
+			rangeBar.showPlot(rangeBar.hiddenDatasetsPlot);
+		} else if (type === 'combined'){
+			rangeBar.showPlot(rangeBar.combinedDatasetsPlot);
+		}
+	},
+	
 	showPlot : function(plots){
 		var rangeBar = this;
 		var tickCount = rangeBar.tickSpans.length-1;
@@ -133,6 +146,10 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        xaxis: {          
 		        	  ticks: ticks
+		        },
+		        yaxis: {
+		        	min : rangeBar.yValMin,
+		        	max : rangeBar.yValMax
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
@@ -167,6 +184,9 @@ FuzzyTimelineRangeBars.prototype = {
 			tickCount = rangeBar.tickSpans.length-1;
 		}
 		
+		rangeBar.yValMin = 0;
+		rangeBar.yValMax = 0;
+		
 		rangeBar.shownDatasetsPlot = rangeBar.createPlot(shownDatasets, tickCount, rangeBar.spanWidth);
 		rangeBar.hiddenDatasetsPlot = rangeBar.createPlot(hiddenDatasets, tickCount, spanWidth);
 		
@@ -174,12 +194,29 @@ FuzzyTimelineRangeBars.prototype = {
 		for (var i = 0; i < rangeBar.hiddenDatasetsPlot.length; i++){
 			var singlePlot = [];
 			for (var j = 0; j < rangeBar.hiddenDatasetsPlot[i].length; j++){
-				singlePlot[j] = [j, rangeBar.hiddenDatasetsPlot[i][j][1] + rangeBar.shownDatasetsPlot[i][j][1]];
+				var hiddenVal = rangeBar.hiddenDatasetsPlot[i][j][1];
+				var shownVal = rangeBar.shownDatasetsPlot[i][j][1];
+				var combinedVal = hiddenVal + shownVal;
+				
+				if (hiddenVal < rangeBar.yValMin)
+					rangeBar.yValMin = hiddenVal;
+				if (hiddenVal > rangeBar.yValMax)
+					rangeBar.yValMax = hiddenVal;
+				if (shownVal < rangeBar.yValMin)
+					rangeBar.yValMin = shownVal;
+				if (shownVal > rangeBar.yValMax)
+					rangeBar.yValMax = shownVal;
+				if (combinedVal < rangeBar.yValMin)
+					rangeBar.yValMin = combinedVal;
+				if (combinedVal > rangeBar.yValMax)
+					rangeBar.yValMax = combinedVal;
+				
+				singlePlot[j] = [j, combinedVal];
 			}
 			rangeBar.combinedDatasetsPlot.push(singlePlot);
 		}
 		
-		rangeBar.showPlot(rangeBar.combinedDatasetsPlot);
+		rangeBar.showPlotByType("combined");
 	},
 	
 	highlightChanged : function(objects) {

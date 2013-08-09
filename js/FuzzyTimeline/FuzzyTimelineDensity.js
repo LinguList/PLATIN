@@ -118,32 +118,19 @@ FuzzyTimelineDensity.prototype = {
 		return plots;
 	},
 	
-	initialize : function(shownDatasets, hiddenDatasets, tickWidth) {
+	showPlotByType : function(type){
 		var density = this;
-
-		//calculate tick width (will be in ms)
-		delete density.tickCount;
-		delete density.singleTickWidth;
-		if (typeof tickWidth !== "undefined"){
-			density.singleTickWidth = tickWidth;
-			density.tickCount = Math.ceil((density.parent.overallMax-density.parent.overallMin)/tickWidth);
-		} 
-		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
-			density.tickCount = density.maxTickCount;
-			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
+		if (type === 'shown'){
+			density.showPlot(density.shownDatasetsPlot);
+		} else if (type === 'hidden'){
+			density.showPlot(density.hiddenDatasetsPlot);
+		} else if (type === 'combined'){
+			density.showPlot(density.combinedDatasetsPlot);
 		}
-		
-		density.shownDatasetsPlot = density.createUDData(shownDatasets);
-		density.hiddenDatasetsPlot = density.createUDData(hiddenDatasets);
-
-		density.combinedDatasetsPlot = [];
-		for (var i = 0; i < density.hiddenDatasetsPlot.length; i++){
-			var singlePlot = [];
-			for (var j = 0; j < density.hiddenDatasetsPlot[i].length; j++){
-				singlePlot[j] = [j, density.hiddenDatasetsPlot[i][j][1] + density.shownDatasetsPlot[i][j][1]];
-			}
-			density.combinedDatasetsPlot.push(singlePlot);
-		}
+	},
+	
+	showPlot : function(plot) {
+		var density = this;
 		
 		var axisFormatString = "%Y";
 		var tooltipFormatString = "YYYY";
@@ -189,10 +176,14 @@ FuzzyTimelineDensity.prototype = {
 				xaxis: {
 					mode: "time",
 					timeformat:axisFormatString
-				}
+				},
+		        yaxis: {
+		        	min : density.yValMin,
+		        	max : density.yValMax
+		        },
 			};
 		
-		density.plot = $.plot($(density.div), density.combinedDatasetsPlot, options);
+		density.plot = $.plot($(density.div), plot, options);
 		
 		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {
@@ -218,7 +209,56 @@ FuzzyTimelineDensity.prototype = {
 	        }  	
         	density.triggerSelection(date);
 	    });
-	    
+	},
+	
+	initialize : function(shownDatasets, hiddenDatasets, tickWidth) {
+		var density = this;
+
+		//calculate tick width (will be in ms)
+		delete density.tickCount;
+		delete density.singleTickWidth;
+		if (typeof tickWidth !== "undefined"){
+			density.singleTickWidth = tickWidth;
+			density.tickCount = Math.ceil((density.parent.overallMax-density.parent.overallMin)/tickWidth);
+		} 
+		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
+			density.tickCount = density.maxTickCount;
+			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
+		}
+		
+		density.shownDatasetsPlot = density.createUDData(shownDatasets);
+		density.hiddenDatasetsPlot = density.createUDData(hiddenDatasets);
+
+		density.yValMin = 0;
+		density.yValMax = 0;
+		
+		density.combinedDatasetsPlot = [];
+		for (var i = 0; i < density.hiddenDatasetsPlot.length; i++){
+			var singlePlot = [];
+			for (var j = 0; j < density.hiddenDatasetsPlot[i].length; j++){
+				var hiddenVal = density.hiddenDatasetsPlot[i][j][1];
+				var shownVal = density.shownDatasetsPlot[i][j][1];
+				var combinedVal = hiddenVal + shownVal;
+				
+				if (hiddenVal < density.yValMin)
+					density.yValMin = hiddenVal;
+				if (hiddenVal > density.yValMax)
+					density.yValMax = hiddenVal;
+				if (shownVal < density.yValMin)
+					density.yValMin = shownVal;
+				if (shownVal > density.yValMax)
+					density.yValMax = shownVal;
+				if (combinedVal < density.yValMin)
+					density.yValMin = combinedVal;
+				if (combinedVal > density.yValMax)
+					density.yValMax = combinedVal;
+				
+				singlePlot[j] = [j, combinedVal];				
+			}
+			density.combinedDatasetsPlot.push(singlePlot);
+		}
+		
+	    density.showPlotByType("combined");
 	},
 		
 	triggerHighlight : function(date) {
