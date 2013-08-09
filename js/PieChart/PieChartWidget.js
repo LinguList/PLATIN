@@ -53,8 +53,12 @@ PieChartWidget.prototype = {
 	},
 
 	initWidget : function(data) {
+		var piechart = this;
 		this.datasets = data;
-		this.selected = this.datasets; 
+		piechart.selected = [];
+		$(this.datasets).each(function(){
+			piechart.selected.push(this.objects);
+		})
 		
 		this.gui.refreshColumnSelector();
 		
