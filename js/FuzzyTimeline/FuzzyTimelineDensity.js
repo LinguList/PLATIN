@@ -256,7 +256,7 @@ FuzzyTimelineDensity.prototype = {
 				if (combinedVal > density.yValMax)
 					density.yValMax = combinedVal;
 				
-				singlePlot[j] = [j, combinedVal];				
+				singlePlot[j] = [date, combinedVal];				
 			}
 			density.combinedDatasetsPlot.push(singlePlot);
 		}
