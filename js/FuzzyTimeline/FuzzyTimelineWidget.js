@@ -95,7 +95,7 @@ FuzzyTimelineWidget.prototype = {
 				});
 			});
 			
-			fuzzyTimeline.density.initialize(fuzzyTimeline.datasets);
+			fuzzyTimeline.density.drawDensityPlot(fuzzyTimeline.datasets);
 			fuzzyTimeline.rangeBars.initialize(fuzzyTimeline.datasets);
 			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);
 		}
@@ -104,7 +104,7 @@ FuzzyTimelineWidget.prototype = {
 	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
 		var fuzzyTimeline = this;
 		//redraw density plot
-		fuzzyTimeline.density.initialize(shownDatasets,hiddenDatasets);
+		fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
 		//redraw range plot
 		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
 	},

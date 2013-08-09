@@ -57,6 +57,13 @@ function FuzzyTimelineDensity(parent,div) {
 
 FuzzyTimelineDensity.prototype = {
 
+	initialize : function(datasets) {
+		var density = this;
+			
+		density.datasets = datasets;
+		density.selected = [];
+	},
+	
 	createPlot : function(data){
 		density = this;
 		var chartData = [];
@@ -226,9 +233,8 @@ FuzzyTimelineDensity.prototype = {
 	    });
 	},
 	
-	initialize : function(shownDatasets, hiddenDatasets, tickWidth) {
+	drawDensityPlot : function(shownDatasets, hiddenDatasets, tickWidth) {
 		var density = this;
-
 		//calculate tick width (will be in ms)
 		delete density.tickCount;
 		delete density.singleTickWidth;
@@ -276,7 +282,7 @@ FuzzyTimelineDensity.prototype = {
 		
 	    density.showPlotByType("combined");
 	},
-		
+	
 	triggerHighlight : function(date) {
 		var highlightedObjects = [];
 		
