@@ -221,9 +221,13 @@ FuzzyTimelineWidget.prototype = {
 					lastTickPercentage:lastTickPercentage});
 	},
 
-	getObjects : function(date) {
+	getObjects : function(dateStart, dateEnd) {
 		var fuzzyTimeline = this;
-		var searchDate = moment(date);
+		var searchDateStart, searchDateEnd;
+		if (typeof dateStart !== "undefined")
+			searchDateStart = moment(dateStart);
+		if (typeof dateEnd !== "undefined")
+			searchDateEnd = moment(dateEnd);
 		
 		var datasets = [];		
 		$(fuzzyTimeline.datasets).each(function(){
@@ -245,8 +249,13 @@ FuzzyTimelineWidget.prototype = {
 					return;
 				}
 				
-				if ( (datemin <= searchDate) && (datemax >= searchDate) )
-					objects.push(this);
+				if (typeof searchDateEnd === 'undefined'){
+					if ( (datemin <= searchDateStart) && (datemax >= searchDateStart) )
+						objects.push(this);
+				} else {
+					if ((datemin <= searchDateEnd) && (datemax >= searchDateStart))
+						objects.push(this);
+				}
 			});
 			datasets.push(objects);
 		});
