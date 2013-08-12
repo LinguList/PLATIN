@@ -211,6 +211,59 @@ FuzzyTimelineRangeBars.prototype = {
 		
 		$(rangeBar.plotDiv).unbind();		
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot_colors, options);
+		
+		$(rangeBar.plotDiv).unbind("plothover");
+	    $(rangeBar.plotDiv).bind("plothover", function (event, pos, item) {
+	    	var dateStart,dateEnd;
+	    	var spans;
+	        if (item) {
+	        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
+				//contains the x-value (date)
+	        	dateStart = spans[item.datapoint[0]];
+	        	dateEnd = spans[item.datapoint[0]+1];
+	        }
+	        //remember last date, so that we don't redraw the current state
+	        //that date may be undefined is on purpose
+	    	if (rangeBar.highlighted !== dateStart){
+	    		rangeBar.highlighted = dateStart;
+	    		if (typeof dateStart === "undefined")
+	    			rangeBar.triggerHighlight();
+	    		else
+	    			rangeBar.triggerHighlight(dateStart, dateEnd);
+	        }
+	    });
+
+	    //this var prevents the execution of the plotclick event after a select event 
+	    rangeBar.wasSelection = false;
+		$(rangeBar.plotDiv).unbind("plotclick");
+	    $(rangeBar.plotDiv).bind("plotclick", function (event, pos, item) {
+	    	if (rangeBar.wasSelection)
+	    		rangeBar.wasSelection = false;
+	    	else {
+		    	var dateStart,dateEnd;
+		    	var spans;
+		        if (item) {
+		        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
+					//contains the x-value (date)
+		        	dateStart = spans[item.datapoint[0]];
+		        	dateEnd = spans[item.datapoint[0]+1];
+		        }  	
+	    		if (typeof dateStart === "undefined")
+	    			rangeBar.triggerSelection();
+	    		else
+	    			rangeBar.triggerSelection(dateStart, dateEnd);
+	        	wasDataClick = true;
+	        }
+	    });
+	    
+	    $(rangeBar.plotDiv).unbind("plotselected");
+	    $(rangeBar.plotDiv).bind("plotselected", function(event, ranges) {
+        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
+        	dateStart = spans[Math.floor(ranges.xaxis.from)];
+        	dateEnd = spans[Math.ceil(ranges.xaxis.to)];
+	    	rangeBar.triggerSelection(dateStart, dateEnd);
+	    	rangeBar.wasSelection = true;
+	    });	
 	},
 	
 	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
@@ -293,12 +346,38 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.highlightChanged([]);
 	},
 	
-	triggerHighlight : function(columnElement) {
-
+	triggerHighlight : function(dateStart, dateEnd) {
+		var highlightedObjects = [];
+		
+		if ( (typeof dateStart !== "undefined") && (typeof dateEnd !== "undefined") ){
+			highlightedObjects = this.parent.getObjects(dateStart, dateEnd);
+		} else {
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+				highlightedObjects.push([]);
+		}
+		
+		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
-	triggerSelection : function(columnElement) {
-
+	triggerSelection : function(dateStart, dateEnd) {
+		var rangeBar = this;
+		var selection;
+		if (typeof dateStart !== "undefined") {
+			var selected;
+			if (typeof dateEnd === "undefined")
+				selected = rangeBar.parent.getObjects(dateStart);
+			else
+				selected = rangeBar.parent.getObjects(dateStart,dateEnd);
+			selection = new Selection(selected, density);
+		} else {
+			var selected = [];
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
+				selected.push([]);
+			selection = new Selection(selected);
+		}
+		
+		rangeBar.parent.selectionChanged(selection);
+		rangeBar.parent.core.triggerSelection(selection);
 	},
 
 	deselection : function() {
