@@ -327,6 +327,9 @@ FuzzyTimelineDensity.prototype = {
 				highlightedObjects.push([]);
 		}
 		
+		if (typeof this.parent.rangeBars !== "undefined")
+			this.parent.rangeBars.highlightChanged(highlightedObjects);
+
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 

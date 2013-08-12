@@ -356,6 +356,9 @@ FuzzyTimelineRangeBars.prototype = {
 				highlightedObjects.push([]);
 		}
 		
+		if (typeof this.parent.density !== "undefined")
+			this.parent.density.highlightChanged(highlightedObjects);
+		
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
