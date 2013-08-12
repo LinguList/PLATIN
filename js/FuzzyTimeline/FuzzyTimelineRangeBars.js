@@ -132,7 +132,7 @@ FuzzyTimelineRangeBars.prototype = {
 		var rangeBar = this;
 		var highlight_select_plot = $.merge([],plot);
 		
-		if (density.highlightedDatasetsPlot instanceof Array){
+		if (rangeBar.highlightedDatasetsPlot instanceof Array){
 			highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedDatasetsPlot);
 		}
 		
@@ -368,7 +368,7 @@ FuzzyTimelineRangeBars.prototype = {
 				selected = rangeBar.parent.getObjects(dateStart);
 			else
 				selected = rangeBar.parent.getObjects(dateStart,dateEnd);
-			selection = new Selection(selected, density);
+			selection = new Selection(selected, rangeBar);
 		} else {
 			var selected = [];
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
