@@ -31,6 +31,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.pieChart = this;
 	this.pieChartDiv;
 	this.preHighlightObjects;
+	this.highlightedLabel;
 	
 	this.informationDIV;
 	
@@ -79,11 +80,14 @@ PieChart.prototype = {
 
 			$(this.pieChartDiv).unbind();
 		    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
+		    	var highlightedLabel;
+		    	
 		        if (item) {
-					//item.series.label contains the column element
-					pieChart.triggerHighlight(item.series.label);                              
-		        } else {
-		        	pieChart.triggerHighlight();
+		        	highlightedLabel = item.series.label;
+		        }
+		        if (highlightedLabel !== pieChart.highlightedLabel){
+		        	pieChart.highlightedLabel = highlightedLabel;
+		        	pieChart.triggerHighlight(highlightedLabel);
 		        }
 		    });
 			
