@@ -242,15 +242,28 @@ FuzzyTimelineDensity.prototype = {
 	        	density.triggerHighlight(date);
 	        }
 	    });
-	    
+
+	    //this var prevents the execution of the plotclick event after a select event 
+	    density.wasSelection = false;
 		$(density.div).unbind("plotclick");
 	    $(density.div).bind("plotclick", function (event, pos, item) {
-	    	var date;
-	        //that date may be undefined is on purpose	    	
-	        if (item) {
-	        	date = item.datapoint[0];
-	        }  	
-        	density.triggerSelection(date);
+	    	if (density.wasSelection)
+	    		density.wasSelection = false;
+	    	else {
+	        	var date;
+		        //that date may be undefined is on purpose	    	
+		        if (item) {
+		        	date = item.datapoint[0];
+		        }  	
+	        	density.triggerSelection(date);
+	        	wasDataClick = true;
+	        }
+	    });
+	    
+	    $(density.div).unbind("plotselected");
+	    $(density.div).bind("plotselected", function(event, ranges) {
+        	density.triggerSelection(ranges.xaxis.from, ranges.xaxis.to);
+	    	density.wasSelection = true;
 	    });
 	},
 	
@@ -317,11 +330,14 @@ FuzzyTimelineDensity.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
-	triggerSelection : function(date) {
+	triggerSelection : function(dateStart, dateEnd) {
 		var density = this;
 		var selection;
-		if (typeof date !== "undefined") {
-			density.selected = density.parent.getObjects(date);
+		if (typeof dateStart !== "undefined") {
+			if (typeof dateEnd === "undefined")
+				density.selected = density.parent.getObjects(dateStart);
+			else
+				density.selected = density.parent.getObjects(dateStart,dateEnd);
 			selection = new Selection(density.selected, density);
 		} else {
 			//empty selection
