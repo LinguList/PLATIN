@@ -36,7 +36,9 @@ function FuzzyTimelineDensity(parent,div) {
 	this.shownDatasetsPlot;
 	this.hiddenDatasetsPlot;
 	this.combinedDatasetsPlot;
-	this.highlightedDatasetsPlot;
+	this.highlightedShownDatasetsPlot;
+	this.highlightedHiddenDatasetsPlot;
+	this.highlightedCombinedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
 	this.displayType;
@@ -149,8 +151,15 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		var highlight_select_plot = $.merge([],plot);
 		
-		if (density.highlightedDatasetsPlot instanceof Array){
-			highlight_select_plot = $.merge(highlight_select_plot,density.highlightedDatasetsPlot);
+		//see if there are selected/highlighted values
+		if (density.highlightedCombinedDatasetsPlot instanceof Array){
+			//check which one should be shown (or none, if plot is some other - external - graph)
+			if (plot === density.shownDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedShownDatasetsPlot);
+			else if (plot === density.hiddenDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedHiddenDatasetsPlot);
+			else if (plot === density.combinedDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedCombinedDatasetsPlot);
 		}
 		
 		var axisFormatString = "%Y";
@@ -367,10 +376,36 @@ FuzzyTimelineDensity.prototype = {
 				return false;
 			}
 		});
-		if (emptyHighlight)
-			density.highlightedDatasetsPlot = [];
-		else
-			density.highlightedDatasetsPlot = density.createUDData(selected_highlighted);
+		if (emptyHighlight){
+			density.highlightedShownDatasetsPlot = [];
+			density.highlightedHiddenDatasetsPlot = [];
+			density.highlightedCombinedDatasetsPlot = [];
+		} else {
+			var shown_selected_highlighted = [];
+			var hidden_selected_highlighted = [];
+			$(selected_highlighted).each(function(){
+				var singleShown = [], singleHidden = [];
+				$(this).each(function(){
+					//if there is no barchart, there won't be a spanWidth
+					if (typeof density.parent.rangeBars !== "undefined"){
+						var ticks = density.parent.getTicks(this, density.parent.rangeBars.spanWidth);
+						if (	(typeof ticks !== 'undefined') &&
+								(typeof ticks.firstTick !== 'undefined') &&
+								(typeof ticks.lastTick !== 'undefined') ){
+							if (ticks.firstTick != ticks.lastTick)
+								singleHidden.push(this);
+							else
+								singleShown.push(this);
+						}
+					}
+				});
+				shown_selected_highlighted.push(singleShown);
+				hidden_selected_highlighted.push(singleHidden);
+			});
+			density.highlightedShownDatasetsPlot = density.createUDData(shown_selected_highlighted);
+			density.highlightedHiddenDatasetsPlot = density.createUDData(hidden_selected_highlighted);
+			density.highlightedCombinedDatasetsPlot = density.createUDData(selected_highlighted);
+		}
 		density.redrawPlot();
 	},
 	

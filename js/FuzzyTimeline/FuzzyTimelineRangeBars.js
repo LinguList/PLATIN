@@ -40,7 +40,9 @@ function FuzzyTimelineRangeBars(parent) {
 	this.hiddenDatasetsPlot;
 	this.shownDatasetsPlot;
 	this.combinedDatasetsPlot;
-	this.highlightedDatasetsPlot;
+	this.highlightedShownDatasetsPlot;
+	this.highlightedHiddenDatasetsPlot;
+	this.highlightedCombinedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
 	this.displayType;
@@ -132,8 +134,15 @@ FuzzyTimelineRangeBars.prototype = {
 		var rangeBar = this;
 		var highlight_select_plot = $.merge([],plot);
 		
-		if (rangeBar.highlightedDatasetsPlot instanceof Array){
-			highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedDatasetsPlot);
+		//see if there are selected/highlighted values
+		if (rangeBar.highlightedCombinedDatasetsPlot instanceof Array){
+			//check which one should be shown (or none, if plot is some other - external - graph)
+			if (plot === rangeBar.shownDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedShownDatasetsPlot);
+			else if (plot === rangeBar.hiddenDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedHiddenDatasetsPlot);
+			else if (plot === rangeBar.combinedDatasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedCombinedDatasetsPlot);
 		}
 		
 		var tickCount = rangeBar.tickSpans.length-1;
@@ -330,10 +339,33 @@ FuzzyTimelineRangeBars.prototype = {
 				return false;
 			}
 		});
-		if (emptyHighlight)
-			rangeBar.highlightedDatasetsPlot = [];
-		else
-			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
+		if (emptyHighlight){
+			rangeBar.highlightedShownDatasetsPlot = [];
+			rangeBar.highlightedHiddenDatasetsPlot = [];
+			rangeBar.highlightedCombinedDatasetsPlot = [];
+		} else {
+			var shown_selected_highlighted = [];
+			var hidden_selected_highlighted = [];
+			$(selected_highlighted).each(function(){
+				var singleShown = [], singleHidden = [];
+				$(this).each(function(){
+					var ticks = rangeBar.parent.getTicks(this, rangeBar.spanWidth);
+					if (	(typeof ticks !== 'undefined') &&
+							(typeof ticks.firstTick !== 'undefined') &&
+							(typeof ticks.lastTick !== 'undefined') ){
+						if (ticks.firstTick != ticks.lastTick)
+							singleHidden.push(this);
+						else
+							singleShown.push(this);
+					}
+				});
+				shown_selected_highlighted.push(singleShown);
+				hidden_selected_highlighted.push(singleHidden);
+			});
+			rangeBar.highlightedShownDatasetsPlot = rangeBar.createPlot(shown_selected_highlighted);
+			rangeBar.highlightedHiddenDatasetsPlot = rangeBar.createPlot(hidden_selected_highlighted);
+			rangeBar.highlightedCombinedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
+		}			
 		rangeBar.redrawPlot();
 	},
 	
