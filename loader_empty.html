@@ -6,15 +6,10 @@
     <title>GeoTemCo</title>
 
  	<style type="text/css">
-		.legend > table, .legend > div {
-			width: 200px !important;
+		.legend table, .legend > div {
 		    height: 100px !important;
 			display: block;
-			overflow-y: scroll;
-			position: absolute;
-			right: 0px;
-			bottom: 0px;
-			font-size: 12px;
+			overflow-y: scroll;		    
 		}
 	</style>
 
@@ -31,26 +26,13 @@
       </div>
     </noscript>
 
+	<fieldset id="dataloaderContainerDiv" style="position:relative;">
+		<legend>Load Data</legend>
+	</fieldset>
+	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+		<legend>Load Overlay</legend>
+	</fieldset>
 	<table width=100%>
-		<tr >
-			<td width=50%>
-				<fieldset id="dataloaderContainerDiv" style="position:relative;">
-					<legend>Load Data</legend>
-				</fieldset>
-			</td>
-			<td rowspan=2 width=50% valign=top>
-				<fieldset id="storytellingContainerDiv" style="position:relative;">
-					<legend>Data History</legend>
-				</fieldset>			
-			</td>
-		</tr>
-		<tr>
-			<td width=50%>
-				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
-					<legend>Load Overlay</legend>
-				</fieldset>
-			</td>
-		</tr>
 		<tr>
 			<td width=50%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
@@ -92,38 +74,8 @@
 		var piechartDiv = document.getElementById("piechartContainerDiv");
 		var piechart = new WidgetWrapper();
 		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
-		piechartWidget.addPieChart(0,"objekt");
-		piechartWidget.addPieChart(0,"cu_perc",function(data){
-			var value = "Wenig CU";
-			if (data >= 50.0)
-				value = "Viel CU";
-			
-			return value;
-		});
-
 		
-		var storytellingDiv = document.getElementById("storytellingContainerDiv");
-		var storytelling = new WidgetWrapper();
-		var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
-		/*
-		var kml1 = GeoTemConfig.getKml('data/heine.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
-		var kml2 = GeoTemConfig.getKml('data/kafka.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml2),'Franz Kafka'));
-		var kml3 = GeoTemConfig.getKml('data/goethe.kml');
-		datasets.push(new Dataset(GeoTemConfig.loadKml(kml3),'Johann Wolfgang von Goethe'));
-		*/
-		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(json){
-			datasets.push(new Dataset(GeoTemConfig.loadJson(json),'Silber Objekte'));
-			
-			map.display(datasets);
-			time.display(datasets);
-			table.display(datasets);
-			piechart.display(datasets);
-			storytelling.display(datasets);
-			
-			dataloaderWidget.loadFromURL();
-		});		
+		dataloaderWidget.loadFromURL();
 	});
     </script>
 

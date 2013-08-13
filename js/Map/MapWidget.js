@@ -540,6 +540,11 @@ MapWidget.prototype = {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
 			this.zoomSlider.setValue(this.openlayersMap.getZoom());
 		}
+		
+		Publisher.Subscribe('mapChanged', this, function(mapName) {
+			this.client.setBaseLayerByName(mapName);
+			this.client.gui.setMap();
+		});
 
 	},
 
@@ -550,14 +555,38 @@ MapWidget.prototype = {
 	addBaseLayers : function(layers) {
 		if ( layers instanceof Array) {
 			for (var i in layers ) {
-				var layer = new OpenLayers.Layer.WMS(layers[i].name, layers[i].url, {
-					projection : "EPSG:4326",
-					layers : layers[i].layer,
-					transparent : "true",
-					format : "image/png"
-				}, {
-					isBaseLayer : true
-				});
+				var layer;
+				if (layers[i].type === "XYZ"){
+			        layer = new OpenLayers.Layer.XYZ(
+			        			layers[i].name,
+				                [
+				                 	layers[i].url
+				                ], 
+				                {
+					                sphericalMercator: true,
+					                transitionEffect: "resize",
+					                buffer: 1,
+					                numZoomLevels: 12,
+					                transparent : true
+				                }, 
+								{
+									isBaseLayer : true
+								}
+			            );
+				} else {
+					layer = new OpenLayers.Layer.WMS(
+							layers[i].name, layers[i].url, 
+							{
+								projection : "EPSG:4326",
+								layers : layers[i].layer,
+								transparent : "true",
+								format : "image/png"
+							}, 
+							{
+								isBaseLayer : true
+							}
+					);
+				}
 				this.baseLayers.push(layer);
 				this.openlayersMap.addLayers([layer]);
 			}
@@ -625,11 +654,26 @@ MapWidget.prototype = {
 				resolutions : this.resolutions
 			}));
 		}
+		if (this.options.osmMapsMapQuest) {
+			this.baseLayers.push(new OpenLayers.Layer.OSM('Open Street Map (MapQuest)', 
+				["http://otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"], 
+	            {
+					sphericalMercator : true,
+					zoomOffset : 1,
+					resolutions : this.resolutions
+	            }
+			));
+		}
 		for (var i = 0; i < this.baseLayers.length; i++) {
 			this.openlayersMap.addLayers([this.baseLayers[i]]);
 		}
 		if (this.options.alternativeMap) {
-			this.addBaseLayers([this.options.alternativeMap]);
+			if (!(this.options.alternativeMap instanceof Array))
+				this.options.alternativeMap = [this.options.alternativeMap];
+			this.addBaseLayers(this.options.alternativeMap);
 		}
 		this.setBaseLayerByName(this.options.baseLayer);
 	},
@@ -889,7 +933,7 @@ MapWidget.prototype = {
 						}
 					}
 					else {
-						c = GeoTemConfig.getColor(point.search);
+						c = GeoTemConfig.getAverageDatasetColor(point.search,point.elements);
 						shape = 'circle';
 						rotation = 0;
 					}
@@ -1030,12 +1074,12 @@ MapWidget.prototype = {
 			if( graphic.shape == 'square' ){
 				olRadius *= 0.75;
 			}
-		}		
-		if (olRadius != point.olFeature.style.pointRadius) {
-			point.olFeature.style.pointRadius = olRadius;
-			if (polygon.containsPoint(point.feature.geometry)) {
-				this.objectLayer.drawFeature(point.olFeature);
-			}
+		}
+		point.olFeature.style.pointRadius = olRadius;
+		var c = GeoTemConfig.getAverageDatasetColor(point.search, point.overlayElements);
+		point.olFeature.style.fillColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
+		if (polygon.containsPoint(point.feature.geometry)) {
+			this.objectLayer.drawFeature(point.olFeature);
 		}
 	},
 
@@ -1161,6 +1205,10 @@ MapWidget.prototype = {
 		this.highlightChanged(selectedObjects);
 		this.core.triggerSelection(this.selection);
 		this.filterBar.reset(true);
+	},
+	
+	triggerMapChanged : function(mapName) {
+		Publisher.Publish('mapChanged', mapName, this);
 	},
 
 	/**
@@ -1314,6 +1362,12 @@ MapWidget.prototype = {
 		} else {
 			this.gui.osmLink.style.visibility = 'hidden';
 		}
+		if (this.baseLayers[index].name == 'Open Street Map (MapQuest)') {
+			this.gui.osmMapQuestLink.style.visibility = 'visible';
+		} else {
+			this.gui.osmMapQuestLink.style.visibility = 'hidden';
+		}
+		this.triggerMapChanged(this.baseLayers[index].name);
 	},
 
 	//vhz added title to buttons
@@ -1418,18 +1472,27 @@ MapWidget.prototype = {
 		var gap = 0;
 		var x_s = this.gui.mapWindow.offsetWidth / 2 - gap;
 		var y_s = this.gui.mapWindow.offsetHeight / 2 - gap;
-		var xDist = Math.abs(p.x - closestPoint.x);
-		var yDist = Math.abs(p.y - closestPoint.y);
-		for (var i = 0; i < zoomLevels; i++) {
-			var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
-			if (xDist / resolution < x_s && yDist / resolution < y_s) {
-				this.openlayersMap.zoomTo(zoomLevels - i - 1);
-				if (this.zoomSlider) {
-					this.zoomSlider.setValue(this.openlayersMap.getZoom());
+		if (typeof closestPoint !== "undefined"){
+			var xDist = Math.abs(p.x - closestPoint.x);
+			var yDist = Math.abs(p.y - closestPoint.y);
+			for (var i = 0; i < zoomLevels; i++) {
+				var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
+				if (xDist / resolution < x_s && yDist / resolution < y_s) {
+					this.openlayersMap.zoomTo(zoomLevels - i - 1);
+					if (this.zoomSlider) {
+						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+					}
+					this.drawObjectLayer(false);
+					break;
 				}
-				this.drawObjectLayer(false);
-				break;
 			}
+		} else {
+			//if there are no points on the map, zoom to max 
+			this.openlayersMap.zoomTo(0);
+			if (this.zoomSlider) {
+				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			}
+			this.drawObjectLayer(false);
 		}
 	},
 

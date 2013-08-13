@@ -31,7 +31,7 @@
  * @param {Array} elements list of dropdown entries
  * @param {String} title dropdown button title
  */
-function Dropdown(parent, elements, title) {
+function Dropdown(parent, elements, title, maxListHeight) {
 
 	var dropdown = this;
 	this.visibility = false;
@@ -69,10 +69,13 @@ function Dropdown(parent, elements, title) {
 	var entryMenu = document.createElement("div");
 	entryMenu.setAttribute('class', 'dropdownMenu');
 	this.div.appendChild(entryMenu);
+	if (typeof maxListHeight !== "undefined")
+		$(entryMenu).height(maxListHeight);
 
 	var entries = document.createElement("dl");
 	var addEntry = function(e) {
 		var entry = document.createElement("dt");
+		entry.setAttribute('class', 'dropdownUnselectedEntry');
 		entry.innerHTML = e.name;
 		entry.onclick = function() {
 			e.onclick();

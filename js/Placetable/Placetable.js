@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* Placetable.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,21 +20,61 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class Placetable
+ * Implementation for a Placetable
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {HTML object} parent div to append the Placetable
  */
-function DataloaderConfig(options) {
+function Placetable(parent) {
 
-	this.options = {
-			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
-	};
-	if ( typeof options != 'undefined') {
-		$.extend(this.options, options);
+	this.index;
+	this.placetable = this;
+	
+	this.parent = parent;
+	this.options = parent.options;
+
+	this.initialize();
+}
+
+Placetable.prototype = {
+
+	remove : function() {
+	},
+	
+	initialize : function() {
+	},
+	
+	initPlacetable : function(dataSets) {
+		var placetable = this;
+		
+		
+	},
+		
+	triggerHighlight : function(columnElement) {
+	},
+
+	triggerSelection : function(columnElement) {
+	},
+
+	deselection : function() {
+	},
+
+	filtering : function() {
+	},
+
+	inverseFiltering : function() {
+	},
+
+	triggerRefining : function() {
+	},
+
+	reset : function() {
+	},
+	
+	show : function() {		
+	},
+
+	hide : function() {
 	}
-
 };

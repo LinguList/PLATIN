@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* PlacetableGui.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,21 +20,25 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class PlacetableGui
+ * Placetable GUI Implementation
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {PlacetableWidget} parent Placetable widget object
+ * @param {HTML object} div parent div to append the Placetable gui
+ * @param {JSON} options Placetable configuration
  */
-function DataloaderConfig(options) {
+function PlacetableGui(placetable, div, options) {
 
-	this.options = {
-			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
-	};
-	if ( typeof options != 'undefined') {
-		$.extend(this.options, options);
-	}
+	this.parent = placetable;
+	var placetableGui = this;
+	
+	this.placetableContainer = div;
+	this.placetableContainer.style.position = 'relative';
+	
+	this.placetablesTable = document.createElement("table");
+	div.appendChild(this.placetablesTable);
+};
 
+PlacetableGui.prototype = {
 };

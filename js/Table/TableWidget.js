@@ -63,24 +63,67 @@ TableWidget.prototype = {
 
 		var tableWidget = this;
 		var addTab = function(name, index) {
+			var dataSet = GeoTemConfig.datasets[index];
 			var tableTab = document.createElement('div');
-			var removeTabLink = document.createElement('a');
-			removeTabLink.innerHTML = ' (x)';
-			removeTabLink.setAttribute('href','');
-			removeTabLink.onclick = $.proxy(function(e) {
+			var tableTabTable = document.createElement('table');
+			$(tableTab).append(tableTabTable);
+			var tableTabTableRow = document.createElement('tr');
+			$(tableTabTable).append(tableTabTableRow);
+			tableTab.setAttribute('class', 'tableTab');
+			var c = GeoTemConfig.getColor(index);
+			tableTab.style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
+			tableTab.onclick = function() {
+				tableWidget.selectTable(index);
+			}
+			var tableNameDiv = document.createElement('div');
+			$(tableNameDiv).append(name);
+			
+			if (typeof dataSet.url !== "undefined"){
+				var tableLinkDiv = document.createElement('a');
+				tableLinkDiv.title = dataSet.url;
+				tableLinkDiv.href = dataSet.url;
+				tableLinkDiv.target = '_';
+				tableLinkDiv.setAttribute('class', 'externalLink');
+				$(tableNameDiv).append(tableLinkDiv);
+			}
+			$(tableTabTableRow).append($(document.createElement('td')).append(tableNameDiv));
+			
+			var removeTabDiv = document.createElement('div');
+			removeTabDiv.setAttribute('class', 'smallButton removeDataset');
+			removeTabDiv.title = GeoTemConfig.getString('removeDatasetHelp');
+			removeTabDiv.onclick = $.proxy(function(e) {
 				GeoTemConfig.removeDataset(index);
-				//don't let the event propagate to the DIV				
+				//don't let the event propagate to the DIV above			
 				e.stopPropagation();
 				//discard link click
 				return(false);
 			},{index:index});
-			tableTab.setAttribute('class', 'tableTab');
-			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
-			tableTab.onclick = function() {
-				tableWidget.selectTable(index);
+			$(tableTabTableRow).append($(document.createElement('td')).append(removeTabDiv));
+			
+			if (GeoTemConfig.tableExportDataset){
+				var exportTabDiv = document.createElement('div');
+				exportTabDiv.setAttribute('class', 'smallButton exportDataset');
+				exportTabDiv.title = GeoTemConfig.getString('exportDatasetHelp');
+				var exportTabForm = document.createElement('form');
+				//TODO: make this configurable
+				exportTabForm.action = 'php/download.php';
+				exportTabForm.method = 'post';
+				var exportTabHiddenValue = document.createElement('input');
+				exportTabHiddenValue.name = 'file';
+				exportTabHiddenValue.type = 'hidden';
+				exportTabForm.appendChild(exportTabHiddenValue);
+				exportTabDiv.onclick = $.proxy(function(e) {
+					$(exportTabHiddenValue).val(GeoTemConfig.createKMLfromDataset(index));
+					$(exportTabForm).submit();
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index});
+				exportTabDiv.appendChild(exportTabForm);
+				$(tableTabTableRow).append($(document.createElement('td')).append(exportTabDiv));
 			}
-			tableTab.innerHTML = name;
-			$(tableTab).append(removeTabLink);
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
@@ -117,19 +160,20 @@ TableWidget.prototype = {
 		if (this.activeTable != index) {
 			if ( typeof this.activeTable != 'undefined') {
 				this.tables[this.activeTable].hide();
-				this.tableTabs[this.activeTable].style.backgroundColor = this.options.unselectedCellColor;
+				var c = GeoTemConfig.getColor(this.activeTable);
+				this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
 			}
 			this.activeTable = index;
 			this.tables[this.activeTable].show();
 			var c = GeoTemConfig.getColor(this.activeTable);
-			this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
+			this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
 			this.core.triggerRise(index);
 		}
 
 	},
 
 	highlightChanged : function(objects) {
-		if( !GeoTemConfig.highlightEvents ){
+		if( !GeoTemConfig.highlightEvents || (typeof this.tables[this.activeTable] === "undefined")){
 			return;
 		}
 		if( this.tables.length > 0 ){
@@ -149,7 +193,7 @@ TableWidget.prototype = {
 	},
 
 	selectionChanged : function(selection) {
-		if( !GeoTemConfig.selectionEvents ){
+		if( !GeoTemConfig.selectionEvents || (typeof this.tables[this.activeTable] === "undefined")){
 			return;
 		}
 		this.reset();

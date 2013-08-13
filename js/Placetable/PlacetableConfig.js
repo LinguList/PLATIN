@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* PlacetableConfig.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,18 +20,14 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class PlacetableConfig
+ * PieChart Configuration File
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  */
-function DataloaderConfig(options) {
+function PlacetableConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
+			proxy : 'php/proxy.php?address='
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
