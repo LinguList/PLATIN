@@ -72,7 +72,7 @@ FuzzyTimelineRangePiechart.prototype = {
 		);
 		
 		$(piechart.div).unbind();
-	    $(piechart.div).bind("plothover", function (event, pos, item) {
+		var hoverFunction = function (event, pos, item) {
 	        if (item) {
 	        	if (item.seriesIndex === 0){
 	        		piechart.parent.density.showPlotByType('shown');
@@ -86,13 +86,14 @@ FuzzyTimelineRangePiechart.prototype = {
         		piechart.parent.density.showPlotByType('combined');
         		piechart.parent.rangeBars.showPlotByType('combined');
 	        }
-	    });
+	    };
+	    $(piechart.div).bind("plothover", hoverFunction);
+	    
 	    $(piechart.div).bind("plotclick", function (event, pos, item) {
-	        if (item) {
-				//item.series.label contains the column element
-				pieChart.triggerSelection(item.series.label);                              
-	        } else {
-	        	pieChart.triggerSelection();
+	    	hoverFunction(event,pos,item);
+	    	$(piechart.div).unbind("plothover");
+	        if (!item) {
+	        	$(piechart.div).bind("plothover", hoverFunction);
 	        }
 	    });		
 	},
