@@ -90,9 +90,11 @@ FuzzyTimelineRangePiechart.prototype = {
 	    $(piechart.div).bind("plothover", hoverFunction);
 	    
 	    $(piechart.div).bind("plotclick", function (event, pos, item) {
+	    	//disable highlight events, so that the graphs are "stuck" in this mode
 	    	hoverFunction(event,pos,item);
 	    	$(piechart.div).unbind("plothover");
 	        if (!item) {
+	        	//if it was a click outside of the pie-chart, enable highlight events
 	        	$(piechart.div).bind("plothover", hoverFunction);
 	        }
 	    });		
