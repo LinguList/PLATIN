@@ -174,6 +174,10 @@ PieChartCategoryChooser.prototype = {
 				return categoryLabel;
 			};
 			
+			//make created categories easy accessible for later usage
+			selectionFunction.type = 'text';
+			selectionFunction.categories = categories;
+			
 			//create pie chart
 			pieChartCategoryChooser.parent.addPieChart(
 					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
@@ -335,6 +339,10 @@ PieChartCategoryChooser.prototype = {
 
 				return categoryLabel;
 			};
+			
+			//make created categories easy accessible for later usage
+			selectionFunction.type = 'numeral';
+			selectionFunction.categories = categorieBoundaries;
 			
 			//create pie chart
 			pieChartCategoryChooser.parent.addPieChart(
