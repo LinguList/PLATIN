@@ -96,42 +96,73 @@ StorytellingWidget.prototype = {
 				tableLinkDiv.setAttribute('class', 'externalLink');
 				paragraph.append(tableLinkDiv);
 			} else {
-				var uploadToDARIAH = document.createElement('a');
-				$(uploadToDARIAH).append("Upload to DARIAH Storage");
-				uploadToDARIAH.title = "";
-				uploadToDARIAH.href = dataset.url;
-				
-				var localDatasetIndex = new Number(datasetIndex);
-				$(uploadToDARIAH).click(function(){
-					var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
-					// taken from dariah.storage.js
-					var storageURL = "http://ref.dariah.eu/storage/"
-				    $.ajax({
-						url: storageURL,
-						type: 'POST',
-						contentType: 'text/csv',
-						data: csv,
-						success: function(data, status, xhr) {
-							var location = xhr.getResponseHeader('Location');
-							// the dariah storage id
-						    dsid = location.substring(location.lastIndexOf('/')+1);
-						    
-						    //add URL to dataset
-						    storytellingWidget.datasets[localDatasetIndex].url = location;
-						    //refresh list
-						    storytellingWidget.initWidget(storytellingWidget.datasets);
-						},
-						error: function (data, text, error) {
-							alert('error creating new file in dariah storage because ' + text);
-							console.log(data);
-							console.log(text);
-							console.log(error);
-						}
-				    });					
-					//discard link click-event
-					return(false);
-				});
-				paragraph.append(uploadToDARIAH);
+				if (storytellingWidget.options.dariahStorage){
+					var uploadToDARIAH = document.createElement('a');
+					$(uploadToDARIAH).append("Upload to DARIAH Storage");
+					uploadToDARIAH.title = "";
+					uploadToDARIAH.href = dataset.url;
+					
+					var localDatasetIndex = new Number(datasetIndex);
+					$(uploadToDARIAH).click(function(){
+						var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
+						// taken from dariah.storage.js
+						var storageURL = "http://ref.dariah.eu/storage/"
+					    $.ajax({
+							url: storageURL,
+							type: 'POST',
+							contentType: 'text/csv',
+							data: csv,
+							success: function(data, status, xhr) {
+								var location = xhr.getResponseHeader('Location');
+								// the dariah storage id
+							    dsid = location.substring(location.lastIndexOf('/')+1);
+							    
+							    //add URL to dataset
+							    storytellingWidget.datasets[localDatasetIndex].url = location;
+							    storytellingWidget.datasets[localDatasetIndex].type = "csv";
+							    //refresh list
+							    storytellingWidget.initWidget(storytellingWidget.datasets);
+							},
+							error: function (data, text, error) {
+								alert('error creating new file in dariah storage because ' + text);
+								console.log(data);
+								console.log(text);
+								console.log(error);
+							}
+					    });					
+						//discard link click-event
+						return(false);
+					});
+					paragraph.append(uploadToDARIAH);
+				}
+				// TODO: if layout is more usable, both options could be used ("else" removed)
+				else if (storytellingWidget.options.localStorage){
+					var saveToLocalStorage = document.createElement('a');
+					$(saveToLocalStorage).append("Save to Local Storage");
+					saveToLocalStorage.title = "";
+					saveToLocalStorage.href = dataset.url;
+					
+					var localDatasetIndex = new Number(datasetIndex);
+					$(saveToLocalStorage).click(function(){
+						var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
+
+						var storageName = "localStorage_GeoBrowser_"+GeoTemConfig.datasets[localDatasetIndex].label;
+						$.remember({
+							name:storageName,
+							value:csv
+						});
+
+						//add URL to dataset
+					    storytellingWidget.datasets[localDatasetIndex].url = storageName;
+					    storytellingWidget.datasets[localDatasetIndex].type = "local";
+					    //refresh list
+					    storytellingWidget.initWidget(storytellingWidget.datasets);
+						
+						//discard link click-event
+						return(false);
+					});
+					paragraph.append(saveToLocalStorage);
+				}
 			}
 			
 			$(gui.storytellingContainer).append(paragraph);
