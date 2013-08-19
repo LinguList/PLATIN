@@ -84,7 +84,7 @@ DataloaderWidget.prototype = {
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var fileName = $.url(paramValue).attr('file');
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
 			if (typeof dataLoaderWidget.options.proxy != 'undefined')
 				paramValue = dataLoaderWidget.options.proxy + paramValue;
@@ -101,6 +101,13 @@ DataloaderWidget.prototype = {
 					if (dataSet != null)
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null)
+					dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 			}
 		});
 	}
