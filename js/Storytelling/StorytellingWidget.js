@@ -78,11 +78,15 @@ StorytellingWidget.prototype = {
 				//TODO: makes only sense for KML or CSV URLs, so "type" of
 				//URL should be preserved (in dataset).
 				//startsWith and endsWith defined in SIMILE Ajax (string.js) 
-				if (dataset.url.toLowerCase().endsWith("kml")){
-					magneticLinkParam += "kml=";
-				} else {
-					magneticLinkParam += "csv=";
+				var type="csv";
+				if (typeof dataset.type !== "undefined")
+					type = dataset.type;
+				else {
+					if (dataset.url.toLowerCase().endsWith("kml"))
+						type = "kml";
 				}
+
+				magneticLinkParam += type+"=";
 				magneticLinkParam += dataset.url;
 				
 				var tableLinkDiv = document.createElement('a');
