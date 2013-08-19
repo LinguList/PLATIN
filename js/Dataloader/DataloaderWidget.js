@@ -102,6 +102,13 @@ DataloaderWidget.prototype = {
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
 			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null)
+					dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+			}
 		});
 	}
 };
