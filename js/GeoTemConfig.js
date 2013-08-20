@@ -43,7 +43,7 @@ var GeoTemConfig = {
 	inverseFilter : true, // if inverse filtering is offered
 	mouseWheelZoom : true, // enable/disable zoom with mouse wheel on map & timeplot
 	language : 'en', // default language of GeoTemCo
-	allowFilter : true, // if filtering should be allowed
+	allowFilter : false, // if filtering should be allowed
 	highlightEvents : true, // if updates after highlight events
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
