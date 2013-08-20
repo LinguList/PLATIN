@@ -66,6 +66,7 @@ StorytellingWidget.prototype = {
 		
 		var magneticLinkParam = "";
 		var datasetIndex = 0;
+		var linkCount = 1;
 		$(storytellingWidget.datasets).each(function(){
 			var dataset = this;
 			
@@ -86,7 +87,8 @@ StorytellingWidget.prototype = {
 						type = "kml";
 				}
 
-				magneticLinkParam += type+"=";
+				magneticLinkParam += type+linkCount+"=";
+				linkCount++;
 				magneticLinkParam += dataset.url;
 				
 				var tableLinkDiv = document.createElement('a');
