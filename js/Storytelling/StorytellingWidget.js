@@ -148,7 +148,7 @@ StorytellingWidget.prototype = {
 					$(saveToLocalStorage).click(function(){
 						var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
 
-						var storageName = "localStorage_GeoBrowser_"+GeoTemConfig.datasets[localDatasetIndex].label;
+						var storageName = "GeoBrowser_dataset_"+GeoTemConfig.datasets[localDatasetIndex].label;
 						$.remember({
 							name:storageName,
 							value:csv
