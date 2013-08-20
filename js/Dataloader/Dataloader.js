@@ -49,6 +49,7 @@ Dataloader.prototype = {
 	initialize : function() {
 
 		this.addStaticLoader();
+		this.addLocalStorageLoader();
 		this.addKMLLoader();
 		this.addKMZLoader();
 		this.addCSVLoader();
@@ -317,5 +318,50 @@ Dataloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.localCSVLoaderTab);
+	},
+	
+	addLocalStorageLoader : function() {
+		var dataLoader = this;
+		this.localStorageLoaderTab = document.createElement("div");
+		$(this.localStorageLoaderTab).attr("id","LocalStorageLoader");
+		
+		var localDatasets = document.createElement("select");
+		$(this.localStorageLoaderTab).append(localDatasets);
+
+		var localStorageDatasetCount = 0;
+		for(var key in localStorage){
+			//TODO: this is a somewhat bad idea, as it is used in multiple widgets.
+			//A global GeoTemCo option "prefix" could be better. But still..
+			if (key.startsWith("GeoBrowser_dataset_")){
+				localStorageDatasetCount++;
+				var label = key.substring("GeoBrowser_dataset_".length);
+				var url = key;
+				$(localDatasets).append("<option value='"+url+"'>"+decodeURIComponent(label)+"</option>");
+			}
+		}
+		
+		//only show if there are datasets
+		if (localStorageDatasetCount > 0)
+			$(this.parent.gui.loaderTypeSelect).append("<option value='LocalStorageLoader'>browser storage</option>");
+
+		this.loadLocalStorageButton = document.createElement("button");
+		$(this.loadLocalStorageButton).text("load");
+		$(this.localStorageLoaderTab).append(this.loadLocalStorageButton);
+
+		$(this.loadLocalStorageButton).click($.proxy(function(){
+			var fileKey = $(localDatasets).find(":selected").attr("value");
+			if (fileKey.length === 0)
+				return;
+			var csv = $.remember({name:fileKey});
+			//TODO: this is a somewhat bad idea, as it is used in multiple widgets.
+			//A global GeoTemCo option "prefix" could be better. But still..
+			var fileName = decodeURIComponent(fileKey.substring("GeoBrowser_dataset_".length));
+			var json = GeoTemConfig.convertCsv(csv);
+			var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, fileKey, "local");
+			if (dataSet != null)
+				dataLoader.distributeDataset(dataSet);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.localStorageLoaderTab);
 	}
 };
