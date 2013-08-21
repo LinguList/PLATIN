@@ -28,6 +28,12 @@
  */
 function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 
+	if ((typeof selectionFunction !== "undefined") &&
+		(typeof selectionFunction.type !== "undefined") && 
+		(typeof selectionFunction.categories !== "undefined")){
+		this.type = selectionFunction.type;
+		this.categories = selectionFunction.categories;
+	}
 	this.pieChart = this;
 	this.pieChartDiv;
 	this.preHighlightObjects;
