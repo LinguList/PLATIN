@@ -46,7 +46,15 @@ function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName, ty
 	//to asure that the dialog is above (z-index of) the toolbars
 	$(".ui-front").css("z-index","10001");
 	
-	this.loadValues(datasetIndex, columnName);	
+	var allNumeric = this.loadValues(datasetIndex, columnName);	
+
+	if (typeof allNumeric === "undefined")
+		return;
+	if (allNumeric === true){
+		this.createNumeralBasedChooser(this.chartData, categories);			
+	} else {
+		this.createTextBasedChooser(this.chartData, categories);
+	}
 };
 
 PieChartCategoryChooser.prototype = {
@@ -70,12 +78,8 @@ PieChartCategoryChooser.prototype = {
 		
 		if (chartData.length === 0)
 			return;
-		
-		if (allNumeric === true){
-			this.createNumeralBasedChooser(chartData);			
-		} else {
-			this.createTextBasedChooser(chartData);
-		}
+		else
+			return allNumeric; 
 	},
 	
 	createTextBasedChooser : function(chartData){
