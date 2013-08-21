@@ -38,6 +38,7 @@ function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName, ty
 	this.options = options;
 	this.datasetIndex = parseInt(datasetIndex);
 	this.columnName = columnName;
+	this.chartData;
 		
 	this.dialog = $("<div></div>");
 	this.dialog.html("").dialog({modal: true}).dialog('open');
@@ -54,7 +55,8 @@ PieChartCategoryChooser.prototype = {
 		var pieChartCategoryChooser = this;
 		
 		var allNumeric = true;
-		var chartData = [];
+		pieChartCategoryChooser.chartData = [];
+		var chartData = pieChartCategoryChooser.chartData; 
 		$(GeoTemConfig.datasets[datasetIndex].objects).each(function(){
 			var columnData = 
 				pieChartCategoryChooser.parent.getElementData(this, columnName);
