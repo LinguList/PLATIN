@@ -225,7 +225,7 @@ PieChartCategoryChooser.prototype = {
 	    $(this.dialog).dialog("option", "height", dHeight);
 	},
 	
-	createNumeralBasedChooser : function(chartData){
+	createNumeralBasedChooser : function(chartData, existingCategories){
 		var numericChartData = [];
 		for (var i = 0; i < chartData.length; i++){
 			numericChartData.push(parseFloat(chartData[i]));
@@ -286,7 +286,7 @@ PieChartCategoryChooser.prototype = {
 			$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
 		});
 		
-		$(addCategoryButton).click(function(){
+		var addCategory = function(boundary){
 			//check if another handle can be added
 			if ((handles.length>0) && (handles[handles.length-1] === max))
 				return false;
@@ -294,7 +294,9 @@ PieChartCategoryChooser.prototype = {
 			if (handles.length>0)
 				$(slider).slider("destroy");
 
-			handles.push(max);
+			if (typeof boundary === "undefined")
+				boundary = max;
+			handles.push(boundary);
 			
 			$(slider).slider({
 				min:min,
@@ -337,7 +339,7 @@ PieChartCategoryChooser.prototype = {
 			});
 
 			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend><="+max+"</legend>");
+			$(newCategoryContainer).append("<legend><="+boundary+"</legend>");
 			$(newCategoryContainer).width("188px");
 			$(newCategoryContainer).css("float","left");
 			var newCategory = document.createElement("ul");
@@ -348,8 +350,17 @@ PieChartCategoryChooser.prototype = {
 			categories.push(newCategory);
 			
 			placeValues();
-		});
+		};
 		
+		$(addCategoryButton).click(function(){addCategory();});
+
+		if (typeof existingCategories !== "undefined"){
+			$(existingCategories).each(function(){
+				var boundary = this;
+				addCategory(boundary);
+			});
+		}
+
 		$(applyCategoryButton).click(function(){
 			var categorieBoundaries = handles;
 			
