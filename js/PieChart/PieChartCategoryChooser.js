@@ -82,7 +82,7 @@ PieChartCategoryChooser.prototype = {
 			return allNumeric; 
 	},
 	
-	createTextBasedChooser : function(chartData){
+	createTextBasedChooser : function(chartData, categories){
 		var pieChartCategoryChooser = this;
 		
 		var addCategory = function(name,elements){
@@ -97,7 +97,20 @@ PieChartCategoryChooser.prototype = {
 			$(newCategory).css("background", "#eee");
 			newCategoryContainer.appendChild(newCategory);
 			$(newCategory).append("<br/>");
-			cell.appendChild(newCategoryContainer);		
+			cell.appendChild(newCategoryContainer);
+			//if there are pre-selected elements (e.g. "edit")
+			//add them and remove them from unselected value list
+			if (typeof elements !== "undefined"){
+				$(elements).each(function(){
+					var value = this;
+					//add to category
+					$(newCategory).append("<li>"+value+"</li>");
+					//remove from unselected list 
+					$(unselected).find("li").filter(function(){
+						return ($(this).text() === ""+value);
+					}).remove();
+				});
+			}
 
 			$( ".connectedSortable" ).sortable({
 				connectWith: ".connectedSortable" 
@@ -143,6 +156,13 @@ PieChartCategoryChooser.prototype = {
 		$(chartData).each(function(){
 			$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
 		});
+		
+		if (typeof categories !== "undefined"){
+			$(categories).each(function(){
+				var category = this;
+				addCategory(category.label, category.values);
+			});
+		}
 		
 		$(addCategoryButton).click(function(){addCategory();});
 		
