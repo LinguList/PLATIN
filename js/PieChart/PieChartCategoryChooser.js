@@ -79,6 +79,25 @@ PieChartCategoryChooser.prototype = {
 	createTextBasedChooser : function(chartData){
 		var pieChartCategoryChooser = this;
 		
+		var addCategory = function(name,elements){
+			if (typeof name === "undefined")
+				name = $(addCategoryName).val();
+			var newCategoryContainer = document.createElement("fieldset");
+			$(newCategoryContainer).append("<legend>"+name+"</legend>");
+			$(newCategoryContainer).width("188px");
+			$(newCategoryContainer).css("float","left");
+			var newCategory = document.createElement("ul");
+			$(newCategory).addClass("connectedSortable");
+			$(newCategory).css("background", "#eee");
+			newCategoryContainer.appendChild(newCategory);
+			$(newCategory).append("<br/>");
+			cell.appendChild(newCategoryContainer);		
+
+			$( ".connectedSortable" ).sortable({
+				connectWith: ".connectedSortable" 
+			}).disableSelection();
+		};
+		
 		var table = document.createElement("table");
 		var row = document.createElement("tr");
 		table.appendChild(row);
@@ -119,22 +138,7 @@ PieChartCategoryChooser.prototype = {
 			$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
 		});
 		
-		$(addCategoryButton).click(function(){
-			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend>"+$(addCategoryName).val()+"</legend>");
-			$(newCategoryContainer).width("188px");
-			$(newCategoryContainer).css("float","left");
-			var newCategory = document.createElement("ul");
-			$(newCategory).addClass("connectedSortable");
-			$(newCategory).css("background", "#eee");
-			newCategoryContainer.appendChild(newCategory);
-			$(newCategory).append("<br/>");
-			cell.appendChild(newCategoryContainer);		
-
-			$( ".connectedSortable" ).sortable({
-				connectWith: ".connectedSortable" 
-			}).disableSelection();
-		});
+		$(addCategoryButton).click(function(){addCategory();});
 		
 		$(applyCategoryButton).click(function(){
 			var categories = [];
