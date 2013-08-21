@@ -30,7 +30,7 @@
  * @param {String} columnName name of the column
  */
 
-function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName) {
+function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName, type, categories) {
 
 	var pieChartCategoryChooser = this;
 	

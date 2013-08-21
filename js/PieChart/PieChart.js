@@ -80,6 +80,18 @@ PieChart.prototype = {
 			$(removeButton).click(function(){
 				pieChart.remove();
 			});
+			var editButton = document.createElement("button");
+			$(this.informationDIV).append(editButton);
+			$(editButton).text("edit");
+			$(editButton).click(function(){
+				var chooser = new PieChartCategoryChooser(
+						pieChart.parent,
+						pieChart.parent.options,
+						pieChart.watchedDataset,
+						pieChart.watchColumn,
+						pieChart.type,
+						pieChart.categories);
+			});
 			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
