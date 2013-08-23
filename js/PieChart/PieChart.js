@@ -80,18 +80,26 @@ PieChart.prototype = {
 			$(removeButton).click(function(){
 				pieChart.remove();
 			});
-			var editButton = document.createElement("button");
-			$(this.informationDIV).append(editButton);
-			$(editButton).text("edit");
-			$(editButton).click(function(){
-				var chooser = new PieChartCategoryChooser(
-						pieChart.parent,
-						pieChart.parent.options,
-						pieChart.watchedDataset,
-						pieChart.watchColumn,
-						pieChart.type,
-						pieChart.categories);
-			});
+
+			//only allow editing if it is a "manually" created piechart
+			//automatic (with a selection function) ones, can lead to numerous problems,
+			//e.g. too many categories or numeral categories threated as text ones
+			if ((typeof pieChart.type !== "undefined")&&
+				(typeof pieChart.categories !== "undefined")){
+				var editButton = document.createElement("button");
+				$(this.informationDIV).append(editButton);
+				$(editButton).text("edit");
+				$(editButton).click(function(){
+					var chooser = new PieChartCategoryChooser(
+							pieChart.parent,
+							pieChart.parent.options,
+							pieChart.watchedDataset,
+							pieChart.watchColumn,
+							pieChart.type,
+							pieChart.categories);
+				});
+			}							
+
 			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
