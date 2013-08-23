@@ -166,31 +166,39 @@ PieChart.prototype = {
 			objects = this.preHighlightObjects;
 		
 		if (this.checkForDataSet(objects)){
-			var chartDataCounter = new Object;
 			var pieChart = this;
 			if (objects[this.watchedDataset].length === 0)
 				objects = this.preHighlightObjects;
-			$(objects[this.watchedDataset]).each(function(){
-				var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
+			
+			var calculateSlices = function(dataObjects){
+				var chartDataCounter = new Object;
+
+				$(dataObjects).each(function(){
+					var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
 				
-				if (typeof chartDataCounter[columnData] === "undefined")
-					chartDataCounter[columnData] = 1;
-				else
-					chartDataCounter[columnData]++;
-			});
-			
-			var chartData = [];
-			$.each(chartDataCounter, function(name,val){
-				//get rgb-color (24bit = 6 hex digits) from hash
-				var color = '#'+hex_md5(name).substr(0,6);
-				chartData.push({label:name,data:val,color:color});
-			});
-			
-			var sortByVal = function(a,b){
-				return (b.data-a.data);
+					if (typeof chartDataCounter[columnData] === "undefined")
+						chartDataCounter[columnData] = 1;
+					else
+						chartDataCounter[columnData]++;
+				});
+				
+				var chartData = [];
+				$.each(chartDataCounter, function(name,val){
+					//get rgb-color (24bit = 6 hex digits) from hash
+					var color = '#'+hex_md5(name).substr(0,6);
+					chartData.push({label:name,data:val,color:color});
+				});
+				
+				//sort by count (occurances of category)
+				var sortByVal = function(a,b){
+					return (b.data-a.data);
+				};
+				chartData.sort(sortByVal);
+				
+				return chartData;
 			};
 			
-			chartData.sort(sortByVal);
+			var chartData = calculateSlices(objects[this.watchedDataset]);
 			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
