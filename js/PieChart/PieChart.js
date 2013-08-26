@@ -69,6 +69,9 @@ PieChart.prototype = {
 	
 	refreshLabel : function(){
 		$(this.pieChartLabel).append(this.watchedDatasetObject.label + " - " + this.watchColumn);		
+		
+		var c = GeoTemConfig.getColor(this.watchedDataset);
+		$(this.pieChartLabel).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
 	},
 	
 	initialize : function() {
@@ -80,8 +83,6 @@ PieChart.prototype = {
 			$(this.informationDIV).append(this.pieChartLabel);
 			this.refreshLabel(); 
 
-			var c = GeoTemConfig.getColor(this.watchedDataset);
-			$(this.informationDIV).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
 			var removeButton = document.createElement("button");
 			$(this.informationDIV).append(removeButton);
 			$(removeButton).text("remove");
@@ -146,8 +147,8 @@ PieChart.prototype = {
 					//if dataset "before" this one was removed, the index changes
 					if (this.watchedDataset !== i){
 						//change color to the new one (changes with index!)
-						this.refreshLabel();
 						this.watchedDataset = i;
+						this.refreshLabel();
 					}					
 					return true;
 				}
