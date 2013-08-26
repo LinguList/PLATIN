@@ -68,6 +68,7 @@ PieChart.prototype = {
 	},
 	
 	refreshLabel : function(){
+		$(this.pieChartLabel).empty();
 		$(this.pieChartLabel).append(this.watchedDatasetObject.label + " - " + this.watchColumn);		
 		
 		var c = GeoTemConfig.getColor(this.watchedDataset);
@@ -79,7 +80,7 @@ PieChart.prototype = {
 		
 		if (typeof this.pieChartDiv === "undefined"){
 			this.informationDIV = document.createElement("div");
-			this.pieChartLabel = $("<div></div>");
+			this.pieChartLabel = $("<span></span>");
 			$(this.informationDIV).append(this.pieChartLabel);
 			this.refreshLabel(); 
 
