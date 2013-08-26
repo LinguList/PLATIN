@@ -108,6 +108,46 @@ PieChart.prototype = {
 							pieChart.type,
 							pieChart.categories);
 				});
+				
+				//add save button
+				if (pieChart.options.allowLocalStorage){
+					var saveButton = document.createElement("button");
+					$(this.informationDIV).append(saveButton);
+					$(saveButton).text("save");
+					$(saveButton).click(function(){
+						$(	"<div>" +
+								"pie chart name : " +
+								"<input type='text' size=30 id='saveName' class='ui-widget-content ui-corner-all'></input>" +
+							"</div>").dialog({
+						        width:'auto',
+								buttons: [
+								          {
+								        	  text: "save",
+								        	  click: function(){
+								        		  var saveName = $("#saveName").val();
+								        		  var saveObject = new Object();
+								        		  saveObject.type = pieChart.type;
+								        		  saveObject.categories = pieChart.categories;
+								        		  //save to LocalStorage
+								        		  $.remember({
+								        			  name:pieChart.options.localStoragePrefix+saveName,
+								        			  value:saveObject,
+								        			  columnName:pieChart.watchColumn,
+								        			  json:true
+								        		  });
+								        		  $(this).dialog( "close" );
+								        	  }
+								          }
+								]
+						});
+						
+						//set value to default (column name)
+						$("#saveName").val(pieChart.watchColumn);
+						//TODO: z-index has to be set, as the "tool-bars" of map (.ddbToolbar in style.css)
+						//also have a z-index of 10000. z-index should be removed from all elements. 
+						$(".ui-dialog").css("z-index",10005);
+					});
+				}
 			}							
 
 			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);

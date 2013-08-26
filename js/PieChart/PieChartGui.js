@@ -48,9 +48,25 @@ function PieChartGui(pieChart, div, options) {
 				var firstObject = dataset.objects[0];
 				var firstTableContent = firstObject.tableContent;
 				$(pieChartGui.columnSelect).empty();
+				
+				$(pieChartGui.columnSelect).append("<optgroup label='saved'>");
+				
+				for(var key in localStorage){
+					//TODO: this is a somewhat bad idea, as it is used in multiple widgets.
+					//A global GeoTemCo option "prefix" could be better. But still..
+					var prefix = pieChartGui.options.localStoragePrefix;
+					if (key.startsWith(prefix)){
+						var label = key.substring(prefix.length);
+						$(pieChartGui.columnSelect).append("<option isSaved=1 value='"+label+"'>"+decodeURIComponent(label)+"</option>");
+					}
+				}
+				$(pieChartGui.columnSelect).append("</optgroup>");
+				
+				$(pieChartGui.columnSelect).append("<optgroup label='new'>");
 			    for (var attribute in firstTableContent) {
 			    	$(pieChartGui.columnSelect).append("<option value='"+attribute+"'>"+attribute+"</option>");
 			    }
+				$(pieChartGui.columnSelect).append("</optgroup>");
 			    
 			    if (firstObject.isTemporal)
 			    	$(pieChartGui.columnSelect).append("<option value='dates[0].date'>date</option>");
@@ -68,16 +84,62 @@ function PieChartGui(pieChart, div, options) {
 	$(this.buttonNewPieChart).text("add");
 	this.columnSelectorDiv.appendChild(this.buttonNewPieChart);
 	$(this.buttonNewPieChart).click(function(){
-		pieChartGui.parent.addPieChart($(pieChartGui.datasetSelect).val(), $(pieChartGui.columnSelect).val());
+		//check if this is a local saved pie chart
+		var isSaved=$(pieChartGui.columnSelect).find("option:selected").first().attr("isSaved");
+		if ((typeof isSaved === "undefined") || (isSaved!=1)){
+			//create new pie chart (where each value is its own category)
+			pieChartGui.parent.addPieChart($(pieChartGui.datasetSelect).val(), $(pieChartGui.columnSelect).val());
+		} else {
+			//is local saved, get value
+			var name = pieChartGui.options.localStoragePrefix + $(pieChartGui.columnSelect).val();
+			var saveObject = $.remember({name:name,json:true});
+			if ((typeof saveObject !== "undefined") && (saveObject != null)){
+				var categories = saveObject.categories;
+				var type = saveObject.type;
+				var columnName = saveObject.columnName;
+				
+				//create selection function for the pie chart
+				var selectionFunction = function(columnData){
+					var categoryLabel;
+					$(categories).each(function(){
+						if ($.inArray(columnData,this.values) != -1){
+							categoryLabel = this.label;
+							//exit .each
+							return false;
+						}
+						if (typeof categoryLabel !== "undefined")
+							return false;
+					});
+					
+					if (typeof categoryLabel === "undefined")
+						categoryLabel = "unknown";
+
+					return categoryLabel;
+				};
+				
+				selectionFunction.type = 'text';
+				selectionFunction.categories = categories;
+				
+				//create pie chart
+				pieChartGui.parent.addPieChart(
+						$(pieChartGui.datasetSelect).val(), "objekt", selectionFunction);				
+			}
+		}
 	});
 	this.buttonPieChartCategoryChooser = document.createElement("button");
 	$(this.buttonPieChartCategoryChooser).text("categorize");
 	this.columnSelectorDiv.appendChild(this.buttonPieChartCategoryChooser);
 	$(this.buttonPieChartCategoryChooser).click(function(){
-		var chooser = new PieChartCategoryChooser(	pieChartGui.parent,
-													pieChartGui.options,
-													$(pieChartGui.datasetSelect).val(),
-													$(pieChartGui.columnSelect).val() );
+		//check if this is a local saved pie chart
+		var isSaved=$(pieChartGui.columnSelect).find("option:selected").first().attr("isSaved");
+		if ((typeof isSaved === "undefined") || (isSaved!=1)){
+			var chooser = new PieChartCategoryChooser(	pieChartGui.parent,
+					pieChartGui.options,
+					$(pieChartGui.datasetSelect).val(),
+					$(pieChartGui.columnSelect).val() );
+		} else {
+			alert("Saved datasets can not be categorized again. Try loading and editing instead.");
+		}
 	});
 	
 	this.refreshColumnSelector();
