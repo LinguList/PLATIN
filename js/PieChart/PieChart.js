@@ -138,28 +138,30 @@ PieChart.prototype = {
 
 	//check if dataset is still there
 	checkForDataSet : function() {
-		var dataSets = GeoTemConfig.datasets;
-		if (typeof dataSets === "undefined")
-			return false;
-		if (typeof this.watchedDatasetObject !== "undefined"){
+		var datasets = this.parent.datasets;
+		if ((typeof datasets !== "undefined") && (typeof this.watchedDatasetObject !== "undefined")){
 			//check if our data went missing
-			if (	(dataSets.length <= this.watchedDataset) ||
-					(dataSets[this.watchedDataset] !== this.watchedDatasetObject) ){
-				return false;
-			} else
-				return true;
-			
-		} else
-			return false;
+			for (var i = 0; i < datasets.length; i++){
+				if (datasets[i] === this.watchedDatasetObject){
+					//if dataset "before" this one was removed, the index changes
+					if (this.watchedDataset !== i){
+						//change color to the new one (changes with index!)
+						this.refreshLabel();
+						this.watchedDataset = i;
+					}					
+					return true;
+				}
+			}
+		}
+		return false;
 	},
 	
 	initPieChart : function(dataSets) {
-		this.initialize();
-
-		//TODO: this var "remembers" which dataset we are attached to
-		//if it goes missing we delete ourself. This could be improved.
+		// get dataset object (could not be there on startup, e.g. piechart defined before load completes)
 		if (typeof this.watchedDatasetObject === "undefined")
-			this.watchedDatasetObject = GeoTemConfig.datasets[this.watchedDataset];
+			this.watchedDatasetObject = this.parent.datasets[this.watchedDataset];
+
+		this.initialize();
 
 		// if our dataset went missing, remove this piechart
 		if (!this.checkForDataSet()){
