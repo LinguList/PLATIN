@@ -31,6 +31,7 @@
 function PieChartGui(pieChart, div, options) {
 
 	this.parent = pieChart;
+	this.options = options;
 	var pieChartGui = this;
 	
 	this.pieChartContainer = div;
