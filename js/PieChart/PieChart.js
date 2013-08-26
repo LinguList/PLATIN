@@ -40,6 +40,7 @@ function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 	this.highlightedLabel;
 	
 	this.informationDIV;
+	this.pieChartLabel;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -66,12 +67,19 @@ PieChart.prototype = {
 		this.parent.redrawPieCharts();
 	},
 	
+	refreshLabel : function(){
+		$(this.pieChartLabel).append(this.watchedDatasetObject.label + " - " + this.watchColumn);		
+	},
+	
 	initialize : function() {
 		var pieChart = this;
 		
 		if (typeof this.pieChartDiv === "undefined"){
 			this.informationDIV = document.createElement("div");
-			$(this.informationDIV).append(GeoTemConfig.datasets[this.watchedDataset].label + " - " + this.watchColumn);
+			this.pieChartLabel = $("<div></div>");
+			$(this.informationDIV).append(this.pieChartLabel);
+			this.refreshLabel(); 
+
 			var c = GeoTemConfig.getColor(this.watchedDataset);
 			$(this.informationDIV).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
 			var removeButton = document.createElement("button");
