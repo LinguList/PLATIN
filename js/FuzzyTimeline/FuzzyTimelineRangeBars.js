@@ -47,7 +47,7 @@ function FuzzyTimelineRangeBars(parent) {
 	this.yValMax;
 	this.displayType;
 	
-	this.rangeDiv = this.parent.gui.rangeTimelineDiv;
+	this.rangeDiv = this.parent.gui.plotDiv;
 	this.plotDiv = document.createElement("div");
 	$(this.rangeDiv).append(this.plotDiv);
 	$(this.plotDiv).width("100%");

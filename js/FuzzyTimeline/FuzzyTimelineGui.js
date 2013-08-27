@@ -35,26 +35,22 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	
 	this.fuzzyTimelineContainer = div;
 	if ($(this.fuzzyTimelineContainer).height() === 0)
-		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/16);
+		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/32);
 	this.fuzzyTimelineContainer.style.position = 'relative';
 
 	this.sliderDiv = document.createElement("div");
 	$(this.sliderDiv).width("100%");
 	$(this.sliderDiv).height("5%");
 	div.appendChild(this.sliderDiv);
-	this.densityDiv = document.createElement("div");
-	$(this.densityDiv).width("100%");
-	$(this.densityDiv).height("45%");
-	div.appendChild(this.densityDiv);
-	this.rangeTimelineDiv = document.createElement("div");
-	$(this.rangeTimelineDiv).css("float","left");
-	$(this.rangeTimelineDiv).width("75%");
-	$(this.rangeTimelineDiv).height("50%");
-	div.appendChild(this.rangeTimelineDiv);
+	this.plotDiv = document.createElement("div");
+	$(this.plotDiv).css("float","left");
+	$(this.plotDiv).width("75%");
+	$(this.plotDiv).height("95%");
+	div.appendChild(this.plotDiv);
 	this.rangePiechartDiv = document.createElement("div");
 	$(this.rangePiechartDiv).css("float","right");
 	$(this.rangePiechartDiv).width("25%");
-	$(this.rangePiechartDiv).height("50%");
+	$(this.rangePiechartDiv).height("95%");
 	div.appendChild(this.rangePiechartDiv);
 };
 

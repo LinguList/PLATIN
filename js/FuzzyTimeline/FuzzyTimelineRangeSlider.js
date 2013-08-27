@@ -121,99 +121,96 @@ FuzzyTimelineRangeSlider.prototype = {
 				rangeSlider.spans.push(fixedSpans[i]);
 		}
 		
-		if (rangeSlider.spans.length > 0){
-			$(rangeSlider.rangeDropdown).empty();
-			
-			$(rangeSlider.spans).each(function(){
-				var duration = this;
-				if (duration < moment.duration(1,'second'))
-					humanizedSpan = duration.milliseconds() + "ms";
-				else if (duration < moment.duration(1,'minute'))
-					humanizedSpan = duration.seconds() + "s";
-				else if (duration < moment.duration(1,'hour'))
-					humanizedSpan = duration.minutes() + "min";
-				else if (duration < moment.duration(1,'day'))
-					humanizedSpan = duration.hours() + "h";
-				else if (duration < moment.duration(1,'month'))
-					humanizedSpan = duration.days() + " days";
-				else if (duration < moment.duration(1,'year'))
-					humanizedSpan = duration.months() + " months";
-				else 
-					humanizedSpan = duration.years() + " years";
-				$(rangeSlider.rangeDropdown).append("<option>"+humanizedSpan+"</option>");
-			});
+		$(rangeSlider.rangeDropdown).empty();
+		
+		$(rangeSlider.rangeDropdown).append("<option>continous</option>");
+		var index = 0;
+		$(rangeSlider.spans).each(function(){
+			var duration = this;
+			if (duration < moment.duration(1,'second'))
+				humanizedSpan = duration.milliseconds() + "ms";
+			else if (duration < moment.duration(1,'minute'))
+				humanizedSpan = duration.seconds() + "s";
+			else if (duration < moment.duration(1,'hour'))
+				humanizedSpan = duration.minutes() + "min";
+			else if (duration < moment.duration(1,'day'))
+				humanizedSpan = duration.hours() + "h";
+			else if (duration < moment.duration(1,'month'))
+				humanizedSpan = duration.days() + " days";
+			else if (duration < moment.duration(1,'year'))
+				humanizedSpan = duration.months() + " months";
+			else 
+				humanizedSpan = duration.years() + " years";
+			$(rangeSlider.rangeDropdown).append("<option index='"+index+"'>"+humanizedSpan+"</option>");
+			index++;
+		});
 
-			$(rangeSlider.rangeDropdown).change(function( eventObject ){
-				var handlePosition = rangeSlider.rangeDropdown.selectedIndex;
-				var span = rangeSlider.spans[handlePosition];
+		$(rangeSlider.rangeDropdown).change(function( eventObject ){
+			var handlePosition = $(rangeSlider.rangeDropdown).find("option:selected").first().attr("index");
+			//if there is no index, "continous" is selected - so the density plot will be drawn
+			
+			var shownDatasets = [];
+			var hiddenDatasets = [];
 				
-				var shownDatasets = [];
-				var hiddenDatasets = [];
-				
-				var datasetIndex = 0;
-				$(rangeSlider.datasets).each(function(){
-					var shownSingleDataset = [];
-					var hiddenSingleDataset = [];
-					$(this.objects).each(function(){
-						var dataObject = this;
-						var ticks = rangeSlider.parent.getTicks(dataObject, span);
-						if (typeof ticks === "undefined") 
-							return;
-						if (ticks.firstTick == ticks.lastTick) {
-							shownSingleDataset.push(dataObject);
-						} else {
-							hiddenSingleDataset.push(dataObject);
-						}
-					});
-					shownDatasets.push(shownSingleDataset);
-					hiddenDatasets.push(hiddenSingleDataset);
-					datasetIndex++;
+			var datasetIndex = 0;
+			$(rangeSlider.datasets).each(function(){
+				var shownSingleDataset = [];
+				var hiddenSingleDataset = [];
+				$(this.objects).each(function(){
+					var dataObject = this;
+					shownSingleDataset.push(dataObject);
 				});
-			
-				$(rangeSlider.sliderValue).empty();
-				$(rangeSlider.sliderValue).append(moment.duration(span).humanize());
-				
-				rangeSlider.drawRangePieChart(shownDatasets,hiddenDatasets);
-				
-				rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
+				shownDatasets.push(shownSingleDataset);
+				hiddenDatasets.push(hiddenSingleDataset);
+				datasetIndex++;
 			});
 			
-			$(rangeSlider.rangeDropdown).change();
-
-			$(rangeSlider.rangeStart).empty();
-			//TODO: add Months/Days/etc.
-			var starts = [];
-			var overallMin = rangeSlider.parent.overallMin;
-			var last = moment(overallMin).year();
-			starts.push(last);
-			for (i = 1;;i++){
-				var date = moment(overallMin).year();
-				date = date/Math.pow(10,i);
-				if (Math.abs(date)<1)
-					break;
-				date = Math.floor(date);
-				date = date*Math.pow(10,i);
-				if (date != last)
-					starts.push(date);
-				last = date;
+			if (typeof handlePosition === "undefined"){
+				rangeSlider.parent.switchViewMode("density");
+			} else {
+				rangeSlider.parent.switchViewMode("barchart");
 			}
-			$(starts).each(function(){
-				$(rangeSlider.rangeStart).append("<option>"+this+"</option>");				
-			});
+			
+			rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
+		});
+			
+		$(rangeSlider.rangeDropdown).change();
 
-			$(rangeSlider.rangeStart).change(function( eventObject ){
-				var handlePosition = rangeSlider.rangeStart.selectedIndex;
-				var start = starts[handlePosition];
+		$(rangeSlider.rangeStart).empty();
+		//add start of timeline selections
+		//TODO: add Months/Days/etc., atm there are only years
+		var starts = [];
+		var overallMin = rangeSlider.parent.overallMin;
+		var last = moment(overallMin).year();
+		starts.push(last);
+		for (i = 1;;i++){
+			var date = moment(overallMin).year();
+			date = date/Math.pow(10,i);
+			if (Math.abs(date)<1)
+				break;
+			date = Math.floor(date);
+			date = date*Math.pow(10,i);
+			if (date != last)
+				starts.push(date);
+			last = date;
+		}
+		$(starts).each(function(){
+			$(rangeSlider.rangeStart).append("<option>"+this+"</option>");				
+		});
+
+		$(rangeSlider.rangeStart).change(function( eventObject ){
+			var handlePosition = rangeSlider.rangeStart.selectedIndex;
+			var start = starts[handlePosition];
 				
-				rangeSlider.parent.overallMin = moment().year(start);
-				$(rangeSlider.rangeDropdown).change();
-			});
+			rangeSlider.parent.overallMin = moment().year(start);
+			$(rangeSlider.rangeDropdown).change();
+		});
 			
 			$(rangeSlider.rangerangeStart).change();
-		}
 	},
 			
 	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
+		return;
 		var rangeSlider = this;
 
 		var parentDiv = rangeSlider.pieChartDiv;
@@ -230,6 +227,7 @@ FuzzyTimelineRangeSlider.prototype = {
 	},
 	
 	deletePieCharts : function(){
+		return;
 		var rangeSlider = this;
 		$(rangeSlider.pieChartDiv).empty();
 		for (var piechart in rangeSlider.pieCharts){

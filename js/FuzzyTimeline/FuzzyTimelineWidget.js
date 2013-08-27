@@ -41,7 +41,8 @@ function FuzzyTimelineWidget(core, div, options) {
 
 	this.options = (new FuzzyTimelineConfig(options)).options;
 	this.gui = new FuzzyTimelineGui(this, div, this.options);
-	
+
+	this.viewMode;
 	this.density;
 	this.rangeSlider;
 	this.rangeBars;
@@ -56,21 +57,17 @@ FuzzyTimelineWidget.prototype = {
 		delete fuzzyTimeline.overallMin;
 		delete fuzzyTimeline.overallMax;
 		
-		$(fuzzyTimeline.gui.densityDiv).empty();
+		$(fuzzyTimeline.gui.plotDiv).empty();
 		delete fuzzyTimeline.density;
-		$(fuzzyTimeline.gui.rangeTimelineDiv).empty();
+		delete fuzzyTimeline.rangeBars;
 		$(fuzzyTimeline.gui.rangePiechartDiv).empty();
 		$(fuzzyTimeline.gui.sliderDiv).empty();
 		delete fuzzyTimeline.rangeSlider;
-		delete fuzzyTimeline.rangeBars;
-		
+
+		fuzzyTimeline.switchViewMode("density");
 		
 		if ( (data instanceof Array) && (data.length > 0) )
 		{
-			fuzzyTimeline.density = new FuzzyTimelineDensity(fuzzyTimeline,fuzzyTimeline.gui.densityDiv);
-			fuzzyTimeline.rangeSlider = new FuzzyTimelineRangeSlider(fuzzyTimeline);
-			fuzzyTimeline.rangeBars = new FuzzyTimelineRangeBars(fuzzyTimeline);
-			
 			fuzzyTimeline.datasets = data;
 			
 			$(fuzzyTimeline.datasets).each(function(){
@@ -98,38 +95,60 @@ FuzzyTimelineWidget.prototype = {
 				});
 			});
 			
-			fuzzyTimeline.density.drawDensityPlot(fuzzyTimeline.datasets);
-			fuzzyTimeline.rangeBars.initialize(fuzzyTimeline.datasets);
-			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);
+			fuzzyTimeline.rangeSlider = new FuzzyTimelineRangeSlider(fuzzyTimeline);
+			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);			
+		}
+	},
+	
+	switchViewMode : function(viewMode){
+		var fuzzyTimeline = this;
+		if (viewMode !== fuzzyTimeline.viewMode){
+			$(fuzzyTimeline.gui.plotDiv).empty();
+			if (viewMode === "density"){
+				delete fuzzyTimeline.rangeBars;
+				fuzzyTimeline.density = new FuzzyTimelineDensity(fuzzyTimeline,fuzzyTimeline.gui.plotDiv);
+			} else if (viewMode === "barchart"){
+				delete fuzzyTimeline.density;
+				fuzzyTimeline.rangeBars = new FuzzyTimelineRangeBars(fuzzyTimeline);
+			}
+			fuzzyTimeline.viewMode = viewMode;
 		}
 	},
 	
 	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
 		var fuzzyTimeline = this;
-		//redraw density plot
-		fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
-		//redraw range plot
-		fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
+		if (fuzzyTimeline.viewMode === "density")
+			//redraw density plot
+			fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
+		else if (fuzzyTimeline.viewMode === "barchart")
+			//redraw range plot
+			fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
 	},
 
 	highlightChanged : function(objects) {
+		var fuzzyTimeline = this;
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
 		if ( (typeof objects === "undefined") || (objects.length == 0) ){
 			return;
 		}
-		this.density.highlightChanged(objects);
-		this.rangeBars.highlightChanged(objects);
+		if (fuzzyTimeline.viewMode === "density")
+			this.density.highlightChanged(objects);
+		else if (fuzzyTimeline.viewMode === "barchart")
+			this.rangeBars.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
+		var fuzzyTimeline = this;
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
 		var objects = selection.objects;
-		this.density.selectionChanged(objects);
-		this.rangeBars.selectionChanged(objects);
+		if (fuzzyTimeline.viewMode === "density")
+			this.density.selectionChanged(objects);
+		else if (fuzzyTimeline.viewMode === "barchart")
+			this.rangeBars.selectionChanged(objects);
 	},
 	
 	buildSpanArray : function(spanWidth) {
