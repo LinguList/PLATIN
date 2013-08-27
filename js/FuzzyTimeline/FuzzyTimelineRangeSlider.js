@@ -39,8 +39,10 @@ function FuzzyTimelineRangeSlider(parent) {
 	
 	this.sliderParentDiv = this.parent.gui.sliderDiv;
 	this.rangeStart = document.createElement("select");
+	$(this.sliderParentDiv).append("Start of timeline:");
 	$(this.sliderParentDiv).append(this.rangeStart);
 	this.rangeDropdown = document.createElement("select");
+	$(this.sliderParentDiv).append("Time slice width:");
 	$(this.sliderParentDiv).append(this.rangeDropdown);
 	
 	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
