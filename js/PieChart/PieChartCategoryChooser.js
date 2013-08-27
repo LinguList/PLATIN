@@ -100,9 +100,9 @@ PieChartCategoryChooser.prototype = {
 					//("unselected" is defined below)
 					//prepend so the items appear on top
 					$(this).prependTo(unselected);
-					//and remove this category
-					$(newCategoryContainer).remove();
 				});				
+				//and remove this category
+				$(newCategoryContainer).remove();
 			});
 			$(newCategoryLegend).append(newCategoryName);
 			$(newCategoryLegend).append(newCategoryRemove);
