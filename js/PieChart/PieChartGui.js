@@ -98,31 +98,10 @@ function PieChartGui(pieChart, div, options) {
 				var type = saveObject.type;
 				var columnName = saveObject.columnName;
 				
-				//create selection function for the pie chart
-				var selectionFunction = function(columnData){
-					var categoryLabel;
-					$(categories).each(function(){
-						if ($.inArray(columnData,this.values) != -1){
-							categoryLabel = this.label;
-							//exit .each
-							return false;
-						}
-						if (typeof categoryLabel !== "undefined")
-							return false;
-					});
-					
-					if (typeof categoryLabel === "undefined")
-						categoryLabel = "unknown";
-
-					return categoryLabel;
-				};
-				
-				selectionFunction.type = 'text';
-				selectionFunction.categories = categories;
-				
 				//create pie chart
-				pieChartGui.parent.addPieChart(
-						$(pieChartGui.datasetSelect).val(), "objekt", selectionFunction);				
+				pieChartGui.parent.addCategorizedPieChart(
+						$(pieChartGui.datasetSelect).val(), columnName,
+						type, categories);				
 			}
 		}
 	});
