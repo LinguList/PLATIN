@@ -86,11 +86,28 @@ PieChartCategoryChooser.prototype = {
 		var pieChartCategoryChooser = this;
 		
 		var addCategory = function(name,elements){
-			if (typeof name === "undefined")
-				name = $(addCategoryName).val();
 			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend>"+name+"</legend>");
-			$(newCategoryContainer).width("188px");
+			var newCategoryLegend = document.createElement("legend");
+			var newCategoryName = document.createElement("input");
+			$(newCategoryName).width("80%");
+			newCategoryName.type = "text";
+			newCategoryName.value = name;
+			var newCategoryRemove = document.createElement("button");
+			$(newCategoryRemove).text("X");
+			$(newCategoryRemove).click(function(){
+				$(newCategoryContainer).find("li").each(function(){
+					//move all elements to unselected list
+					//("unselected" is defined below)
+					//prepend so the items appear on top
+					$(this).prependTo(unselected);
+					//and remove this category
+					$(newCategoryContainer).remove();
+				});				
+			});
+			$(newCategoryLegend).append(newCategoryName);
+			$(newCategoryLegend).append(newCategoryRemove);
+			$(newCategoryContainer).append(newCategoryLegend);
+			$(newCategoryContainer).width("200px");
 			$(newCategoryContainer).css("float","left");
 			var newCategory = document.createElement("ul");
 			$(newCategory).addClass("connectedSortable");
@@ -122,10 +139,6 @@ PieChartCategoryChooser.prototype = {
 		table.appendChild(row);
 		var cell = document.createElement("td");
 		row.appendChild(cell);
-		var addCategoryName = document.createElement("input");
-		addCategoryName.type = "text";
-		addCategoryName.value = "category name";
-		cell.appendChild(addCategoryName);
 		cell = document.createElement("td");
 		row.appendChild(cell);
 		var addCategoryButton = document.createElement("button");
@@ -169,7 +182,7 @@ PieChartCategoryChooser.prototype = {
 		$(applyCategoryButton).click(function(){
 			var categories = [];
 			$(cell).children().each(function(){
-				var label = $(this).find("legend").text();
+				var label = $(this).find("legend > input").val();
 				var values = [];
 				$(this).find("li").each(function(){
 					values.push($(this).text());
@@ -185,32 +198,10 @@ PieChartCategoryChooser.prototype = {
 			
 			categories.push({label:"other",values:values});
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				$(categories).each(function(){
-					if ($.inArray(columnData,this.values) != -1){
-						categoryLabel = this.label;
-						//exit .each
-						return false;
-					}
-					if (typeof categoryLabel !== "undefined")
-						return false;
-				});
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
-			//make created categories easy accessible for later usage
-			selectionFunction.type = 'text';
-			selectionFunction.categories = categories;
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, 
+					"text", categories);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");
@@ -364,30 +355,10 @@ PieChartCategoryChooser.prototype = {
 		$(applyCategoryButton).click(function(){
 			var categorieBoundaries = handles;
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				var columnDataNumeric = parseFloat(columnData);
-				for (var i = 0; i < categorieBoundaries.length; i++){
-					if (columnDataNumeric<=categorieBoundaries[i]){
-						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categorieBoundaries[i];
-						break;
-					}						
-				}
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
-			//make created categories easy accessible for later usage
-			selectionFunction.type = 'numeral';
-			selectionFunction.categories = categorieBoundaries;
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName,
+					"numeral", categorieBoundaries);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");
