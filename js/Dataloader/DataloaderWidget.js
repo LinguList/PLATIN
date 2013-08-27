@@ -102,6 +102,16 @@ DataloaderWidget.prototype = {
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
 			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null)
+					dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+			}
 		});
 	}
 };
