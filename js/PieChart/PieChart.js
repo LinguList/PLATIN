@@ -128,11 +128,11 @@ PieChart.prototype = {
 								        		  var saveObject = new Object();
 								        		  saveObject.type = pieChart.type;
 								        		  saveObject.categories = pieChart.categories;
+								        		  saveObject.columnName = pieChart.watchColumn;
 								        		  //save to LocalStorage
 								        		  $.remember({
 								        			  name:pieChart.options.localStoragePrefix+saveName,
 								        			  value:saveObject,
-								        			  columnName:pieChart.watchColumn,
 								        			  json:true
 								        		  });
 								        		  $(this).dialog( "close" );
