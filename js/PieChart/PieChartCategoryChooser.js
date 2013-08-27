@@ -185,32 +185,10 @@ PieChartCategoryChooser.prototype = {
 			
 			categories.push({label:"other",values:values});
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				$(categories).each(function(){
-					if ($.inArray(columnData,this.values) != -1){
-						categoryLabel = this.label;
-						//exit .each
-						return false;
-					}
-					if (typeof categoryLabel !== "undefined")
-						return false;
-				});
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
-			//make created categories easy accessible for later usage
-			selectionFunction.type = 'text';
-			selectionFunction.categories = categories;
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, 
+					"text", categories);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");
@@ -364,30 +342,10 @@ PieChartCategoryChooser.prototype = {
 		$(applyCategoryButton).click(function(){
 			var categorieBoundaries = handles;
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				var columnDataNumeric = parseFloat(columnData);
-				for (var i = 0; i < categorieBoundaries.length; i++){
-					if (columnDataNumeric<=categorieBoundaries[i]){
-						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categorieBoundaries[i];
-						break;
-					}						
-				}
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
-			//make created categories easy accessible for later usage
-			selectionFunction.type = 'numeral';
-			selectionFunction.categories = categorieBoundaries;
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName,
+					"numeral", categorieBoundaries);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");
