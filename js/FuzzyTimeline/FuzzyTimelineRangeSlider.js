@@ -123,7 +123,7 @@ FuzzyTimelineRangeSlider.prototype = {
 		
 		$(rangeSlider.rangeDropdown).empty();
 		
-		$(rangeSlider.rangeDropdown).append("<option>continous</option>");
+		$(rangeSlider.rangeDropdown).append("<option>continuous</option>");
 		var index = 0;
 		$(rangeSlider.spans).each(function(){
 			var duration = this;
@@ -147,7 +147,7 @@ FuzzyTimelineRangeSlider.prototype = {
 
 		$(rangeSlider.rangeDropdown).change(function( eventObject ){
 			var handlePosition = $(rangeSlider.rangeDropdown).find("option:selected").first().attr("index");
-			//if there is no index, "continous" is selected - so the density plot will be drawn
+			//if there is no index, "continuous" is selected - so the density plot will be drawn
 			
 			var shownDatasets = [];
 			var hiddenDatasets = [];
