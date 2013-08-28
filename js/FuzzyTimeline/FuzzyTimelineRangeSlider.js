@@ -44,8 +44,6 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.rangeDropdown = document.createElement("select");
 	$(this.sliderParentDiv).append("Time slice width:");
 	$(this.sliderParentDiv).append(this.rangeDropdown);
-	
-	this.pieChartDiv = this.parent.gui.rangePiechartDiv;
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -149,29 +147,13 @@ FuzzyTimelineRangeSlider.prototype = {
 			var handlePosition = $(rangeSlider.rangeDropdown).find("option:selected").first().attr("index");
 			//if there is no index, "continuous" is selected - so the density plot will be drawn
 			
-			var shownDatasets = [];
-			var hiddenDatasets = [];
-				
-			var datasetIndex = 0;
-			$(rangeSlider.datasets).each(function(){
-				var shownSingleDataset = [];
-				var hiddenSingleDataset = [];
-				$(this.objects).each(function(){
-					var dataObject = this;
-					shownSingleDataset.push(dataObject);
-				});
-				shownDatasets.push(shownSingleDataset);
-				hiddenDatasets.push(hiddenSingleDataset);
-				datasetIndex++;
-			});
-			
 			if (typeof handlePosition === "undefined"){
 				rangeSlider.parent.switchViewMode("density");
 			} else {
 				rangeSlider.parent.switchViewMode("barchart");
 			}
 			
-			rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition],shownDatasets,hiddenDatasets);
+			rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition]);
 		});
 			
 		$(rangeSlider.rangeDropdown).change();
@@ -207,33 +189,6 @@ FuzzyTimelineRangeSlider.prototype = {
 		});
 			
 			$(rangeSlider.rangerangeStart).change();
-	},
-			
-	drawRangePieChart : function(shownDatasets,hiddenDatasets) {
-		return;
-		var rangeSlider = this;
-
-		var parentDiv = rangeSlider.pieChartDiv;
-		rangeSlider.deletePieCharts();
-		var datasetIndex = 0;
-		$(rangeSlider.datasets).each(function(){
-			var div = document.createElement("div");
-			$(parentDiv).append(div);
-			$(div).height($(parentDiv).height()/rangeSlider.datasets.length);
-
-			rangeSlider.pieCharts.push(new FuzzyTimelineRangePiechart(rangeSlider.parent,div,datasetIndex,shownDatasets,hiddenDatasets));
-			datasetIndex++;
-		});
-	},
-	
-	deletePieCharts : function(){
-		return;
-		var rangeSlider = this;
-		$(rangeSlider.pieChartDiv).empty();
-		for (var piechart in rangeSlider.pieCharts){
-			delete piechart;
-		}
-		rangeSlider.pieCharts = [];
 	},
 	
 	triggerHighlight : function(columnElement) {

@@ -115,8 +115,11 @@ FuzzyTimelineWidget.prototype = {
 		}
 	},
 	
-	slidePositionChanged : function(spanWidth, shownDatasets, hiddenDatasets) {
+	slidePositionChanged : function(spanWidth) {
 		var fuzzyTimeline = this;
+		var shown_hidden_Datasets = fuzzyTimeline.getShownHiddenDatasets();
+		var shownDatasets = shown_hidden_Datasets.shown;
+		var hiddenDatasets = shown_hidden_Datasets.hidden;
 		if (fuzzyTimeline.viewMode === "density")
 			//redraw density plot
 			fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
@@ -280,5 +283,15 @@ FuzzyTimelineWidget.prototype = {
 		});
 
 		return(datasets);
+	},
+	
+	getShownHiddenDatasets : function(){
+		var rangeSlider = this;
+		var shown = rangeSlider.datasets;
+		var hidden = [];
+		$(rangeSlider.datasets).each(function(){
+			hidden.push([]);
+		});
+		return {shown:shown,hidden:hidden}; 
 	},
 };
