@@ -871,7 +871,7 @@ GeoTemConfig.createCSVfromDataset = function(index){
 		csvContent += "\""+val+"\"";
 	});
 	//Names according to CSV import definition
-	csvContent +=  ",\"Address\",\"Latitude\",\"Longitude\",\"TimeStamp\",\"TimeSpan:begin\",\"TimeSpan:end\"";
+	csvContent +=  ",\"Address\",\"Latitude\",\"Longitude\",\"TimeStamp\"";
 	csvContent += "\n";
 	
 	var isFirstRow = true;
@@ -929,14 +929,6 @@ GeoTemConfig.createCSVfromDataset = function(index){
 			//TODO: not supported in IE8 switch to moment.js
 			csvContent += elem.getDate(0).toISOString();
 		}
-		csvContent += "\"";
-		
-		//TODO: fuzzy temporal not yet included
-		csvContent += ",";
-		csvContent += "\"";
-		csvContent += "\"";
-		csvContent += ",";
-		csvContent += "\"";
 		csvContent += "\"";
 	});
 	  
