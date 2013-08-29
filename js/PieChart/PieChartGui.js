@@ -69,14 +69,13 @@ function PieChartGui(pieChart, div, options) {
 			    for (var attribute in firstTableContent) {
 			    	$(pieChartGui.columnSelect).append("<option value='"+attribute+"'>"+attribute+"</option>");
 			    }
-				$(pieChartGui.columnSelect).append("</optgroup>");
-			    
 			    if (firstObject.isTemporal)
 			    	$(pieChartGui.columnSelect).append("<option value='dates[0].date'>date</option>");
 			    if (typeof firstObject.locations[0] !== "undefined"){
 			    	$(pieChartGui.columnSelect).append("<option value='locations[0].latitude'>lat</option>");
 			    	$(pieChartGui.columnSelect).append("<option value='locations[0].longitude'>lon</option>");
 			    }
+				$(pieChartGui.columnSelect).append("</optgroup>");
 			}
 		}
 	});
