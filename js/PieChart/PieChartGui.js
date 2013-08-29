@@ -56,8 +56,11 @@ function PieChartGui(pieChart, div, options) {
 					//A global GeoTemCo option "prefix" could be better. But still..
 					var prefix = pieChartGui.options.localStoragePrefix;
 					if (key.startsWith(prefix)){
+						var saveObject = $.remember({name:key,json:true});
 						var label = key.substring(prefix.length);
-						$(pieChartGui.columnSelect).append("<option isSaved=1 value='"+label+"'>"+decodeURIComponent(label)+"</option>");
+						//small safety-check: if the column is not part of this dataset, don't show it
+						if (typeof firstTableContent[saveObject.columnName] !== "undefined")
+							$(pieChartGui.columnSelect).append("<option isSaved=1 value='"+label+"'>"+decodeURIComponent(label)+"</option>");
 					}
 				}
 				$(pieChartGui.columnSelect).append("</optgroup>");
