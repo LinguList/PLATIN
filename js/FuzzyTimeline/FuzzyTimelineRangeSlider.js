@@ -156,8 +156,6 @@ FuzzyTimelineRangeSlider.prototype = {
 			rangeSlider.parent.slidePositionChanged(rangeSlider.spans[handlePosition]);
 		});
 			
-		$(rangeSlider.rangeDropdown).change();
-
 		$(rangeSlider.rangeStart).empty();
 		//add start of timeline selections
 		//TODO: add Months/Days/etc., atm there are only years
@@ -187,8 +185,8 @@ FuzzyTimelineRangeSlider.prototype = {
 			rangeSlider.parent.overallMin = moment().year(start);
 			$(rangeSlider.rangeDropdown).change();
 		});
-			
-			$(rangeSlider.rangerangeStart).change();
+
+		$(rangeSlider.rangeDropdown).change();
 	},
 	
 	triggerHighlight : function(columnElement) {
