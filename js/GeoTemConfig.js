@@ -322,11 +322,11 @@ GeoTemConfig.convertCsv = function(text){
 			}
 			/* TimeSpan:begin */
 			else if (usedHeaders[j] == expectedHeaders[6]) {
-				tableContent["TimeSpanBegin"] = ""+innerArray[j];
+				tableContent["TimeSpan:begin"] = ""+innerArray[j];
 			}
 			/* TimeSpan:end */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
-				tableContent["TimeSpanEnd"] = ""+innerArray[j];
+				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
