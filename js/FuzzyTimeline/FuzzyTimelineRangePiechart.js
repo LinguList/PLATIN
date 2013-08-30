@@ -26,30 +26,87 @@
  *
  * @param {HTML object} parent div to append the FuzzyTimeline
  */
-function FuzzyTimelineRangePiechart(parent,div,datasetIndex,shownDatasets,hiddenDatasets) {
+function FuzzyTimelineRangePiechart(parent,div) {
 
-	this.index;
 	this.fuzzyTimeline = this;
 	
 	this.parent = parent;
 	this.options = parent.options;
 	
 	this.div = div;
-	this.datasetIndex = datasetIndex;
-	this.shownDatasets = shownDatasets;
-	this.hiddenDatasets = hiddenDatasets;
 	
-	this.initialize();
+	this.selected = [];
+	
+	this.maxSlices = 10;
 }
 
 FuzzyTimelineRangePiechart.prototype = {
 
-	initialize : function() {
+	initialize : function(datasets) {
 		var piechart = this;
+		piechart.datasets = datasets;
 		
+		piechart.drawPieChart(piechart.datasets);
+	},
+	
+	drawPieChart : function(datasets){
+		var piechart = this;
+		//build hashmap of spans (span length -> objects[])
+		var spans = [];
+		var index = 0;
+		$(datasets).each(function(){
+			var objects = this;
+			//check whether we got "real" dataset or just a set of DataObjects
+			if (typeof objects.objects !== "undefined")
+				objects = objects.objects;
+			$(objects).each(function(){
+				var dataObject = this;
+				var span;
+				//TODO: it's actually not a good idea to compare milliseconds
+				//better approach would be to check identity for years/months/days/...
+				if (dataObject.isTemporal){
+					span = moment.duration(1,'milliseconds').asMilliseconds();
+				} else if (dataObject.isFuzzyTemporal){
+					span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin).asMilliseconds();
+				}
+				
+				if (typeof span === "undefined")
+					return;
+
+				var found = false;
+				$(spans).each(function(){
+					if (this.span === span){
+						this.objects[index].push(dataObject);
+						found = true;
+						return false;
+					}
+				});
+				if (found === false){
+					var newObjectSet = [];
+					for (var i = 0; i < piechart.datasets.length; i++)
+						newObjectSet.push([]);
+					newObjectSet[index].push(dataObject);
+					spans.push({span:span,objects:newObjectSet});
+				}
+			});
+			index++;
+		});
+		
+		//TODO: join elements of span array to keep below certain threshold
+		
+		//sort array by span length		
+		spans.sort(function(a,b){
+			return(a.span-b.span);
+		});
+		
+		//create chart data
 		var chartData = [];
-		chartData.push({label:"fit",data:piechart.shownDatasets[piechart.datasetIndex].length});
-		chartData.push({label:"overlap",data:piechart.hiddenDatasets[piechart.datasetIndex].length});
+		$(spans).each(function(){
+			var spanElem = this;
+			$(spanElem.objects).each(function(){
+				chartData.push({label:moment.duration(spanElem.span).humanize(),data:this.length});
+			});			
+		});
 		
 		$.plot($(piechart.div), chartData,
 			{
@@ -59,53 +116,92 @@ FuzzyTimelineRangePiechart.prototype = {
 						show:true
 					}
 				},
-				legend: { show:true, position: 'se' },
+				legend: { show:false},
 				grid: {
 		            hoverable: true,
 		            clickable: true
 		        },
 		        tooltip: true,
-		        tooltipOpts: {
-		            content: "%s %p.1%"
-		        }
 			}
 		);
 		
-		$(piechart.div).unbind();
+		var lastHighlighted;
+		$(piechart.div).unbind("plothover");
 		var hoverFunction = function (event, pos, item) {
 	        if (item) {
-	        	if (item.seriesIndex === 0){
-	        		piechart.parent.density.showPlotByType('shown');
-	        		piechart.parent.rangeBars.showPlotByType('shown');
-	        	}
-	        	else if (item.seriesIndex === 1){
-	        		piechart.parent.density.showPlotByType('hidden');
-	        		piechart.parent.rangeBars.showPlotByType('hidden');
-	        	}
+	        	var highlightedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
+	        	if (lastHighlighted !== highlightedSpan){
+		        	var highlightedObjects = [];
+		        	for(;highlightedSpan>=0;highlightedSpan--){
+		        		highlightedObjects = GeoTemConfig.mergeObjects(highlightedObjects,spans[highlightedSpan].objects);
+		        	}
+		        	lastHighlighted = highlightedSpan;
+		        }
+	        	piechart.triggerHighlight(highlightedObjects);
 	        } else {
-        		piechart.parent.density.showPlotByType('combined');
-        		piechart.parent.rangeBars.showPlotByType('combined');
+	        	piechart.triggerHighlight([]);
 	        }
 	    };
 	    $(piechart.div).bind("plothover", hoverFunction);
 	    
+	    $(piechart.div).unbind("plotclick");
 	    $(piechart.div).bind("plotclick", function (event, pos, item) {
-	    	//disable highlight events, so that the graphs are "stuck" in this mode
-	    	hoverFunction(event,pos,item);
 	    	$(piechart.div).unbind("plothover");
-	        if (!item) {
+	    	if (item){
+	    		var selectedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
+	        	var selectedObjects = [];
+	        	for(;selectedSpan>=0;selectedSpan--){
+	        		selectedObjects = GeoTemConfig.mergeObjects(selectedObjects,spans[selectedSpan].objects);
+	        	}
+	        	piechart.triggerSelection(selectedObjects);
+	    	} else {
 	        	//if it was a click outside of the pie-chart, enable highlight events
 	        	$(piechart.div).bind("plothover", hoverFunction);
+	        	//return to old state
+	        	piechart.triggerSelection(piechart.selected);
+	        	//and redraw piechart
+	    		piechart.highlightChanged([]);
 	        }
-	    });		
+	    });
 	},
 		
-	triggerHighlight : function(columnElement) {
-
+	highlightChanged : function(objects) {
+		var piechart = this;
+		//check if this is an empty highlight
+		var emptyHighlight = true;
+		$(objects).each(function(){
+			if ((this instanceof Array) && (this.length > 0)){
+				emptyHighlight = false;
+				return false;
+			}
+		});
+		
+		if (emptyHighlight === false)
+			piechart.drawPieChart(GeoTemConfig.mergeObjects(piechart.selected, objects));
+		else{
+			//return to selection (or all objects, if no selection is active)
+			if (piechart.selected.length > 0)
+				piechart.drawPieChart(piechart.selected);
+			else
+				piechart.drawPieChart(piechart.datasets);
+		}
 	},
 
-	triggerSelection : function(columnElement) {
+	selectionChanged : function(selection) {
+		var piechart = this;
+		if( !GeoTemConfig.selectionEvents ){
+			return;
+		}
+		piechart.selected = selection;
+		piechart.highlightChanged([]);
+	},
+	
+	triggerHighlight : function(highlightedObjects) {
+		this.parent.triggerHighlight(highlightedObjects);
+	},
 
+	triggerSelection : function(selectedObjects) {
+		this.parent.triggerSelection(selectedObjects);
 	},
 
 	deselection : function() {

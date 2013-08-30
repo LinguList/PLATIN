@@ -46,6 +46,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.density;
 	this.rangeSlider;
 	this.rangeBars;
+	this.rangePiechart;
 	this.spanHash = [];
 }
 
@@ -59,6 +60,8 @@ FuzzyTimelineWidget.prototype = {
 		
 		$(fuzzyTimeline.gui.sliderDiv).empty();
 		delete fuzzyTimeline.rangeSlider;
+		$(fuzzyTimeline.gui.rangePiechartDiv).empty();
+		delete fuzzyTimeline.rangePiechart;
 
 		fuzzyTimeline.switchViewMode("density");
 		
@@ -92,7 +95,10 @@ FuzzyTimelineWidget.prototype = {
 			});
 			
 			fuzzyTimeline.rangeSlider = new FuzzyTimelineRangeSlider(fuzzyTimeline);
-			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);			
+			fuzzyTimeline.rangeSlider.initialize(fuzzyTimeline.datasets);
+
+			fuzzyTimeline.rangePiechart = new FuzzyTimelineRangePiechart(fuzzyTimeline, fuzzyTimeline.gui.rangePiechartDiv);
+			fuzzyTimeline.rangePiechart.initialize(fuzzyTimeline.datasets);
 		}
 	},
 	
@@ -136,6 +142,8 @@ FuzzyTimelineWidget.prototype = {
 			this.density.highlightChanged(objects);
 		else if (fuzzyTimeline.viewMode === "barchart")
 			this.rangeBars.highlightChanged(objects);
+		
+		fuzzyTimeline.rangePiechart.highlightChanged(objects);
 	},
 
 	selectionChanged : function(selection) {
@@ -148,6 +156,11 @@ FuzzyTimelineWidget.prototype = {
 			this.density.selectionChanged(objects);
 		else if (fuzzyTimeline.viewMode === "barchart")
 			this.rangeBars.selectionChanged(objects);
+		
+		if (selection.valid())
+			fuzzyTimeline.rangePiechart.selectionChanged(objects);
+		else
+			fuzzyTimeline.rangePiechart.selectionChanged([]);
 	},
 	
 	buildSpanArray : function(spanWidth) {
@@ -290,4 +303,26 @@ FuzzyTimelineWidget.prototype = {
 		});
 		return {shown:shown,hidden:hidden}; 
 	},
+	
+	triggerHighlight : function(highlightedObjects){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.viewMode === "density")
+			fuzzyTimeline.density.highlightChanged(highlightedObjects);
+		else if (fuzzyTimeline.viewMode === "barchart")
+			fuzzyTimeline.rangeBars.highlightChanged(highlightedObjects);
+		
+		fuzzyTimeline.core.triggerHighlight(highlightedObjects);		
+	},
+	
+	triggerSelection : function(selectedObjects){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.viewMode === "density")
+			fuzzyTimeline.density.selectionChanged(selectedObjects);
+		else if (fuzzyTimeline.viewMode === "barchart")
+			fuzzyTimeline.rangeBars.selectionChanged(selectedObjects);
+		
+		selection = new Selection(selectedObjects);
+		
+		fuzzyTimeline.core.triggerSelection(selection);		
+	},	
 };
