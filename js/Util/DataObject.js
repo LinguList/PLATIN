@@ -124,8 +124,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 
 	//TODO: allow more than one timespan (as with dates/places)
 	this.isFuzzyTemporal = false;
-	if (	(typeof this.tableContent["TimeSpanBegin"] !== "undefined") &&
-			(typeof this.tableContent["TimeSpanEnd"] !== "undefined") ){
+	if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
+			(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
 		//parse according to ISO 8601
 		//don't use the default "cross browser support" from moment.js
 		//cause it won't work correctly with negative years
@@ -137,8 +137,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		               	"YYYYYY-MM-DDTHH:mm:ss",
 		               	"YYYYYY-MM-DDTHH:mm:ss.SSS"
 		               ];
-		this.TimeSpanBegin = moment(this.tableContent["TimeSpanBegin"],formats.slice());
-		this.TimeSpanEnd = moment(this.tableContent["TimeSpanEnd"],formats.slice());
+		this.TimeSpanBegin = moment(this.tableContent["TimeSpan:begin"],formats.slice());
+		this.TimeSpanEnd = moment(this.tableContent["TimeSpan:end"],formats.slice());
 		if ((this.TimeSpanBegin instanceof Object) && this.TimeSpanBegin.isValid() && 
 			(this.TimeSpanEnd instanceof Object) && this.TimeSpanEnd.isValid()){
 			//check whether dates are correctly sorted
