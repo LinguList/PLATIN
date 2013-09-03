@@ -265,7 +265,6 @@ FuzzyTimelineDensity.prototype = {
 		        	date = item.datapoint[0];
 		        }  	
 	        	density.triggerSelection(date);
-	        	wasDataClick = true;
 	        }
 	    });
 	    
