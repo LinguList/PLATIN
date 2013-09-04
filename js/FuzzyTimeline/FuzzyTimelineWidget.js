@@ -48,6 +48,8 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.rangeBars;
 	this.rangePiechart;
 	this.spanHash = [];
+	
+	this.handles = [];
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -325,5 +327,86 @@ FuzzyTimelineWidget.prototype = {
 		selection = new Selection(selectedObjects);
 		
 		fuzzyTimeline.core.triggerSelection(selection);		
-	},	
+	},
+	
+	addHandle : function(x1,x2){
+		var fuzzyTimeline = this;
+		fuzzyTimeline.handles.push({x1:x1,x2:x2});
+		fuzzyTimeline.drawHandles();
+	},
+	
+	drawHandles : function(){
+		var fuzzyTimeline = this;
+		var y = fuzzyTimeline.gui.plotDiv.clientTop + fuzzyTimeline.gui.plotDiv.clientHeight / 3; 
+		$(fuzzyTimeline.handles).each(function(){
+			var handle = this;
+			var x1 = handle.x1;
+			var x2 = handle.x2;
+			var leftHandle = document.createElement("div");
+			leftHandle.title = GeoTemConfig.getString('leftHandle');
+			leftHandle.style.backgroundImage = "url(" + GeoTemConfig.path + "leftHandle.png" + ")";
+			leftHandle.setAttribute('class', 'plotHandle plotHandleIcon');
+			leftHandle.style.visibility = "visible";
+			$(fuzzyTimeline.gui.plotDiv).append(leftHandle);
+			leftHandle.style.left = (x1 - leftHandle.offsetWidth)+ "px";
+			leftHandle.style.top = y + "px";
+			
+			rightHandle = document.createElement("div");
+			rightHandle.title = GeoTemConfig.getString('leftHandle');
+			rightHandle.style.backgroundImage = "url(" + GeoTemConfig.path + "rightHandle.png" + ")";
+			rightHandle.setAttribute('class', 'plotHandle plotHandleIcon');
+			rightHandle.style.visibility = "visible";
+			$(fuzzyTimeline.gui.plotDiv).append(rightHandle);
+			rightHandle.style.left = (x2 - rightHandle.offsetWidth)+ "px";
+			rightHandle.style.top = y + "px";
+
+			$(leftHandle).mousedown(function(){
+				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
+					var x = eventObj.clientX;
+					if ((x < handle.x2) &&
+						(x > fuzzyTimeline.gui.plotDiv.clientLeft) &&
+						(x < fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth) ){
+						leftHandle.style.left = (x - leftHandle.offsetWidth)+ "px";
+						handle.x1 = x;
+					}
+				});
+				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
+					if (fuzzyTimeline.viewMode === "density"){
+						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
+					} else if (fuzzyTimeline.viewMode === "barchart"){
+						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
+					}
+					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
+					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
+				});
+			});
+
+			$(rightHandle).mousedown(function(){
+				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
+					var x = eventObj.clientX;
+					if ((x > handle.x1) &&
+						(x > fuzzyTimeline.gui.plotDiv.clientLeft) &&
+						(x < fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth) ){
+						rightHandle.style.left = (x - rightHandle.offsetWidth)+ "px";
+						handle.x2 = x;
+					}
+				});
+				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
+					if (fuzzyTimeline.viewMode === "density"){
+						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
+					} else if (fuzzyTimeline.viewMode === "barchart"){
+						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
+					}
+					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
+					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
+				});
+			});
+		});
+	},
+	
+	clearHandles : function(){
+		var fuzzyTimeline = this;
+		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
+		fuzzyTimeline.handles = [];
+	},
 };

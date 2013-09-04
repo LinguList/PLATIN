@@ -216,6 +216,7 @@ FuzzyTimelineRangeBars.prototype = {
 		
 		$(rangeBar.plotDiv).unbind();		
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot_colors, options);
+		rangeBar.parent.drawHandles();
 		
 		$(rangeBar.plotDiv).unbind("plothover");
 	    $(rangeBar.plotDiv).bind("plothover", function (event, pos, item) {
@@ -245,6 +246,9 @@ FuzzyTimelineRangeBars.prototype = {
 	    	if (rangeBar.wasSelection)
 	    		rangeBar.wasSelection = false;
 	    	else {
+	        	//remove selection handles (if there were any)
+	        	rangeBar.parent.clearHandles();
+	        	
 		    	var dateStart,dateEnd;
 		    	var spans;
 		        if (item) {
@@ -268,8 +272,23 @@ FuzzyTimelineRangeBars.prototype = {
         	dateEnd = spans[Math.ceil(ranges.xaxis.to)];
 	    	rangeBar.triggerSelection(dateStart, dateEnd);
 	    	rangeBar.wasSelection = true;
+	    	
+	    	rangeBar.parent.clearHandles();
+	    	var xaxis = rangeBar.plot.getAxes().xaxis;
+	    	var x1 = xaxis.p2c(ranges.xaxis.from) + rangeBar.plot.offset().left;
+	    	var x2 = xaxis.p2c(ranges.xaxis.to) + rangeBar.plot.offset().left;
+	    	rangeBar.parent.addHandle(x1,x2);
 	    });	
 	},
+	
+	
+	selectByX : function(x1, x2){
+		var xaxis = density.plot.getAxes().xaxis;
+    	var from = xaxis.c2p(x1-density.plot.offset().left);
+    	var to = xaxis.c2p(x2-density.plot.offset().left);
+
+    	density.triggerSelection(from, to);
+	},	
 	
 	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
 		var rangeBar = this;
