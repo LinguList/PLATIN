@@ -359,6 +359,14 @@ FuzzyTimelineWidget.prototype = {
 			$(fuzzyTimeline.gui.plotDiv).append(rightHandle);
 			rightHandle.style.left = (x2 - rightHandle.offsetWidth)+ "px";
 			rightHandle.style.top = y + "px";
+			
+			var dragButton = document.createElement("div");
+			dragButton.title = GeoTemConfig.getString('dragTimeRange');
+			dragButton.style.backgroundImage = "url(" + GeoTemConfig.path + "drag.png" + ")";
+			dragButton.setAttribute('class', 'dragTimeRangeAlt plotHandleIcon');
+			$(fuzzyTimeline.gui.plotDiv).append(dragButton);
+			dragButton.style.left = (x1+x2)/2 - dragButton.offsetWidth/2 + "px";
+			dragButton.style.top = y + "px";
 
 			$(leftHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
@@ -401,12 +409,36 @@ FuzzyTimelineWidget.prototype = {
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
 				});
 			});
+			
+			$(dragButton).mousedown(function(){
+				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
+					var x = eventObj.clientX;
+					var xdiff = x - $(dragButton).offset().left - dragButton.offsetWidth/2;
+					var x1 = handle.x1+xdiff;
+					var x2 = handle.x2+xdiff;
+					dragButton.style.left = (x1+x2)/2 - dragButton.offsetWidth/2 + "px";
+					leftHandle.style.left = (x1 - leftHandle.offsetWidth)+ "px";
+					rightHandle.style.left = (x2 - rightHandle.offsetWidth)+ "px";
+					handle.x1 = x1;
+					handle.x2 = x2;
+				});
+				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
+					if (fuzzyTimeline.viewMode === "density"){
+						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
+					} else if (fuzzyTimeline.viewMode === "barchart"){
+						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
+					}
+					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
+					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
+				});
+			});
 		});
 	},
 	
 	clearHandles : function(){
 		var fuzzyTimeline = this;
 		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
+		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
 		fuzzyTimeline.handles = [];
 	},
 };
