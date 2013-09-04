@@ -351,7 +351,7 @@ FuzzyTimelineWidget.prototype = {
 			leftHandle.style.left = (x1 - leftHandle.offsetWidth)+ "px";
 			leftHandle.style.top = y + "px";
 			
-			rightHandle = document.createElement("div");
+			var rightHandle = document.createElement("div");
 			rightHandle.title = GeoTemConfig.getString('leftHandle');
 			rightHandle.style.backgroundImage = "url(" + GeoTemConfig.path + "rightHandle.png" + ")";
 			rightHandle.setAttribute('class', 'plotHandle plotHandleIcon');
