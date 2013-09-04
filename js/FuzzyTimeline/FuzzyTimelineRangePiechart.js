@@ -108,61 +108,67 @@ FuzzyTimelineRangePiechart.prototype = {
 			});			
 		});
 		
-		$.plot($(piechart.div), chartData,
-			{
-				series: {
-					// Make this a pie chart.
-					pie: {
-						show:true
-					}
-				},
-				legend: { show:false},
-				grid: {
-		            hoverable: true,
-		            clickable: true
-		        },
-		        tooltip: true,
-			}
-		);
-		
-		var lastHighlighted;
-		$(piechart.div).unbind("plothover");
-		var hoverFunction = function (event, pos, item) {
-	        if (item) {
-	        	var highlightedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
-	        	if (lastHighlighted !== highlightedSpan){
-		        	var highlightedObjects = [];
-		        	for(;highlightedSpan>=0;highlightedSpan--){
-		        		highlightedObjects = GeoTemConfig.mergeObjects(highlightedObjects,spans[highlightedSpan].objects);
-		        	}
-		        	lastHighlighted = highlightedSpan;
-		        }
-	        	piechart.triggerHighlight(highlightedObjects);
-	        } else {
-	        	piechart.triggerHighlight([]);
-	        }
-	    };
-	    $(piechart.div).bind("plothover", hoverFunction);
-	    
 	    $(piechart.div).unbind("plotclick");
-	    $(piechart.div).bind("plotclick", function (event, pos, item) {
-	    	$(piechart.div).unbind("plothover");
-	    	if (item){
-	    		var selectedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
-	        	var selectedObjects = [];
-	        	for(;selectedSpan>=0;selectedSpan--){
-	        		selectedObjects = GeoTemConfig.mergeObjects(selectedObjects,spans[selectedSpan].objects);
-	        	}
-	        	piechart.triggerSelection(selectedObjects);
-	    	} else {
-	        	//if it was a click outside of the pie-chart, enable highlight events
-	        	$(piechart.div).bind("plothover", hoverFunction);
-	        	//return to old state
-	        	piechart.triggerSelection(piechart.selected);
-	        	//and redraw piechart
-	    		piechart.highlightChanged([]);
-	        }
-	    });
+		$(piechart.div).unbind("plothover");
+		$(piechart.div).empty();
+		if (spans.length === 0){
+			//TODO: language specific message
+			$(piechart.div).append("empty selection");
+		} else {
+			$.plot($(piechart.div), chartData,
+					{
+						series: {
+							// Make this a pie chart.
+							pie: {
+								show:true
+							}
+						},
+						legend: { show:false},
+						grid: {
+				            hoverable: true,
+				            clickable: true
+				        },
+				        tooltip: true,
+					}
+			);
+				
+			var lastHighlighted;
+			var hoverFunction = function (event, pos, item) {
+		        if (item) {
+		        	var highlightedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
+		        	if (lastHighlighted !== highlightedSpan){
+			        	var highlightedObjects = [];
+			        	for(;highlightedSpan>=0;highlightedSpan--){
+			        		highlightedObjects = GeoTemConfig.mergeObjects(highlightedObjects,spans[highlightedSpan].objects);
+			        	}
+			        	lastHighlighted = highlightedSpan;
+			        }
+		        	piechart.triggerHighlight(highlightedObjects);
+		        } else {
+		        	piechart.triggerHighlight([]);
+		        }
+		    };
+		    $(piechart.div).bind("plothover", hoverFunction);
+		    
+		    $(piechart.div).bind("plotclick", function (event, pos, item) {
+		    	$(piechart.div).unbind("plothover");
+		    	if (item){
+		    		var selectedSpan =  Math.ceil(item.seriesIndex/piechart.datasets.length);
+		        	var selectedObjects = [];
+		        	for(;selectedSpan>=0;selectedSpan--){
+		        		selectedObjects = GeoTemConfig.mergeObjects(selectedObjects,spans[selectedSpan].objects);
+		        	}
+		        	piechart.triggerSelection(selectedObjects);
+		    	} else {
+		        	//if it was a click outside of the pie-chart, enable highlight events
+		        	$(piechart.div).bind("plothover", hoverFunction);
+		        	//return to old state
+		        	piechart.triggerSelection(piechart.selected);
+		        	//and redraw piechart
+		    		piechart.highlightChanged([]);
+		        }
+		    });
+		}
 	},
 		
 	highlightChanged : function(objects) {
