@@ -31,6 +31,7 @@
 function FuzzyTimelineWidget(core, div, options) {
 
 	this.datasets;
+	this.selected = [];
 	this.hiddenDatasets;
 	this.shownDatasets;
 	this.overallMin;
@@ -125,12 +126,17 @@ FuzzyTimelineWidget.prototype = {
 		var shown_hidden_Datasets = fuzzyTimeline.getShownHiddenDatasets();
 		var shownDatasets = shown_hidden_Datasets.shown;
 		var hiddenDatasets = shown_hidden_Datasets.hidden;
-		if (fuzzyTimeline.viewMode === "density")
+		if (fuzzyTimeline.viewMode === "density"){
 			//redraw density plot
 			fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
-		else if (fuzzyTimeline.viewMode === "barchart")
+			//select currently selected data (if there is any) 
+			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
+		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
 			fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
+			//select currently selected data (if there is any)
+			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
+		}
 	},
 
 	highlightChanged : function(objects) {
@@ -154,14 +160,14 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		var objects = selection.objects;
+		fuzzyTimeline.selected = selection.objects;
 		if (fuzzyTimeline.viewMode === "density")
-			this.density.selectionChanged(objects);
+			this.density.selectionChanged(fuzzyTimeline.selected);
 		else if (fuzzyTimeline.viewMode === "barchart")
-			this.rangeBars.selectionChanged(objects);
+			this.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		
 		if (selection.valid())
-			fuzzyTimeline.rangePiechart.selectionChanged(objects);
+			fuzzyTimeline.rangePiechart.selectionChanged(fuzzyTimeline.selected);
 		else
 			fuzzyTimeline.rangePiechart.selectionChanged([]);
 	},
