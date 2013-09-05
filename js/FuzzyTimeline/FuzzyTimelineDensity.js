@@ -236,6 +236,7 @@ FuzzyTimelineDensity.prototype = {
 		});
 		
 		density.plot = $.plot($(density.div), highlight_select_plot_colors, options);
+		density.parent.drawHandles();
 		
 		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {
@@ -259,11 +260,14 @@ FuzzyTimelineDensity.prototype = {
 	    	if (density.wasSelection)
 	    		density.wasSelection = false;
 	    	else {
+	        	//remove selection handles (if there were any)
+	        	density.parent.clearHandles();
+	        	
 	        	var date;
 		        //that date may be undefined is on purpose	    	
 		        if (item) {
 		        	date = item.datapoint[0];
-		        }  	
+		        }
 	        	density.triggerSelection(date);
 	        }
 	    });
@@ -272,7 +276,21 @@ FuzzyTimelineDensity.prototype = {
 	    $(density.div).bind("plotselected", function(event, ranges) {
         	density.triggerSelection(ranges.xaxis.from, ranges.xaxis.to);
 	    	density.wasSelection = true;
+
+	    	density.parent.clearHandles();
+	    	var xaxis = density.plot.getAxes().xaxis;
+	    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
+	    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
+	    	density.parent.addHandle(x1,x2);
 	    });
+	},
+	
+	selectByX : function(x1, x2){
+		var xaxis = density.plot.getAxes().xaxis;
+    	var from = xaxis.c2p(x1-density.plot.offset().left);
+    	var to = xaxis.c2p(x2-density.plot.offset().left);
+
+    	density.triggerSelection(from, to);
 	},
 	
 	drawDensityPlot : function(shownDatasets, hiddenDatasets, tickWidth) {
