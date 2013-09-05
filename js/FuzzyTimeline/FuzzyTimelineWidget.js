@@ -325,6 +325,7 @@ FuzzyTimelineWidget.prototype = {
 	
 	triggerSelection : function(selectedObjects){
 		var fuzzyTimeline = this;
+		fuzzyTimeline.selected = selectedObjects;
 		if (fuzzyTimeline.viewMode === "density")
 			fuzzyTimeline.density.selectionChanged(selectedObjects);
 		else if (fuzzyTimeline.viewMode === "barchart")
