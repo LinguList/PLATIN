@@ -348,6 +348,15 @@ FuzzyTimelineWidget.prototype = {
 		fuzzyTimeline.drawHandles();
 	},
 	
+	selectByX : function(x1,x2){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.viewMode === "density"){
+			fuzzyTimeline.density.selectByX(x1,x2);
+		} else if (fuzzyTimeline.viewMode === "barchart"){
+			fuzzyTimeline.rangeBars.selectByX(x1,x2);
+		}		
+	},
+	
 	drawHandles : function(){
 		var fuzzyTimeline = this;
 		var y = fuzzyTimeline.gui.plotDiv.clientTop + fuzzyTimeline.gui.plotDiv.clientHeight / 3; 
@@ -392,11 +401,7 @@ FuzzyTimelineWidget.prototype = {
 					}
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
-					if (fuzzyTimeline.viewMode === "density"){
-						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
-					} else if (fuzzyTimeline.viewMode === "barchart"){
-						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
-					}
+					fuzzyTimeline.selectByX(handle.x1,handle.x2);
 					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
 				});
@@ -413,11 +418,7 @@ FuzzyTimelineWidget.prototype = {
 					}
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
-					if (fuzzyTimeline.viewMode === "density"){
-						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
-					} else if (fuzzyTimeline.viewMode === "barchart"){
-						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
-					}
+					fuzzyTimeline.selectByX(handle.x1,handle.x2);
 					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
 				});
@@ -436,11 +437,7 @@ FuzzyTimelineWidget.prototype = {
 					handle.x2 = x2;
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
-					if (fuzzyTimeline.viewMode === "density"){
-						fuzzyTimeline.density.selectByX(handle.x1,handle.x2);
-					} else if (fuzzyTimeline.viewMode === "barchart"){
-						fuzzyTimeline.rangeBars.selectByX(handle.x1,handle.x2);
-					}
+					fuzzyTimeline.selectByX(handle.x1,handle.x2);
 					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
 				});
