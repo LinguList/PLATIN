@@ -360,6 +360,9 @@ FuzzyTimelineWidget.prototype = {
 	drawHandles : function(){
 		var fuzzyTimeline = this;
 		var y = fuzzyTimeline.gui.plotDiv.clientTop + fuzzyTimeline.gui.plotDiv.clientHeight / 3; 
+
+		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
+		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
 		$(fuzzyTimeline.handles).each(function(){
 			var handle = this;
 			var x1 = handle.x1;
