@@ -44,6 +44,12 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.rangeDropdown = document.createElement("select");
 	$(this.sliderParentDiv).append("Time slice width:");
 	$(this.sliderParentDiv).append(this.rangeDropdown);
+	this.startAnimation = document.createElement("button");
+	$(this.sliderParentDiv).append(this.startAnimation);
+	$(this.startAnimation).text("start");
+	this.pauseAnimation = document.createElement("button");
+	$(this.sliderParentDiv).append(this.pauseAnimation);
+	$(this.pauseAnimation).text("pause");
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -187,6 +193,21 @@ FuzzyTimelineRangeSlider.prototype = {
 		});
 
 		$(rangeSlider.rangeDropdown).change();
+		
+		$(rangeSlider.startAnimation).click(function(){
+			$(rangeSlider.startAnimation).prop('disabled', true);
+			$(rangeSlider.pauseAnimation).prop('disabled', false);
+			
+			rangeSlider.parent.startAnimation();
+		});
+
+		$(rangeSlider.pauseAnimation).prop('disabled', true);
+		$(rangeSlider.pauseAnimation).click(function(){
+			$(rangeSlider.startAnimation).prop('disabled', false);
+			$(rangeSlider.pauseAnimation).prop('disabled', true);
+			
+			rangeSlider.parent.pauseAnimation();
+		});
 	},
 	
 	triggerHighlight : function(columnElement) {

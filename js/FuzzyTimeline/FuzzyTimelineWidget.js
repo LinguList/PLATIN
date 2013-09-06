@@ -454,4 +454,45 @@ FuzzyTimelineWidget.prototype = {
 		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
 		fuzzyTimeline.handles = [];
 	},
+	
+	startAnimation : function(){
+		var fuzzyTimeline = this;
+		fuzzyTimeline.loopFunction = function(steps){
+			$(fuzzyTimeline.handles).each(function(){
+				if (typeof steps === "undefined")
+					steps = 1;
+				var handle = this;
+				var x1 = handle.x1;
+				var x2 = handle.x2;
+				var width = handle.width;
+				var plotMax = fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth;
+				//TODO: has to be plotMin
+				if (!((x1 === 0)&&(x2-x1 <= width))){
+					x1 += steps;
+				}
+				if (x2 <= plotMax)
+					x2 += steps;
+				if (x1 >= plotMax){
+					//TODO: has to be plotMin
+					x1 = 0;
+					x2 = 0;
+				}
+				
+				handle.x1 = x1;
+				handle.x2 = x2;
+				
+				fuzzyTimeline.drawHandles();
+				fuzzyTimeline.selectByX(handle.x1, handle.x2);
+			});
+		};
+		
+		fuzzyTimeline.loopId = setInterval(function(){
+			fuzzyTimeline.loopFunction(10);
+		}, 1000);
+	},
+
+	pauseAnimation : function(){
+		var fuzzyTimeline = this;
+		clearInterval(fuzzyTimeline.loopId);
+	},
 };
