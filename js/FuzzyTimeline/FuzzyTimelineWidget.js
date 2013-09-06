@@ -338,7 +338,13 @@ FuzzyTimelineWidget.prototype = {
 	
 	addHandle : function(x1,x2){
 		var fuzzyTimeline = this;
-		fuzzyTimeline.handles.push({x1:x1,x2:x2});
+		//make sure the interval is ordered correctly
+		if (x2<x1){
+			var temp = x1;
+			x1 = x2;
+			x2 = temp;
+		}
+		fuzzyTimeline.handles.push({x1:x1,x2:x2,width:x2-x1});
 		fuzzyTimeline.drawHandles();
 	},
 	
