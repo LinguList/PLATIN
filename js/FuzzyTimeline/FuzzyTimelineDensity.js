@@ -243,6 +243,7 @@ FuzzyTimelineDensity.prototype = {
 	    	var hoverPoint;
 	    	//TODO: this could be wanted (if negative weight is used)
 	        if ((item)&&(item.datapoint[1] != 0)) {
+	        	//at begin and end of plot there are added 0 points
 	        	hoverPoint = item.dataIndex-1;
 	        }
 	        //remember last point, so that we don't redraw the current state
@@ -267,6 +268,7 @@ FuzzyTimelineDensity.prototype = {
 		        //that date may be undefined is on purpose	    	
 		    	//TODO: ==0 could be wanted (if negative weight is used)
 		        if ((item)&&(item.datapoint[1] != 0)) {
+		        	//at begin and end of plot there are added 0 points
 		        	selectPoint = item.dataIndex-1;
 		        }
 	        	density.triggerSelection(selectPoint);
