@@ -240,7 +240,7 @@ FuzzyTimelineWidget.prototype = {
 				lastTickStart = spanArray[tickCount];
 				tickCount++;
 				tickStart = spanArray[tickCount];
-				if ( (typeof firstTick === "undefined") && (datemin <= tickStart) ){
+				if ( (typeof firstTick === "undefined") && (datemin < tickStart) ){
 					firstTick = tickCount-1;
 					firstTickPercentage = (tickStart - datemin)/spanWidth;
 				}
@@ -248,7 +248,7 @@ FuzzyTimelineWidget.prototype = {
 					lastTick = tickCount-1;
 					lastTickPercentage = (datemax - lastTickStart)/spanWidth;
 				}
-			} while (tickStart <= datemax);
+			} while (tickStart < datemax);
 			if (firstTick == lastTick){
 				firstTickPercentage = 1;
 				lastTickPercentage = 1;
@@ -293,7 +293,7 @@ FuzzyTimelineWidget.prototype = {
 					if ( (datemin <= searchDateStart) && (datemax >= searchDateStart) )
 						objects.push(this);
 				} else {
-					if ((datemin <= searchDateEnd) && (datemax >= searchDateStart))
+					if ((datemin < searchDateEnd) && (datemax >= searchDateStart))
 						objects.push(this);
 				}
 			});

@@ -240,16 +240,16 @@ FuzzyTimelineDensity.prototype = {
 		
 		$(density.div).unbind("plothover");
 	    $(density.div).bind("plothover", function (event, pos, item) {
-	    	var date;
-	        if (item) {
-				//contains the x-value (date)
-	        	date = item.datapoint[0];
+	    	var hoverPoint;
+	    	//TODO: this could be wanted (if negative weight is used)
+	        if ((item)&&(item.datapoint[1] != 0)) {
+	        	hoverPoint = item.dataIndex-1;
 	        }
-	        //remember last date, so that we don't redraw the current state
-	        //that date may be undefined is on purpose
-	    	if (density.highlighted !== date){
-	        	density.highlighted = date;
-	        	density.triggerHighlight(date);
+	        //remember last point, so that we don't redraw the current state
+	        //that "hoverPoint" may be undefined is on purpose
+	    	if (density.highlighted !== hoverPoint){
+    			density.highlighted = hoverPoint;
+	        	density.triggerHighlight(hoverPoint);
 	        }
 	    });
 
@@ -262,19 +262,20 @@ FuzzyTimelineDensity.prototype = {
 	    	else {
 	        	//remove selection handles (if there were any)
 	        	density.parent.clearHandles();
-	        	
-	        	var date;
+		    	
+		    	var selectPoint;
 		        //that date may be undefined is on purpose	    	
-		        if (item) {
-		        	date = item.datapoint[0];
+		    	//TODO: ==0 could be wanted (if negative weight is used)
+		        if ((item)&&(item.datapoint[1] != 0)) {
+		        	selectPoint = item.dataIndex-1;
 		        }
-	        	density.triggerSelection(date);
+	        	density.triggerSelection(selectPoint);
 	        }
 	    });
 	    
 	    $(density.div).unbind("plotselected");
 	    $(density.div).bind("plotselected", function(event, ranges) {
-        	density.triggerSelection(ranges.xaxis.from, ranges.xaxis.to);
+        	density.triggerSelection(ranges.xaxis.from, ranges.xaxis.to+density.singleTickWidth);
 	    	density.wasSelection = true;
 
 	    	density.parent.clearHandles();
@@ -305,6 +306,8 @@ FuzzyTimelineDensity.prototype = {
 		if ((typeof density.tickCount === "undefined") || (density.tickCount > density.maxTickCount)){
 			density.tickCount = density.maxTickCount;
 			density.singleTickWidth = (density.parent.overallMax-density.parent.overallMin)/density.tickCount;
+			if (density.singleTickWidth === 0)
+				density.singleTickWidth = 1;
 		}
 		
 		density.shownDatasetsPlot = density.createUDData(shownDatasets);
@@ -343,11 +346,13 @@ FuzzyTimelineDensity.prototype = {
 	    density.showPlotByType("combined");
 	},
 	
-	triggerHighlight : function(date) {
+	triggerHighlight : function(hoverPoint) {
+		var density = this;
 		var highlightedObjects = [];
 		
-		if (typeof date !== "undefined") {
-			highlightedObjects = this.parent.getObjects(date);
+		if (typeof hoverPoint !== "undefined") {
+			var spanArray = this.parent.getSpanArray(density.singleTickWidth);
+			highlightedObjects = this.parent.getObjects(spanArray[hoverPoint], spanArray[hoverPoint+1]);
 		} else {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 				highlightedObjects.push([]);
@@ -359,14 +364,15 @@ FuzzyTimelineDensity.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
-	triggerSelection : function(dateStart, dateEnd) {
+	triggerSelection : function(startPoint, endPoint) {
 		var density = this;
 		var selection;
-		if (typeof dateStart !== "undefined") {
-			if (typeof dateEnd === "undefined")
-				density.selected = density.parent.getObjects(dateStart);
+		if (typeof startPoint !== "undefined") {
+			var spanArray = this.parent.getSpanArray(density.singleTickWidth);
+			if (typeof endPoint === "undefined")
+				density.selected = density.parent.getObjects(spanArray[startPoint],spanArray[startPoint+1]);
 			else
-				density.selected = density.parent.getObjects(dateStart,dateEnd);
+				density.selected = density.parent.getObjects(spanArray[startPoint],spanArray[endPoint+1]);
 			selection = new Selection(density.selected, density);
 		} else {
 			//empty selection
