@@ -62,12 +62,10 @@ FuzzyTimelineRangePiechart.prototype = {
 			$(objects).each(function(){
 				var dataObject = this;
 				var span;
-				//TODO: it's actually not a good idea to compare milliseconds
-				//better approach would be to check identity for years/months/days/...
 				if (dataObject.isTemporal){
-					span = moment.duration(1,'milliseconds').asMilliseconds();
+					span = SimileAjax.DateTime.MILLISECOND;
 				} else if (dataObject.isFuzzyTemporal){
-					span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin).asMilliseconds();
+					span = dataObject.TimeSpanGranularity;
 				}
 				
 				if (typeof span === "undefined")
@@ -104,8 +102,32 @@ FuzzyTimelineRangePiechart.prototype = {
 		$(spans).each(function(){
 			var spanElem = this;
 			$(spanElem.objects).each(function(){
-				chartData.push({label:moment.duration(spanElem.span).humanize(),data:this.length});
-			});			
+				var label = "unknown";
+				
+				if (spanElem.span === SimileAjax.DateTime.MILLENNIUM){
+					label = "millenia";
+				} else if (spanElem.span === SimileAjax.DateTime.DECADE){
+					label = "decades";
+				} else if (spanElem.span === SimileAjax.DateTime.CENTURY){
+					label = "centuries";
+				} else if (spanElem.span === SimileAjax.DateTime.YEAR){
+					label = "years";
+				} else if (spanElem.span === SimileAjax.DateTime.MONTH){
+					label = "months";
+				} else if (spanElem.span === SimileAjax.DateTime.DAY){
+					label = "days";
+				} else if (spanElem.span === SimileAjax.DateTime.HOUR){
+					label = "hours";
+				} else if (spanElem.span === SimileAjax.DateTime.MINUTE){
+					label = "minutes";
+				} else if (spanElem.span === SimileAjax.DateTime.SECOND){
+					label = "seconds";
+				} else if (spanElem.span === SimileAjax.DateTime.MILLISECOND){
+					label = "milliseconds";
+				}				
+	
+				chartData.push({label:label,data:this.length});
+			});
 		});
 		
 	    $(piechart.div).unbind("plotclick");
