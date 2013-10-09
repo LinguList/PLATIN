@@ -131,6 +131,8 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		var date = this.dates[0].date;
 		var granularity = this.dates[0].granularity;
 		
+		this.TimeSpanGranularity = granularity;
+		
 		if (granularity === SimileAjax.DateTime.YEAR){
 			this.TimeSpanBegin = moment(date).startOf("year");
 			this.TimeSpanEnd = moment(date).endOf("year");
@@ -199,6 +201,13 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 				} else if (timeSpanGranularity === 6){
 					this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
 				}
+				
+				if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 1000)
+					this.TimeSpanGranularity = SimileAjax.DateTime.MILLENNIUM;
+				else if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 100)
+					this.TimeSpanGranularity = SimileAjax.DateTime.CENTURY;
+				else if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 10)
+					this.TimeSpanGranularity = SimileAjax.DateTime.DECADE;
 				
 				//also set upper bounds according to granularity
 				//(lower bound is already correct)
