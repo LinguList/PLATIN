@@ -124,8 +124,38 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 
 	//TODO: allow more than one timespan (as with dates/places)
 	this.isFuzzyTemporal = false;
-	if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
-			(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
+	if (this.isTemporal) {
+		this.isTemporal = false;
+		this.isFuzzyTemporal = true;
+		
+		var date = this.dates[0].date;
+		var granularity = this.dates[0].granularity;
+		
+		if (granularity === SimileAjax.DateTime.YEAR){
+			this.TimeSpanBegin = moment(date).startOf("year");
+			this.TimeSpanEnd = moment(date).endOf("year");
+		} else if (granularity === SimileAjax.DateTime.MONTH){
+			this.TimeSpanBegin = moment(date).startOf("month");
+			this.TimeSpanEnd = moment(date).endOf("month");
+		} else if (granularity === SimileAjax.DateTime.DAY){
+			this.TimeSpanBegin = moment(date).startOf("day");
+			this.TimeSpanEnd = moment(date).endOf("day");
+		} else if (granularity === SimileAjax.DateTime.HOUR){
+			this.TimeSpanBegin = moment(date).startOf("hour");
+			this.TimeSpanEnd = moment(date).endOf("hour");
+		} else if (granularity === SimileAjax.DateTime.MINUTE){
+			this.TimeSpanBegin = moment(date).startOf("minute");
+			this.TimeSpanEnd = moment(date).endOf("minute");
+		} else if (granularity === SimileAjax.DateTime.SECOND){
+			this.TimeSpanBegin = moment(date).startOf("second");
+			this.TimeSpanEnd = moment(date).endOf("second");
+		} else if (granularity === SimileAjax.DateTime.MILLISECOND){
+			//this is a "real" exact time
+			this.isTemporal = true;
+			this.isFuzzyTemporal = false;
+		}
+	} else if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
+				(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
 		//parse according to ISO 8601
 		//don't use the default "cross browser support" from moment.js
 		//cause it won't work correctly with negative years
