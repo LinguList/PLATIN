@@ -299,6 +299,23 @@ GeoTemConfig.convertCsv = function(text){
 		var innerArray = csvArray[i];
 		var dataObject = new Object();
 		var tableContent = new Object(); 
+		/* exclude lines with no content */
+		var hasContent = false;
+		for (var j = 0; j < innerArray.length; j++) {
+			if (typeof innerArray[j] !== "undefined"){
+				if (typeof innerArray[j] === "string"){
+					if (innerArray[j].length > 0)
+						hasContent = true;
+				} else {
+					hasContent = true;
+				}
+			}
+			
+			if (hasContent === true)
+				break;
+		}
+		if (hasContent === false)
+			continue;
 	   	/* loop inner array */
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
@@ -322,11 +339,11 @@ GeoTemConfig.convertCsv = function(text){
 			}
 			/* TimeSpan:begin */
 			else if (usedHeaders[j] == expectedHeaders[6]) {
-				tableContent["TimeSpanBegin"] = ""+innerArray[j];
+				tableContent["TimeSpan:begin"] = ""+innerArray[j];
 			}
 			/* TimeSpan:end */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
-				tableContent["TimeSpanEnd"] = ""+innerArray[j];
+				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
 			else if (usedHeaders[j] == expectedHeaders[7]) {
@@ -809,6 +826,114 @@ GeoTemConfig.createKMLfromDataset = function(index){
 	return(kmlContent);
 };
 
+GeoTemConfig.createCSVfromDataset = function(index){
+	var csvContent = "";
+	var header = ["name", "description", "weight"];
+	var tableContent = [];
+	
+	var firstDataObject = GeoTemConfig.datasets[index].objects[0];
+	
+	for(var key in firstDataObject.tableContent){
+		var found = false;
+		$(header).each(function(index,val){
+			if (val === key){
+				found = true;
+				return false;
+			}				
+		});
+		if (found === true)
+			continue;
+		else
+			tableContent.push(key);
+	}
+	
+	var isFirst = true;
+	$(header).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+
+		//Rename according to CSV import definition
+		if (val === "name")
+			val = "Name";
+		else if (val === "description")
+			val = "Description";
+		csvContent += "\""+val+"\"";
+	});
+	$(tableContent).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+		csvContent += "\""+val+"\"";
+	});
+	//Names according to CSV import definition
+	csvContent +=  ",\"Address\",\"Latitude\",\"Longitude\",\"TimeStamp\"";
+	csvContent += "\n";
+	
+	var isFirstRow = true;
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		var elem = this;
+		
+		if (isFirstRow){
+			isFirstRow = false;
+		} else {
+			csvContent += "\n";
+		}
+		
+		var isFirst = true;
+		$(header).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem[val]+"\"";
+		});
+		$(tableContent).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem.tableContent[val]+"\"";
+		});
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if (elem.isGeospatial){
+			csvContent += elem.locations[0].place;
+		}
+		csvContent += "\"";
+
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLatitude(0) !== "undefined") ){
+			csvContent += elem.getLatitude(0);
+		}
+		csvContent += "\"";
+
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLongitude(0) !== "undefined") ){
+			csvContent += elem.getLongitude(0);
+		}
+		csvContent += "\"";
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isTemporal) && (typeof elem.getDate(0) !== "undefined") ){
+			//TODO: not supported in IE8 switch to moment.js
+			csvContent += elem.getDate(0).toISOString();
+		}
+		csvContent += "\"";
+	});
+	  
+	return(csvContent);
+};
 /**
  * iterates over Datasets/DataObjects and loads color values
  * from the "color0" and "color1" elements, which contains RGB

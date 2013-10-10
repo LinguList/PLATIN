@@ -84,21 +84,33 @@ DataloaderWidget.prototype = {
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
+			var origURL = paramValue;
 			if (typeof dataLoaderWidget.options.proxy != 'undefined')
 				paramValue = dataLoaderWidget.options.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				GeoTemConfig.getKml(paramValue,function(kmlDoc){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), paramValue);
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
 					if (dataSet != null)
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				GeoTemConfig.getCsv(paramValue,function(json){
-					var dataSet = new Dataset(GeoTemConfig.loadJson(json), paramValue);
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
 					if (dataSet != null)
 						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 				});
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null)
+					dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
 			}
 		});
 	}

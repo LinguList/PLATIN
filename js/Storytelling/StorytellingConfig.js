@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* StorytellingConfig.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,18 +20,16 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class StorytellingConfig
+ * Storytelling Configuration File
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  */
-function DataloaderConfig(options) {
+function StorytellingConfig(options) {
 
 	this.options = {
 			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
+			dariahStorage : false,
+			localStorage : true
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

@@ -1,5 +1,5 @@
 /*
-* DataloaderConfig.js
+* StorytellingGui.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,21 +20,23 @@
 */
 
 /**
- * @class DataloaderConfig
- * Dataloader Configuration File
+ * @class StorytellingGui
+ * Storytelling GUI Implementation
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {StorytellingWidget} parent Storytelling widget object
+ * @param {HTML object} div parent div to append the Storytelling gui
+ * @param {JSON} options Storytelling configuration
  */
-function DataloaderConfig(options) {
+function StorytellingGui(storytelling, div, options) {
 
-	this.options = {
-			proxy : 'php/proxy.php?address=',
-			staticKML : [
-			            // {header: "header label"},			            
-			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
-			]
-	};
-	if ( typeof options != 'undefined') {
-		$.extend(this.options, options);
-	}
+	this.parent = storytelling;
+	var storytellingGui = this;
+	
+	storytellingGui.storytellingContainer = document.createElement('div');
+	$(div).append(storytellingGui.storytellingContainer);
+	storytellingGui.storytellingContainer.style.position = 'relative';
+};
 
+StorytellingGui.prototype = {
 };

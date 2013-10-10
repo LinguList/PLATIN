@@ -30,9 +30,11 @@
  * @param {Array} objects data item arrays from different datasets
  * @param {String} label label for the datasets
  */
-function Dataset(objects, label) {
+function Dataset(objects, label, url, type) {
 
 	this.objects = objects;
 	this.label = label;
+	this.url = url;
+	this.type = type;
 
 }

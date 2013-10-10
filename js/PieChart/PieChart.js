@@ -28,11 +28,19 @@
  */
 function PieChart(parent, watchedDataset, watchedColumn, selectionFunction) {
 
+	if ((typeof selectionFunction !== "undefined") &&
+		(typeof selectionFunction.type !== "undefined") && 
+		(typeof selectionFunction.categories !== "undefined")){
+		this.type = selectionFunction.type;
+		this.categories = selectionFunction.categories;
+	}
 	this.pieChart = this;
 	this.pieChartDiv;
 	this.preHighlightObjects;
+	this.highlightedLabel;
 	
 	this.informationDIV;
+	this.pieChartLabel;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -59,30 +67,103 @@ PieChart.prototype = {
 		this.parent.redrawPieCharts();
 	},
 	
+	refreshLabel : function(){
+		$(this.pieChartLabel).empty();
+		$(this.pieChartLabel).append(this.watchedDatasetObject.label + " - " + this.watchColumn);		
+		
+		var c = GeoTemConfig.getColor(this.watchedDataset);
+		$(this.pieChartLabel).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
+	},
+	
 	initialize : function() {
 		var pieChart = this;
 		
 		if (typeof this.pieChartDiv === "undefined"){
 			this.informationDIV = document.createElement("div");
-			$(this.informationDIV).append(GeoTemConfig.datasets[this.watchedDataset].label + " - " + this.watchColumn);
-			var c = GeoTemConfig.getColor(this.watchedDataset);
-			$(this.informationDIV).css("color","rgb("+c.r1+","+c.g1+","+c.b1+")");
+			this.pieChartLabel = $("<span></span>");
+			$(this.informationDIV).append(this.pieChartLabel);
+			this.refreshLabel(); 
+
 			var removeButton = document.createElement("button");
 			$(this.informationDIV).append(removeButton);
 			$(removeButton).text("remove");
 			$(removeButton).click(function(){
 				pieChart.remove();
 			});
+
+			//only allow editing if it is a "manually" created piechart
+			//automatic (with a selection function) ones, can lead to numerous problems,
+			//e.g. too many categories or numeral categories threated as text ones
+			if ((typeof pieChart.type !== "undefined")&&
+				(typeof pieChart.categories !== "undefined")){
+				var editButton = document.createElement("button");
+				$(this.informationDIV).append(editButton);
+				$(editButton).text("edit");
+				$(editButton).click(function(){
+					var chooser = new PieChartCategoryChooser(
+							pieChart.parent,
+							pieChart.parent.options,
+							pieChart.watchedDataset,
+							pieChart.watchColumn,
+							pieChart.type,
+							pieChart.categories);
+				});
+				
+				//add save button
+				if (pieChart.options.allowLocalStorage){
+					var saveButton = document.createElement("button");
+					$(this.informationDIV).append(saveButton);
+					$(saveButton).text("save");
+					$(saveButton).click(function(){
+						$(	"<div>" +
+								"pie chart name : " +
+								"<input type='text' size=30 id='saveName' class='ui-widget-content ui-corner-all'></input>" +
+							"</div>").dialog({
+						        width:'auto',
+								buttons: [
+								          {
+								        	  text: "save",
+								        	  click: function(){
+								        		  var saveName = $("#saveName").val();
+								        		  var saveObject = new Object();
+								        		  saveObject.type = pieChart.type;
+								        		  saveObject.categories = pieChart.categories;
+								        		  saveObject.columnName = pieChart.watchColumn;
+								        		  //save to LocalStorage
+								        		  $.remember({
+								        			  name:pieChart.options.localStoragePrefix+saveName,
+								        			  value:saveObject,
+								        			  json:true
+								        		  });
+								        		  $(this).dialog( "close" );
+								        	  }
+								          }
+								]
+						});
+						
+						//set value to default (column name)
+						$("#saveName").val(pieChart.watchColumn);
+						//TODO: z-index has to be set, as the "tool-bars" of map (.ddbToolbar in style.css)
+						//also have a z-index of 10000. z-index should be removed from all elements. 
+						$(".ui-dialog").css("z-index",10005);
+					});
+				}
+			}							
+
 			$(this.parent.gui.pieChartsDiv).append(this.informationDIV);
 			this.pieChartDiv = document.createElement("div");
 			$(this.parent.gui.pieChartsDiv).append(this.pieChartDiv);
 
+			$(this.pieChartDiv).unbind();
 		    $(this.pieChartDiv).bind("plothover", function (event, pos, item) {
+		    	var highlightedLabel;
+		    	
 		        if (item) {
-					//item.series.label contains the column element
-					pieChart.triggerHighlight(item.series.label);                              
-		        } else {
-		        	pieChart.triggerHighlight();
+		        	highlightedLabel = item.series.label;
+		        }
+		        if (highlightedLabel !== pieChart.highlightedLabel){
+		        	pieChart.highlightedLabel = highlightedLabel;
+		        	pieChart.triggerHighlight(highlightedLabel);
 		        }
 		    });
 			
@@ -99,28 +180,30 @@ PieChart.prototype = {
 
 	//check if dataset is still there
 	checkForDataSet : function() {
-		var dataSets = GeoTemConfig.datasets;
-		if (typeof dataSets === "undefined")
-			return false;
-		if (typeof this.watchedDatasetObject !== "undefined"){
+		var datasets = this.parent.datasets;
+		if ((typeof datasets !== "undefined") && (typeof this.watchedDatasetObject !== "undefined")){
 			//check if our data went missing
-			if (	(dataSets.length <= this.watchedDataset) ||
-					(dataSets[this.watchedDataset] !== this.watchedDatasetObject) ){
-				return false;
-			} else
-				return true;
-			
-		} else
-			return false;
+			for (var i = 0; i < datasets.length; i++){
+				if (datasets[i] === this.watchedDatasetObject){
+					//if dataset "before" this one was removed, the index changes
+					if (this.watchedDataset !== i){
+						//change color to the new one (changes with index!)
+						this.watchedDataset = i;
+						this.refreshLabel();
+					}					
+					return true;
+				}
+			}
+		}
+		return false;
 	},
 	
 	initPieChart : function(dataSets) {
-		this.initialize();
-
-		//TODO: this var "remembers" which dataset we are attached to
-		//if it goes missing we delete ourself. This could be improved.
+		// get dataset object (could not be there on startup, e.g. piechart defined before load completes)
 		if (typeof this.watchedDatasetObject === "undefined")
-			this.watchedDatasetObject = GeoTemConfig.datasets[this.watchedDataset];
+			this.watchedDatasetObject = this.parent.datasets[this.watchedDataset];
+
+		this.initialize();
 
 		// if our dataset went missing, remove this piechart
 		if (!this.checkForDataSet()){
@@ -143,23 +226,39 @@ PieChart.prototype = {
 			objects = this.preHighlightObjects;
 		
 		if (this.checkForDataSet(objects)){
-			var chartDataCounter = new Object;
 			var pieChart = this;
 			if (objects[this.watchedDataset].length === 0)
 				objects = this.preHighlightObjects;
-			$(objects[this.watchedDataset]).each(function(){
-				var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
-				
-				if (typeof chartDataCounter[columnData] === "undefined")
-					chartDataCounter[columnData] = 1;
-				else
-					chartDataCounter[columnData]++;
-			});
 			
-			var chartData = [];
-			$.each(chartDataCounter, function(name,val){
-				chartData.push({label:name,data:val});
-			});
+			var calculateSlices = function(dataObjects){
+				var chartDataCounter = new Object;
+
+				$(dataObjects).each(function(){
+					var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
+				
+					if (typeof chartDataCounter[columnData] === "undefined")
+						chartDataCounter[columnData] = 1;
+					else
+						chartDataCounter[columnData]++;
+				});
+				
+				var chartData = [];
+				$.each(chartDataCounter, function(name,val){
+					//get rgb-color (24bit = 6 hex digits) from hash
+					var color = '#'+hex_md5(name).substr(0,6);
+					chartData.push({label:name,data:val,color:color});
+				});
+				
+				//sort by count (occurances of category)
+				var sortByVal = function(a,b){
+					return (b.data-a.data);
+				};
+				chartData.sort(sortByVal);
+				
+				return chartData;
+			};
+			
+			var chartData = calculateSlices(objects[this.watchedDataset]);
 			
 			if (chartData.length>0){
 				$(this.pieChartDiv).empty();
@@ -172,6 +271,8 @@ PieChart.prototype = {
 						pieChartCount++;
 				});
 				var height = (parentHeight/pieChartCount) - $(this.informationDIV).outerHeight(true);
+				if (pieChart.options.restrictPieChartSize !== false)
+					height = Math.min(height, $(window).height() * pieChart.options.restrictPieChartSize);
 				$(this.pieChartDiv).height(height);
 	
 				$.plot($(this.pieChartDiv), chartData,
@@ -189,7 +290,7 @@ PieChart.prototype = {
 				        },
 				        tooltip: true,
 				        tooltipOpts: {
-				            content: "%s"
+				            content: "%s %p.1%"
 				        }
 					}
 				);
@@ -235,8 +336,13 @@ PieChart.prototype = {
 
 		this.parent.core.triggerSelection(selection);
 		
-		if (!selection.valid())
+		if (!selection.valid()){
 			selection.loadAllObjects();
+			//"undo" selection (click next to piechart)
+			//so also redraw this dataset
+			this.preHighlightObjects = selection.objects;
+			this.redrawPieChart(selection.objects);
+		}			
 		
 		var pieChart = this;
 		$(this.parent.pieCharts).each(function(){
