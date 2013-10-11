@@ -229,6 +229,8 @@ LineOverlayWidget.prototype = {
 
 			var map = mapWidget.openlayersMap;
 			var cs = mapWidget.mds.getObjectsByZoom();
+			
+			mapWidget.openlayersMap.setLayerIndex(lineLayer, 99);
 
 			lineLayer.removeAllFeatures();
 
@@ -347,9 +349,11 @@ LineOverlayWidget.prototype = {
 	    
 		var lineOverlayWidget = this;
 		var lineLayer = new OpenLayers.Layer.Vector("Line Layer", {
-	        styleMap: styles
+	        styleMap: styles,
+	        isBaseLayer:false
 	    });
 		mapWidget.openlayersMap.addLayer(lineLayer);
+		mapWidget.openlayersMap.setLayerIndex(lineLayer, 99);
 		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});
 		//register zoom event
 		mapWidget.openlayersMap.events.register("zoomend", lineOverlayWidget, function(){
