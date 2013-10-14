@@ -39,11 +39,8 @@
 	</fieldset>
 	<table width=100%>
 		<tr>
-			<td width=50%>
+			<td width=100%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
-			</td>
-			<td width=50%>
-				<div id="piechartContainerDiv" style="height:580px; position:relative;"></div>
 			</td>
 		</tr>
 	</table>
@@ -80,17 +77,6 @@
 		var lineOverlayWidget = new LineOverlayWidget(lineOverlay);
 		lineOverlayWidget.attachMapWidget(mapWidget);
 		
-		var piechartDiv = document.getElementById("piechartContainerDiv");
-		var piechart = new WidgetWrapper();
-		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
-		piechartWidget.addPieChart(0,"objekt");
-		piechartWidget.addPieChart(0,"cu_perc",function(data){
-			var value = "Wenig CU";
-			if (data >= 50.0)
-				value = "Viel CU";
-			
-			return value;
-		});
 		/*
 		var kml1 = GeoTemConfig.getKml('data/heine.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml1),'Heinrich Heine'));
@@ -99,18 +85,18 @@
 		var kml3 = GeoTemConfig.getKml('data/goethe.kml');
 		datasets.push(new Dataset(GeoTemConfig.loadKml(kml3),'Johann Wolfgang von Goethe'));
 		*/
-		var csv = GeoTemConfig.getCsv('data/SilberObjekte.csv', function(json){
-			datasets.push(new Dataset(GeoTemConfig.loadJson(json),'Silber Objekte'));
+		var csv = GeoTemConfig.getCsv('data/MPI_test.csv', function(json){
+			datasets.push(new Dataset(GeoTemConfig.loadJson(json),'KWG/MPG'));
 			
 			map.display(datasets);
 			time.display(datasets);
 			table.display(datasets);
-			piechart.display(datasets);
+			//piechart.display(datasets);
 			lineOverlay.display(datasets);
-			lineOverlayWidget.matchColumns(0,"objekt",0,"objekt");
+			lineOverlayWidget.matchColumns(0,"number",0,"parent");
 			
 			dataloaderWidget.loadFromURL();
-		});		
+		});
 	});
     </script>
 
