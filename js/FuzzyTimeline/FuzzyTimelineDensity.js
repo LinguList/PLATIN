@@ -292,23 +292,46 @@ FuzzyTimelineDensity.prototype = {
 	    
 	    $(density.div).unbind("plotselected");
 	    $(density.div).bind("plotselected", function(event, ranges) {
-        	density.triggerSelection(ranges.xaxis.from, ranges.xaxis.to+density.singleTickWidth);
-	    	density.wasSelection = true;
+	    	var spanArray = density.parent.getSpanArray(density.singleTickWidth);
+	    	var startSpan, endSpan;
+	    	for (var i = 0; i < spanArray.length-1; i++){
+	    		if ((typeof startSpan === "undefined") && (ranges.xaxis.from <= spanArray[i+1]))
+	    			startSpan = i;
+	    		if ((typeof endSpan === "undefined") && (ranges.xaxis.to <= spanArray[i+1]))
+	    			endSpan = i;
+	    	}
+	    	
+	    	if ((typeof startSpan !== "undefined") && (typeof endSpan !== "undefined")){
+	        	density.triggerSelection(startSpan, endSpan);
+		    	density.wasSelection = true;
 
-	    	density.parent.clearHandles();
-	    	var xaxis = density.plot.getAxes().xaxis;
-	    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
-	    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
-	    	density.parent.addHandle(x1,x2);
+		    	density.parent.clearHandles();
+		    	var xaxis = density.plot.getAxes().xaxis;
+		    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
+		    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
+		    	density.parent.addHandle(x1,x2);
+	    	}
 	    });
 	},
 	
 	selectByX : function(x1, x2){
+		density = this;
 		var xaxis = density.plot.getAxes().xaxis;
     	var from = xaxis.c2p(x1-density.plot.offset().left);
     	var to = xaxis.c2p(x2-density.plot.offset().left);
 
-    	density.triggerSelection(from, to);
+    	var spanArray = density.parent.getSpanArray(density.singleTickWidth);
+    	var startSpan, endSpan;
+    	for (var i = 0; i < spanArray.length-1; i++){
+    		if ((typeof startSpan === "undefined") && (from <= spanArray[i+1]))
+    			startSpan = i;
+    		if ((typeof endSpan === "undefined") && (to <= spanArray[i+1]))
+    			endSpan = i;
+    	}
+    	
+    	if ((typeof startSpan !== "undefined") && (typeof endSpan !== "undefined")){
+    		density.triggerSelection(startSpan, endSpan);
+    	}
 	},
 	
 	drawDensityPlot : function(shownDatasets, hiddenDatasets, tickWidth) {

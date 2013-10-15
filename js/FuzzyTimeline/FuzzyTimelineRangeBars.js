@@ -298,11 +298,12 @@ FuzzyTimelineRangeBars.prototype = {
 	
 	
 	selectByX : function(x1, x2){
-		var xaxis = density.plot.getAxes().xaxis;
-    	var from = xaxis.c2p(x1-density.plot.offset().left);
-    	var to = xaxis.c2p(x2-density.plot.offset().left);
-
-    	density.triggerSelection(from, to);
+		rangeBar = this;
+		var xaxis = rangeBar.plot.getAxes().xaxis;
+    	var from = Math.floor(xaxis.c2p(x1-rangeBar.plot.offset().left));
+    	var to = Math.ceil(xaxis.c2p(x2-rangeBar.plot.offset().left));
+    	
+		rangeBar.triggerSelection(rangeBar.tickSpans[from], rangeBar.tickSpans[to+1]);
 	},	
 	
 	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
