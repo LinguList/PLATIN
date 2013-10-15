@@ -110,12 +110,27 @@ FuzzyTimelineDensity.prototype = {
 						(ticks.lastTick-ticks.firstTick-1);
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						var weight = 0;
-						if (i == ticks.firstTick)
-							weight = this.weight * ticks.firstTickPercentage/exactTickCount;
-						else if (i == ticks.lastTick)
-							weight = this.weight * ticks.lastTickPercentage/exactTickCount;
-						else
-							weight = this.weight * 1/exactTickCount;
+						//calculate the weight for each span, that the object overlaps
+						if (density.parent.options.timelineMode == 'fuzzy'){
+							//in fuzzy mode, each span gets just a fraction of the complete weight
+							if (i == ticks.firstTick)
+								weight = this.weight * ticks.firstTickPercentage/exactTickCount;
+							else if (i == ticks.lastTick)
+								weight = this.weight * ticks.lastTickPercentage/exactTickCount;
+							else
+								weight = this.weight * 1/exactTickCount;
+						} else if (density.parent.options.timelineMode == 'stacking'){
+							//in stacking mode each span gets the same amount.
+							//(besides first and last..)
+							if (i == ticks.firstTick)
+								weight = this.weight * ticks.firstTickPercentage;
+							else if (i == ticks.lastTick)
+								weight = this.weight * ticks.lastTickPercentage;
+							else
+								weight = this.weight;
+							
+							weight = this.weight;
+						}
 						
 						chartDataCounter[i] += weight;
 					}

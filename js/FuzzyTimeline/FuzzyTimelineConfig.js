@@ -30,7 +30,12 @@ function FuzzyTimelineConfig(options) {
 			proxy : 'php/proxy.php?address=',
 			//TODO: experiment with number of ticks, 150 seems to be ok for now
 			maxBars : 50,
-			maxDensityTicks : 150
+			maxDensityTicks : 150,
+			/*drawing modes: 
+			 *	fuzzy - weight is distributed over all spans an object overlaps, so that the sum remains the weight, 
+			 *	stacking - every span that on object overlaps gets the complete weight (limited by the amount the span is overlapped, e.g. first span and last might get less) 
+			 */
+			timelineMode : 'stacking',
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
