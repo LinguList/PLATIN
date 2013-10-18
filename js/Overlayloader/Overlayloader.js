@@ -56,7 +56,7 @@ Overlayloader.prototype = {
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
-		this.addDARIAHMapLoader();
+		this.addConfigLoader();
 		
 		// trigger change event on the select so 
 		// that only the first loader div will be shown
@@ -308,47 +308,36 @@ Overlayloader.prototype = {
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
 	},
 	
-	addDARIAHMapLoader : function() {
-		$(this.parent.gui.loaderTypeSelect).append("<option value='DARIAHMapLoader'>DARIAH maps</option>");
-		
-		this.DARIAHMapLoaderTab = document.createElement("div");
-		$(this.DARIAHMapLoaderTab).attr("id","DARIAHMapLoader");
+	addConfigLoader : function() {
+		if (	(this.parent.options.wms_overlays instanceof Array) &&
+				(this.parent.options.wms_overlays.length > 0) ){
+			var overlayloader = this;
+			
+			$(this.parent.gui.loaderTypeSelect).append("<option value='ConfigLoader'>Other WMS maps</option>");
+			
+			this.ConfigLoaderTab = document.createElement("div");
+			$(this.ConfigLoaderTab).attr("id","ConfigLoader");
 
-		this.DARIAHMapSelect = document.createElement("select");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1994'>Contemporary Map (1994)</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1945'>Historical Map of 1945</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1938'>Historical Map of 1938</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1920'>Historical Map of 1920</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1914'>Historical Map of 1914</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1880'>Historical Map of 1880</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1815'>Historical Map of 1815</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1783'>Historical Map of 1783</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1715'>Historical Map of 1715</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1650'>Historical Map of 1650</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1530'>Historical Map of 1530</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1492'>Historical Map of 1492</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1279'>Historical Map of 1279</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1000'>Historical Map of 1000</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry800'>Historical Map of 800</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry600'>Historical Map of 600</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry400'>Historical Map of 400</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1bc'>Historical Map of 1 BC</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry200bc'>Historical Map of 200 BC</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry323bc'>Historical Map of 323 BC</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry500bc'>Historical Map of 500 BC</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry1000bc'>Historical Map of 1000 BC</option>");
-		$(this.DARIAHMapSelect).append("<option value='historic:cntry2000bc'>Historical Map of 2000 BC</option>");
-		$(this.DARIAHMapLoaderTab).append(this.DARIAHMapSelect);
+			this.ConfigMapSelect = document.createElement("select");
+			$(this.parent.options.wms_overlays).each(function(){
+				var name = this.name, server = this.server, layer = this.layer;
+				$(overlayloader.ConfigMapSelect).append("<option layer='"+layer+"' server='"+server+"' >"+name+"</option>");
+			});		
 
-		this.loadDARIAHMapButton = document.createElement("button");
-		$(this.loadDARIAHMapButton).text("load Layer");
-		$(this.DARIAHMapLoaderTab).append(this.loadDARIAHMapButton);
-		
-		$(this.loadDARIAHMapButton).click($.proxy(function(){
-			this.distributeArcGISWMS("http://dev2.dariah.eu/geoserver/wms",$(this.DARIAHMapSelect).val());
-		},this));
+			$(this.ConfigLoaderTab).append(this.ConfigMapSelect);
 
-		$(this.parent.gui.loaders).append(this.DARIAHMapLoaderTab);
+			this.loadConfigMapButton = document.createElement("button");
+			$(this.loadConfigMapButton).text("load Layer");
+			$(this.ConfigLoaderTab).append(this.loadConfigMapButton);
+			
+			$(this.loadConfigMapButton).click($.proxy(function(){
+				var server = $(this.ConfigMapSelect).find(":selected").attr("server");
+				var layer = $(this.ConfigMapSelect).find(":selected").attr("layer");
+				this.distributeArcGISWMS(server,layer);
+			},this));
+
+			$(this.parent.gui.loaders).append(this.ConfigLoaderTab);
+		}
 	}
 
 };
