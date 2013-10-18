@@ -131,6 +131,8 @@ Overlayloader.prototype = {
 				transparent: "true"
 			}
 	    	,{
+                displayOutsideMaxExtent: true,
+                isBaseLayer: false,
 	    		projection : "EPSG:3857"
 	    	}
 		);
