@@ -787,13 +787,18 @@ GeoTemConfig.loadKml = function(kml) {
 			}
 		} catch(e) {
 			try {
-				var timeStart = $(placemark).find("TimeSpan begin").text();
-				var timeEnd = $(placemark).find("TimeSpan end").text();
-				
-				tableContent["TimeSpan:begin"] = timeStart;
-				tableContent["TimeSpan:end"] = timeEnd;
+				if (	(typeof tableContent["TimeSpan:begin"] === "undefined") &&
+						(typeof tableContent["TimeSpan:end"] === "undefined") ){
+					var timeStart = $(placemark).find("TimeSpan begin").text();
+					var timeEnd = $(placemark).find("TimeSpan end").text();
+					
+					if ( (timeStart != "") && (timeStart != "") ){
+						tableContent["TimeSpan:begin"] = timeStart;
+						tableContent["TimeSpan:end"] = timeEnd;
 
-				timeData = true;
+						timeData = true;
+					}
+				}
 			} catch(e) {
 				if (!GeoTemConfig.incompleteData) {
 					continue;
