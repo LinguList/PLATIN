@@ -646,12 +646,6 @@ GeoTemConfig.loadKml = function(kml) {
 		var name, description, place, granularity, lon, lat, tableContent = [], time = [], location = [];
 		var weight = 1;
 		var timeData = false, mapData = false;
-		try {
-			name = placemark.getElementsByTagName("name")[0].childNodes[0].nodeValue;
-			tableContent["name"] = name;
-		} catch(e) {
-			name = "";
-		}
 
 		try {
 			description = placemark.getElementsByTagName("description")[0].childNodes[0].nodeValue;
@@ -712,16 +706,56 @@ GeoTemConfig.loadKml = function(kml) {
 				//or is not in valid XHTML syntax
 			}
 			
+			//check whether the description element contains content in the form of equations
+			//e.g. someDescriptor = someValue, where these eqations are separated by <br/>
+			//if yes, this data will be loaded as separate columns
+			var descriptionRows = description.replace(/<\s*br\s*[\/]*\s*>/g,"<br/>"); 
+			$(descriptionRows.split("<br/>")).each(function(){
+				var row = this;
+				
+				if (typeof row === "undefined")
+					return;
+				
+				var headerAndValue = row.split("=");
+				if (headerAndValue.length != 2)
+					return;
+
+				var header = $.trim(headerAndValue[0]);
+				var value = $.trim(headerAndValue[1]);
+				
+				if ($.inArray(header, descriptionTableHeaders) === -1)
+					descriptionTableHeaders.push(header);
+
+				if (tableContent[header] != null)
+					//append if a field occures more than once 
+					tableContent[header] += "\n" + value;
+				else
+					tableContent[header] = value;
+			});
+
 			tableContent["description"] = description;
 		} catch(e) {
 			description = "";
 		}
 
 		try {
+			name = placemark.getElementsByTagName("name")[0].childNodes[0].nodeValue;
+			tableContent["name"] = name;
+		} catch(e) {
+			if (typeof tableContent["name"] !== "undefined")
+				name = tableContent["name"];
+			else
+				name = "";
+		}		
+
+		try {
 			place = placemark.getElementsByTagName("address")[0].childNodes[0].nodeValue;
 			tableContent["place"] = place;
 		} catch(e) {
-			place = "";
+			if (typeof tableContent["place"] !== "undefined")
+				place = tableContent["place"];
+			else
+				place = "";
 		}
 
 		try {
