@@ -235,6 +235,10 @@ PieChart.prototype = {
 
 				$(dataObjects).each(function(){
 					var columnData = pieChart.parent.getElementData(this, pieChart.watchColumn, pieChart.selectionFunction);
+					
+					//disregard empty cells
+					if ( (typeof columnData === "undefined") || (columnData == "") )
+						return;
 				
 					if (typeof chartDataCounter[columnData] === "undefined")
 						chartDataCounter[columnData] = 1;
