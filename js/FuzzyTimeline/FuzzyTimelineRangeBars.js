@@ -37,12 +37,8 @@ function FuzzyTimelineRangeBars(parent) {
 	//contains selected data
 	this.selected = [];
 	
-	this.hiddenDatasetsPlot;
-	this.shownDatasetsPlot;
-	this.combinedDatasetsPlot;
-	this.highlightedShownDatasetsPlot;
-	this.highlightedHiddenDatasetsPlot;
-	this.highlightedCombinedDatasetsPlot;
+	this.datasetsPlot;
+	this.highlightedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
 	this.displayType;
@@ -124,36 +120,16 @@ FuzzyTimelineRangeBars.prototype = {
 		return plots;
 	},
 	
-	redrawPlot : function(){
+	showPlot : function(){
 		var rangeBar = this;
-		rangeBar.showPlotByType(rangeBar.displayType);
-	},
-	
-	showPlotByType : function(type){
-		var rangeBar = this;
-		rangeBar.displayType = type;
-		if (type === 'shown'){
-			rangeBar.showPlot(rangeBar.shownDatasetsPlot);
-		} else if (type === 'hidden'){
-			rangeBar.showPlot(rangeBar.hiddenDatasetsPlot);
-		} else if (type === 'combined'){
-			rangeBar.showPlot(rangeBar.combinedDatasetsPlot);
-		}
-	},
-	
-	showPlot : function(plot){
-		var rangeBar = this;
+		var plot = rangeBar.datasetsPlot;
 		var highlight_select_plot = $.merge([],plot);
 		
 		//see if there are selected/highlighted values
-		if (rangeBar.highlightedCombinedDatasetsPlot instanceof Array){
-			//check which one should be shown (or none, if plot is some other - external - graph)
-			if (plot === rangeBar.shownDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedShownDatasetsPlot);
-			else if (plot === rangeBar.hiddenDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedHiddenDatasetsPlot);
-			else if (plot === rangeBar.combinedDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedCombinedDatasetsPlot);
+		if (rangeBar.highlightedDatasetsPlot instanceof Array){
+			//check if plot is some other - external - graph
+			if (plot === rangeBar.datasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,rangeBar.highlightedDatasetsPlot);
 		}
 		
 		var tickCount = rangeBar.tickSpans.length-1;
@@ -306,7 +282,7 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.triggerSelection(rangeBar.tickSpans[from], rangeBar.tickSpans[to+1]);
 	},	
 	
-	drawRangeBarChart : function(shownDatasets, hiddenDatasets, spanWidth){
+	drawRangeBarChart : function(datasets, spanWidth){
 		var rangeBar = this;
 		rangeBar.spanWidth = spanWidth; 
 		rangeBar.tickSpans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
@@ -323,38 +299,22 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.yValMin = 0;
 		rangeBar.yValMax = 0;
 		
-		rangeBar.shownDatasetsPlot = rangeBar.createPlot(shownDatasets);
-		rangeBar.hiddenDatasetsPlot = rangeBar.createPlot(hiddenDatasets);
+		rangeBar.datasetsPlot = rangeBar.createPlot(datasets);
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		
-		rangeBar.combinedDatasetsPlot = [];
-		for (var i = 0; i < rangeBar.hiddenDatasetsPlot.length; i++){
-			var singlePlot = [];
-			for (var j = 0; j < rangeBar.hiddenDatasetsPlot[i].length; j++){
-				var hiddenVal = rangeBar.hiddenDatasetsPlot[i][j][1];
-				var shownVal = rangeBar.shownDatasetsPlot[i][j][1];
-				var combinedVal = hiddenVal + shownVal;
+		for (var i = 0; i < rangeBar.datasetsPlot.length; i++){
+			for (var j = 0; j < rangeBar.datasetsPlot[i].length; j++){
+				var val = rangeBar.datasetsPlot[i][j][1];
 				
-				if (hiddenVal < rangeBar.yValMin)
-					rangeBar.yValMin = hiddenVal;
-				if (hiddenVal > rangeBar.yValMax)
-					rangeBar.yValMax = hiddenVal;
-				if (shownVal < rangeBar.yValMin)
-					rangeBar.yValMin = shownVal;
-				if (shownVal > rangeBar.yValMax)
-					rangeBar.yValMax = shownVal;
-				if (combinedVal < rangeBar.yValMin)
-					rangeBar.yValMin = combinedVal;
-				if (combinedVal > rangeBar.yValMax)
-					rangeBar.yValMax = combinedVal;
-				
-				singlePlot[j] = [j, combinedVal];
+				if (val < rangeBar.yValMin)
+					rangeBar.yValMin = val;
+				if (val > rangeBar.yValMax)
+					rangeBar.yValMax = val;
 			}
-			rangeBar.combinedDatasetsPlot.push(singlePlot);
 		}
 		
-		rangeBar.showPlotByType("combined");
+		rangeBar.showPlot();
 	},
 	
 	highlightChanged : function(objects) {
@@ -371,33 +331,11 @@ FuzzyTimelineRangeBars.prototype = {
 			}
 		});
 		if (emptyHighlight){
-			rangeBar.highlightedShownDatasetsPlot = [];
-			rangeBar.highlightedHiddenDatasetsPlot = [];
-			rangeBar.highlightedCombinedDatasetsPlot = [];
+			rangeBar.highlightedDatasetsPlot = [];
 		} else {
-			var shown_selected_highlighted = [];
-			var hidden_selected_highlighted = [];
-			$(selected_highlighted).each(function(){
-				var singleShown = [], singleHidden = [];
-				$(this).each(function(){
-					var ticks = rangeBar.parent.getTicks(this, rangeBar.spanWidth);
-					if (	(typeof ticks !== 'undefined') &&
-							(typeof ticks.firstTick !== 'undefined') &&
-							(typeof ticks.lastTick !== 'undefined') ){
-						if (ticks.firstTick != ticks.lastTick)
-							singleHidden.push(this);
-						else
-							singleShown.push(this);
-					}
-				});
-				shown_selected_highlighted.push(singleShown);
-				hidden_selected_highlighted.push(singleHidden);
-			});
-			rangeBar.highlightedShownDatasetsPlot = rangeBar.createPlot(shown_selected_highlighted);
-			rangeBar.highlightedHiddenDatasetsPlot = rangeBar.createPlot(hidden_selected_highlighted);
-			rangeBar.highlightedCombinedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
+			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
 		}			
-		rangeBar.redrawPlot();
+		rangeBar.showPlot();
 	},
 	
 	selectionChanged : function(objects) {

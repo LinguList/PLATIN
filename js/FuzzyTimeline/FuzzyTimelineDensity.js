@@ -33,12 +33,8 @@ function FuzzyTimelineDensity(parent,div) {
 	this.singleTickWidth;
 	this.singleTickCenter = function(){return this.singleTickWidth/2;};
 	//contains all data
-	this.shownDatasetsPlot;
-	this.hiddenDatasetsPlot;
-	this.combinedDatasetsPlot;
-	this.highlightedShownDatasetsPlot;
-	this.highlightedHiddenDatasetsPlot;
-	this.highlightedCombinedDatasetsPlot;
+	this.datasetsPlot;
+	this.highlightedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
 	this.displayType;
@@ -145,36 +141,16 @@ FuzzyTimelineDensity.prototype = {
 		return plots;
 	},
 	
-	redrawPlot : function(){
+	showPlot : function() {
 		var density = this;
-		density.showPlotByType(density.displayType);
-	},
-	
-	showPlotByType : function(type){
-		var density = this;
-		density.displayType = type;
-		if (type === 'shown'){
-			density.showPlot(density.shownDatasetsPlot);
-		} else if (type === 'hidden'){
-			density.showPlot(density.hiddenDatasetsPlot);
-		} else if (type === 'combined'){
-			density.showPlot(density.combinedDatasetsPlot);
-		}
-	},
-	
-	showPlot : function(plot) {
-		var density = this;
+		var plot = density.datasetsPlot;
 		var highlight_select_plot = $.merge([],plot);
 		
 		//see if there are selected/highlighted values
-		if (density.highlightedCombinedDatasetsPlot instanceof Array){
-			//check which one should be shown (or none, if plot is some other - external - graph)
-			if (plot === density.shownDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedShownDatasetsPlot);
-			else if (plot === density.hiddenDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedHiddenDatasetsPlot);
-			else if (plot === density.combinedDatasetsPlot)
-				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedCombinedDatasetsPlot);
+		if (density.highlightedDatasetsPlot instanceof Array){
+			//check if plot is some other - external - graph
+			if (plot === density.datasetsPlot)
+				highlight_select_plot = $.merge(highlight_select_plot,density.highlightedDatasetsPlot);
 		}
 		
 		var axisFormatString = "%Y";
@@ -334,7 +310,7 @@ FuzzyTimelineDensity.prototype = {
     	}
 	},
 	
-	drawDensityPlot : function(shownDatasets, hiddenDatasets, tickWidth) {
+	drawDensityPlot : function(datasets, tickWidth) {
 		var density = this;
 		//calculate tick width (will be in ms)
 		delete density.tickCount;
@@ -350,40 +326,24 @@ FuzzyTimelineDensity.prototype = {
 				density.singleTickWidth = 1;
 		}
 		
-		density.shownDatasetsPlot = density.createUDData(shownDatasets);
-		density.hiddenDatasetsPlot = density.createUDData(hiddenDatasets);
+		density.datasetsPlot = density.createUDData(datasets);
 
 		density.yValMin = 0;
 		density.yValMax = 0;
 		
 		density.combinedDatasetsPlot = [];
-		for (var i = 0; i < density.hiddenDatasetsPlot.length; i++){
-			var singlePlot = [];
-			for (var j = 0; j < density.hiddenDatasetsPlot[i].length; j++){
-				var date = moment(density.hiddenDatasetsPlot[i][j][0]);
-				var hiddenVal = density.hiddenDatasetsPlot[i][j][1];
-				var shownVal = density.shownDatasetsPlot[i][j][1];
-				var combinedVal = hiddenVal + shownVal;
+		for (var i = 0; i < density.datasetsPlot.length; i++){
+			for (var j = 0; j < density.datasetsPlot[i].length; j++){
+				var val = density.datasetsPlot[i][j][1];
 				
-				if (hiddenVal < density.yValMin)
-					density.yValMin = hiddenVal;
-				if (hiddenVal > density.yValMax)
-					density.yValMax = hiddenVal;
-				if (shownVal < density.yValMin)
-					density.yValMin = shownVal;
-				if (shownVal > density.yValMax)
-					density.yValMax = shownVal;
-				if (combinedVal < density.yValMin)
-					density.yValMin = combinedVal;
-				if (combinedVal > density.yValMax)
-					density.yValMax = combinedVal;
-				
-				singlePlot[j] = [date, combinedVal];				
+				if (val < density.yValMin)
+					density.yValMin = val;
+				if (val > density.yValMax)
+					density.yValMax = val;				
 			}
-			density.combinedDatasetsPlot.push(singlePlot);
 		}
 		
-	    density.showPlotByType("combined");
+	    density.showPlot();
 	},
 	
 	triggerHighlight : function(hoverPoint) {
@@ -440,36 +400,11 @@ FuzzyTimelineDensity.prototype = {
 			}
 		});
 		if (emptyHighlight){
-			density.highlightedShownDatasetsPlot = [];
-			density.highlightedHiddenDatasetsPlot = [];
-			density.highlightedCombinedDatasetsPlot = [];
+			density.highlightedDatasetsPlot = [];
 		} else {
-			var shown_selected_highlighted = [];
-			var hidden_selected_highlighted = [];
-			$(selected_highlighted).each(function(){
-				var singleShown = [], singleHidden = [];
-				$(this).each(function(){
-					//if there is no barchart, there won't be a spanWidth
-					if (typeof density.parent.rangeBars !== "undefined"){
-						var ticks = density.parent.getTicks(this, density.parent.rangeBars.spanWidth);
-						if (	(typeof ticks !== 'undefined') &&
-								(typeof ticks.firstTick !== 'undefined') &&
-								(typeof ticks.lastTick !== 'undefined') ){
-							if (ticks.firstTick != ticks.lastTick)
-								singleHidden.push(this);
-							else
-								singleShown.push(this);
-						}
-					}
-				});
-				shown_selected_highlighted.push(singleShown);
-				hidden_selected_highlighted.push(singleHidden);
-			});
-			density.highlightedShownDatasetsPlot = density.createUDData(shown_selected_highlighted);
-			density.highlightedHiddenDatasetsPlot = density.createUDData(hidden_selected_highlighted);
-			density.highlightedCombinedDatasetsPlot = density.createUDData(selected_highlighted);
+			density.highlightedDatasetsPlot = density.createUDData(selected_highlighted);
 		}
-		density.redrawPlot();
+		density.showPlot();
 	},
 	
 	selectionChanged : function(objects) {

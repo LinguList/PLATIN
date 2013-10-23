@@ -32,8 +32,6 @@ function FuzzyTimelineWidget(core, div, options) {
 
 	this.datasets;
 	this.selected = [];
-	this.hiddenDatasets;
-	this.shownDatasets;
 	this.overallMin;
 	this.overallMax;
 	
@@ -123,17 +121,15 @@ FuzzyTimelineWidget.prototype = {
 	
 	slidePositionChanged : function(spanWidth) {
 		var fuzzyTimeline = this;
-		var shown_hidden_Datasets = fuzzyTimeline.getShownHiddenDatasets();
-		var shownDatasets = shown_hidden_Datasets.shown;
-		var hiddenDatasets = shown_hidden_Datasets.hidden;
+		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
 			//redraw density plot
-			fuzzyTimeline.density.drawDensityPlot(shownDatasets,hiddenDatasets);
+			fuzzyTimeline.density.drawDensityPlot(datasets);
 			//select currently selected data (if there is any) 
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(shownDatasets,hiddenDatasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}
@@ -302,17 +298,7 @@ FuzzyTimelineWidget.prototype = {
 
 		return(datasets);
 	},
-	
-	getShownHiddenDatasets : function(){
-		var rangeSlider = this;
-		var shown = rangeSlider.datasets;
-		var hidden = [];
-		$(rangeSlider.datasets).each(function(){
-			hidden.push([]);
-		});
-		return {shown:shown,hidden:hidden}; 
-	},
-	
+		
 	triggerHighlight : function(highlightedObjects){
 		var fuzzyTimeline = this;
 		if (fuzzyTimeline.viewMode === "density")
