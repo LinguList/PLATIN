@@ -357,10 +357,6 @@ FuzzyTimelineDensity.prototype = {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 				highlightedObjects.push([]);
 		}
-		
-		if (typeof this.parent.rangeBars !== "undefined")
-			this.parent.rangeBars.highlightChanged(highlightedObjects);
-
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
