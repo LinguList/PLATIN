@@ -88,7 +88,7 @@ FuzzyTimelineRangeBars.prototype = {
 					for (var i = ticks.firstTick; i <= ticks.lastTick; i++){
 						var weight = 0;
 						//calculate the weight for each span, that the object overlaps
-						if (density.parent.options.timelineMode == 'fuzzy'){
+						if (rangeBar.parent.options.timelineMode == 'fuzzy'){
 							//in fuzzy mode, each span gets just a fraction of the complete weight
 							if (i == ticks.firstTick)
 								weight = this.weight * ticks.firstTickPercentage/exactTickCount;
@@ -96,7 +96,7 @@ FuzzyTimelineRangeBars.prototype = {
 								weight = this.weight * ticks.lastTickPercentage/exactTickCount;
 							else
 								weight = this.weight * 1/exactTickCount;
-						} else if (density.parent.options.timelineMode == 'stacking'){
+						} else if (rangeBar.parent.options.timelineMode == 'stacking'){
 							//in stacking mode each span gets the same amount.
 							//(besides first and last..)
 							if (i == ticks.firstTick)
