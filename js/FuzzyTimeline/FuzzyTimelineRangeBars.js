@@ -62,12 +62,14 @@ FuzzyTimelineRangeBars.prototype = {
 	createPlot : function(datasets) {
 		var rangeBar = this;
 		var plots = [];
+		var objectHashes = [];
 		
 		//-1 because last span is always empty (only there to have the ending date)
 		var tickCount = rangeBar.tickSpans.length-1;
 		
 		$(datasets).each(function(){
 			var chartDataCounter = [];
+			var objectHash = new Object();
 			
 			for (var i = 0; i < tickCount; i++){
 				chartDataCounter[i] = [];
@@ -110,14 +112,19 @@ FuzzyTimelineRangeBars.prototype = {
 						}
 
 						chartDataCounter[i][1] += weight;
+						//add this object to the hash
+						if (typeof objectHash[i] === "undefined")
+							objectHash[i] = [];
+						objectHash[i].push(this);
 					}
 				}
 			});
 			
 			plots.push(chartDataCounter);
+			objectHashes.push(objectHash);
 		});
 		
-		return plots;
+		return {plots:plots, hashs:objectHashes};
 	},
 	
 	showPlot : function(){
@@ -211,22 +218,19 @@ FuzzyTimelineRangeBars.prototype = {
 		
 		$(rangeBar.plotDiv).unbind("plothover");
 	    $(rangeBar.plotDiv).bind("plothover", function (event, pos, item) {
-	    	var dateStart,dateEnd;
+	    	var hoverBar;
 	    	var spans;
 	        if (item) {
-	        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
-				//contains the x-value (date)
-	        	dateStart = spans[item.datapoint[0]];
-	        	dateEnd = spans[item.datapoint[0]+1];
+	        	hoverBar = item.datapoint[0];
 	        }
 	        //remember last date, so that we don't redraw the current state
 	        //that date may be undefined is on purpose
-	    	if (rangeBar.highlighted !== dateStart){
-	    		rangeBar.highlighted = dateStart;
-	    		if (typeof dateStart === "undefined")
+	    	if (rangeBar.highlighted !== hoverBar){
+	    		rangeBar.highlighted = hoverBar;
+	    		if (typeof hoverBar === "undefined")
 	    			rangeBar.triggerHighlight();
 	    		else
-	    			rangeBar.triggerHighlight(dateStart, dateEnd);
+	    			rangeBar.triggerHighlight(hoverBar);
 	        }
 	    });
 
@@ -240,28 +244,24 @@ FuzzyTimelineRangeBars.prototype = {
 	        	//remove selection handles (if there were any)
 	        	rangeBar.parent.clearHandles();
 	        	
-		    	var dateStart,dateEnd;
-		    	var spans;
+		    	var clickBar;
 		        if (item) {
-		        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
 					//contains the x-value (date)
-		        	dateStart = spans[item.datapoint[0]];
-		        	dateEnd = spans[item.datapoint[0]+1];
+		        	clickBar = item.datapoint[0];
 		        }  	
-	    		if (typeof dateStart === "undefined")
+	    		if (typeof clickBar === "undefined")
 	    			rangeBar.triggerSelection();
 	    		else
-	    			rangeBar.triggerSelection(dateStart, dateEnd);
+	    			rangeBar.triggerSelection(clickBar);
 	        	wasDataClick = true;
 	        }
 	    });
 	    
 	    $(rangeBar.plotDiv).unbind("plotselected");
 	    $(rangeBar.plotDiv).bind("plotselected", function(event, ranges) {
-        	spans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
-        	dateStart = spans[Math.floor(ranges.xaxis.from)];
-        	dateEnd = spans[Math.ceil(ranges.xaxis.to)];
-	    	rangeBar.triggerSelection(dateStart, dateEnd);
+        	startBar = Math.floor(ranges.xaxis.from);
+        	endBar = Math.floor(ranges.xaxis.to);
+	    	rangeBar.triggerSelection(startBar, endBar);
 	    	rangeBar.wasSelection = true;
 	    	
 	    	rangeBar.parent.clearHandles();
@@ -272,14 +272,13 @@ FuzzyTimelineRangeBars.prototype = {
 	    });	
 	},
 	
-	
 	selectByX : function(x1, x2){
 		rangeBar = this;
 		var xaxis = rangeBar.plot.getAxes().xaxis;
     	var from = Math.floor(xaxis.c2p(x1-rangeBar.plot.offset().left));
-    	var to = Math.ceil(xaxis.c2p(x2-rangeBar.plot.offset().left));
+    	var to = Math.floor(xaxis.c2p(x2-rangeBar.plot.offset().left));
     	
-		rangeBar.triggerSelection(rangeBar.tickSpans[from], rangeBar.tickSpans[to+1]);
+		rangeBar.triggerSelection(from, to);
 	},	
 	
 	drawRangeBarChart : function(datasets, spanWidth){
@@ -299,7 +298,9 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.yValMin = 0;
 		rangeBar.yValMax = 0;
 		
-		rangeBar.datasetsPlot = rangeBar.createPlot(datasets);
+		var plotAndHash = rangeBar.createPlot(datasets);
+		rangeBar.datasetsPlot = plotAndHash.plots;
+		rangeBar.datasetsHash = plotAndHash.hashs;
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		
@@ -333,7 +334,7 @@ FuzzyTimelineRangeBars.prototype = {
 		if (emptyHighlight){
 			rangeBar.highlightedDatasetsPlot = [];
 		} else {
-			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted);
+			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted).plots;
 		}			
 		rangeBar.showPlot();
 	},
@@ -347,11 +348,14 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.highlightChanged([]);
 	},
 	
-	triggerHighlight : function(dateStart, dateEnd) {
+	triggerHighlight : function(hoverPoint) {
+		var rangeBar = this;
 		var highlightedObjects = [];
 		
-		if ( (typeof dateStart !== "undefined") && (typeof dateEnd !== "undefined") ){
-			highlightedObjects = this.parent.getObjects(dateStart, dateEnd);
+		if (typeof hoverPoint !== "undefined"){
+			$(rangeBar.datasetsHash).each(function(){
+				highlightedObjects.push(this[hoverPoint]);
+			});
 		} else {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 				highlightedObjects.push([]);
@@ -360,21 +364,30 @@ FuzzyTimelineRangeBars.prototype = {
 		this.parent.core.triggerHighlight(highlightedObjects);
 	},
 
-	triggerSelection : function(dateStart, dateEnd) {
+	triggerSelection : function(startBar, endBar) {
 		var rangeBar = this;
 		var selection;
-		if (typeof dateStart !== "undefined") {
-			var selected;
-			if (typeof dateEnd === "undefined")
-				selected = rangeBar.parent.getObjects(dateStart);
-			else
-				selected = rangeBar.parent.getObjects(dateStart,dateEnd);
-			selection = new Selection(selected, rangeBar);
+		if (typeof startBar !== "undefined") {
+			if (typeof endBar === "undefined")
+				endBar = startBar;
+			rangeBar.selected = [];
+			$(rangeBar.datasetsHash).each(function(){
+				var objects = [];
+				for (var i = startBar; i <= endBar; i++){
+					$(this[i]).each(function(){
+						if ($.inArray(this, objects) == -1){
+							objects.push(this);
+						}
+					});
+				}				
+				rangeBar.selected.push(objects);
+			});
+			selection = new Selection(rangeBar.selected, rangeBar);
 		} else {
-			var selected = [];
+			rangeBar.selected = [];
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
-				selected.push([]);
-			selection = new Selection(selected);
+				rangeBar.selected.push([]);
+			selection = new Selection(rangeBar.selected);
 		}
 		
 		rangeBar.parent.selectionChanged(selection);

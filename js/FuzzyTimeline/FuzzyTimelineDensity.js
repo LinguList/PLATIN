@@ -34,6 +34,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.singleTickCenter = function(){return this.singleTickWidth/2;};
 	//contains all data
 	this.datasetsPlot;
+	this.datasetsHash;
 	this.highlightedDatasetsPlot;
 	this.yValMin;
 	this.yValMax;
@@ -87,8 +88,10 @@ FuzzyTimelineDensity.prototype = {
 	createUDData : function(datasets) {
 		var density = this;
 		var plots = [];
+		var objectHashes = [];
 		$(datasets).each(function(){
 			var chartDataCounter = new Object();
+			var objectHash = new Object();
 
 			for (var i = 0; i < density.tickCount; i++){
 				chartDataCounter[i]=0;
@@ -129,6 +132,10 @@ FuzzyTimelineDensity.prototype = {
 						}
 						
 						chartDataCounter[i] += weight;
+						//add this object to the hash
+						if (typeof objectHash[i] === "undefined")
+							objectHash[i] = [];
+						objectHash[i].push(this);
 					}
 				}
 			});
@@ -136,9 +143,11 @@ FuzzyTimelineDensity.prototype = {
 			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
 				plots.push(udChartData);
+			
+			objectHashes.push(objectHash);			
 		});
 		
-		return plots;
+		return {plots:plots, hashs:objectHashes};
 	},
 	
 	showPlot : function() {
@@ -326,7 +335,10 @@ FuzzyTimelineDensity.prototype = {
 				density.singleTickWidth = 1;
 		}
 		
-		density.datasetsPlot = density.createUDData(datasets);
+		var hashAndPlot = density.createUDData(datasets);
+		
+		density.datasetsPlot = hashAndPlot.plots;
+		density.datasetsHash = hashAndPlot.hashs;
 
 		density.yValMin = 0;
 		density.yValMax = 0;
@@ -350,9 +362,11 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		var highlightedObjects = [];
 		
+
 		if (typeof hoverPoint !== "undefined") {
-			var spanArray = this.parent.getSpanArray(density.singleTickWidth);
-			highlightedObjects = this.parent.getObjects(spanArray[hoverPoint], spanArray[hoverPoint+1]);
+			$(density.datasetsHash).each(function(){
+				highlightedObjects.push(this[hoverPoint]);
+			});
 		} else {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
 				highlightedObjects.push([]);
@@ -364,11 +378,21 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		var selection;
 		if (typeof startPoint !== "undefined") {
-			var spanArray = this.parent.getSpanArray(density.singleTickWidth);
 			if (typeof endPoint === "undefined")
-				density.selected = density.parent.getObjects(spanArray[startPoint],spanArray[startPoint+1]);
-			else
-				density.selected = density.parent.getObjects(spanArray[startPoint],spanArray[endPoint+1]);
+				endPoint = startPoint;
+			density.selected = [];
+			$(density.datasetsHash).each(function(){
+				var objects = [];
+				for (var i = startPoint; i <= endPoint; i++){
+					$(this[i]).each(function(){
+						if ($.inArray(this, objects) == -1){
+							objects.push(this);
+						}
+					});
+				}				
+				density.selected.push(objects);
+			});
+
 			selection = new Selection(density.selected, density);
 		} else {
 			//empty selection
@@ -398,7 +422,7 @@ FuzzyTimelineDensity.prototype = {
 		if (emptyHighlight){
 			density.highlightedDatasetsPlot = [];
 		} else {
-			density.highlightedDatasetsPlot = density.createUDData(selected_highlighted);
+			density.highlightedDatasetsPlot = density.createUDData(selected_highlighted).plots;
 		}
 		density.showPlot();
 	},
