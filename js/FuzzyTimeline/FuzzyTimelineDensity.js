@@ -365,7 +365,10 @@ FuzzyTimelineDensity.prototype = {
 
 		if (typeof hoverPoint !== "undefined") {
 			$(density.datasetsHash).each(function(){
-				highlightedObjects.push(this[hoverPoint]);
+				if (typeof this[hoverPoint] !== "undefined")
+					highlightedObjects.push(this[hoverPoint]);
+				else
+					highlightedObjects.push([]);
 			});
 		} else {
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
