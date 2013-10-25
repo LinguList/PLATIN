@@ -146,17 +146,48 @@ GeoTemConfig.applySettings = function(settings) {
 GeoTemConfig.assignedColorCount = 0;
 GeoTemConfig.getColor = function(id){
 	if (typeof GeoTemConfig.datasets[id].color === "undefined"){
-		if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
-			GeoTemConfig.colors.push({
-				r1 : Math.floor((Math.random()*255)+1),
-				g1 : Math.floor((Math.random()*255)+1),
-				b1 : Math.floor((Math.random()*255)+1),
-				r0 : 230,
-				g0 : 230,
-				b0 : 230
-			});
+		var color;
+		
+		while (true){
+			if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+				color = {
+					r1 : Math.floor((Math.random()*255)+1),
+					g1 : Math.floor((Math.random()*255)+1),
+					b1 : Math.floor((Math.random()*255)+1),
+					r0 : 230,
+					g0 : 230,
+					b0 : 230
+				};
+			} else
+				color = GeoTemConfig.colors[GeoTemConfig.assignedColorCount];
+			
+			//make sure that no other dataset has this color
+			//TODO: one could also check that they are not too much alike
+			var found = false;
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++){
+				var dataset = GeoTemConfig.datasets[i];
+				
+				if (typeof dataset.color === "undefined")
+					continue;
+
+				if (	(dataset.color.r1 == color.r1) && 
+						(dataset.color.g1 == color.g1) &&
+						(dataset.color.b1 == color.b1) ){
+					found = true;
+					break;
+				}
+			}
+			if (found === true){
+				if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+					//next time skip over this color
+					GeoTemConfig.assignedColorCount++;
+				}
+				continue;
+			} else {
+				GeoTemConfig.colors.push(color);
+				break;
+			}
 		}
-		var color = GeoTemConfig.colors[GeoTemConfig.assignedColorCount];
 		GeoTemConfig.datasets[id].color = color;
 
 		GeoTemConfig.assignedColorCount++;
