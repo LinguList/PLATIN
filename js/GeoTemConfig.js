@@ -282,6 +282,13 @@ GeoTemConfig.addDataset = function(newDataset){
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
 };
 
+GeoTemConfig.addDatasets = function(newDatasets){
+	$(newDatasets).each(function(){
+		GeoTemConfig.datasets.push(this);
+	});	
+	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+};
+
 GeoTemConfig.removeDataset = function(index){
 	GeoTemConfig.datasets.splice(index,1);
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
