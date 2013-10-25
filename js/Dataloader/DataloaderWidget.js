@@ -82,6 +82,7 @@ DataloaderWidget.prototype = {
 	loadFromURL : function() {
 		var dataLoaderWidget = this;
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
+		var datasets = [];
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
@@ -92,14 +93,14 @@ DataloaderWidget.prototype = {
 				GeoTemConfig.getKml(paramValue,function(kmlDoc){
 					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
 					if (dataSet != null)
-						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+						datasets.push(dataSet);									
 				});
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				GeoTemConfig.getCsv(paramValue,function(json){
 					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
 					if (dataSet != null)
-						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+						datasets.push(dataSet);			
 				});
 			}
 			else if (paramName.toLowerCase().startsWith("local")){
@@ -110,8 +111,10 @@ DataloaderWidget.prototype = {
 				var json = GeoTemConfig.convertCsv(csv);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
 				if (dataSet != null)
-					dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+					datasets.push(dataSet);			
 			}
 		});
+		if (datasets.length > 0)
+			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}
 };
