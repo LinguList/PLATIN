@@ -142,18 +142,26 @@ GeoTemConfig.applySettings = function(settings) {
 	$.extend(this, settings);
 };
 
+//Keeps track of how many colors where assigned yet.
+GeoTemConfig.assignedColorCount = 0;
 GeoTemConfig.getColor = function(id){
-	if( GeoTemConfig.colors.length <= id ){
-		GeoTemConfig.colors.push({
-			r1 : Math.floor((Math.random()*255)+1),
-			g1 : Math.floor((Math.random()*255)+1),
-			b1 : Math.floor((Math.random()*255)+1),
-			r0 : 230,
-			g0 : 230,
-			b0 : 230
-		});
+	if (typeof GeoTemConfig.datasets[id].color === "undefined"){
+		if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+			GeoTemConfig.colors.push({
+				r1 : Math.floor((Math.random()*255)+1),
+				g1 : Math.floor((Math.random()*255)+1),
+				b1 : Math.floor((Math.random()*255)+1),
+				r0 : 230,
+				g0 : 230,
+				b0 : 230
+			});
+		}
+		var color = GeoTemConfig.colors[GeoTemConfig.assignedColorCount];
+		GeoTemConfig.datasets[id].color = color;
+
+		GeoTemConfig.assignedColorCount++;
 	}
-	return GeoTemConfig.colors[id];
+	return GeoTemConfig.datasets[id].color;
 };
 
 GeoTemConfig.getAverageDatasetColor = function(id, objects){

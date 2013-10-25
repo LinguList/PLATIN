@@ -36,5 +36,6 @@ function Dataset(objects, label, url, type) {
 	this.label = label;
 	this.url = url;
 	this.type = type;
-
+	
+	this.color;
 }
