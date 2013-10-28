@@ -717,9 +717,11 @@ Table.prototype = {
 	},
 
 	reset : function() {
-		this.showSelectedItems = false;
-		this.showElementsLength = this.elements.length;
-		this.showSelected.setAttribute('class', 'smallButton showSelected');
+		if (!this.options.tableKeepShowSelected){
+			this.showSelectedItems = false;
+			this.showElementsLength = this.elements.length;
+			this.showSelected.setAttribute('class', 'smallButton showSelected');
+		}
 		this.updateIndices(this.resultsPerPage);
 	},
 
