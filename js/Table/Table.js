@@ -472,11 +472,18 @@ Table.prototype = {
 			this.selected = false;
 		});
 		
+		var selectedCount = 0;
 		$(this.elements).filter(function(index){
 			return this.object.contains(text);
 		}).each(function(){
 			this.selected = true;
+			selectedCount++;
 		});
+		
+		//only show selected elements
+		this.showSelectedItems = true;
+		this.showElementsLength = selectedCount;
+		this.showSelected.setAttribute('class', 'smallButton showAll');
 		
 		this.update();
 		this.parent.tableSelection();
