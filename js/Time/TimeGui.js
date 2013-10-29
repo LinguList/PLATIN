@@ -271,7 +271,7 @@ function TimeGui(plot, div, options, iid) {
 		for (var i = 0; i < units.length; i++) {
 			addUnit(units[i], i);
 		}
-		this.timeUnitDropdown = new Dropdown(this.timeUnitSelector, timeUnits, GeoTemConfig.getString('selectTimeUnit'));
+		this.timeUnitDropdown = new Dropdown(this.timeUnitSelector, timeUnits, GeoTemConfig.getString('selectTimeUnit'), '100px');
 		this.timeUnitDropdown.setEntry(0);
 	}
 	this.setTimeUnitDropdown([{

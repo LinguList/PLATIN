@@ -27,7 +27,11 @@
 function DataloaderConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address='
+			proxy : 'php/proxy.php?address=',
+			staticKML : [
+			            // {header: "header label"},			            
+			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
+			]
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

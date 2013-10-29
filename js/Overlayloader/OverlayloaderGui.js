@@ -30,6 +30,7 @@
  */
 function OverlayloaderGui(overlayloader, div, options) {
 
+	this.parent = overlayloader;
 	var overlayloaderGui = this;
 	
 	this.overlayloaderContainer = div;
@@ -41,6 +42,9 @@ function OverlayloaderGui(overlayloader, div, options) {
 	this.loaders = document.createElement("div");
 	div.appendChild(this.loaders);
 	
+	this.overlayList = document.createElement("div");
+	div.appendChild(this.overlayList);
+	
 	$(this.loaderTypeSelect).change(function(){
 		var activeLoader = $(this).val();
 		$(overlayloaderGui.loaders).find("div").each(function(){
@@ -50,4 +54,36 @@ function OverlayloaderGui(overlayloader, div, options) {
 				$(this).hide();
 		});
 	});
+	
+	this.refreshOverlayList = function(){
+		var overlayloaderGui = this;
+		
+		$(overlayloaderGui.overlayList).empty();
+		$(this.parent.overlayLoader.overlays).each(function(){
+			var overlay = this;
+			$(overlayloaderGui.overlayList).append(overlay.name);
+			var link = document.createElement("a");
+			$(link).text("(x)");
+			link.href="";
+			
+			$(link).click($.proxy(function(){
+				$(overlay.layers).each(function(){
+					this.map.removeLayer(this.layer);
+				});
+				
+				var overlays = overlayloaderGui.parent.overlayLoader.overlays;
+				
+				overlays = $.grep(overlays, function(value) {
+				    return overlay != value;
+				});
+				
+				overlayloaderGui.parent.overlayLoader.overlays = overlays;
+				
+				overlayloaderGui.refreshOverlayList();
+				
+				return(false);
+			},{overlay:overlay,overlayloaderGui:overlayloaderGui}));
+			$(overlayloaderGui.overlayList).append(link);
+		});
+	};
 };

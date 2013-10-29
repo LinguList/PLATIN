@@ -82,22 +82,80 @@ DataloaderWidget.prototype = {
 	loadFromURL : function() {
 		var dataLoaderWidget = this;
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
+		var datasets = [];
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var loaderFunction = null;
-			if (paramName.toLowerCase().startsWith("kml"))
-				loaderFunction = GeoTemConfig.getKml;
-			else if (paramName.toLowerCase().startsWith("csv"))
-				loaderFunction = GeoTemConfig.getCsv;
-			if (loaderFunction){
-				if (typeof dataLoaderWidget.options.proxy != 'undefined')
-					paramValue = dataLoaderWidget.options.proxy + paramValue;
-				loaderFunction(paramValue,function(kmlDoc){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), paramValue);
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
+			var origURL = paramValue;
+			if (typeof dataLoaderWidget.options.proxy != 'undefined')
+				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (paramName.toLowerCase().startsWith("kml")){
+				GeoTemConfig.getKml(paramValue,function(kmlDoc){
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
 					if (dataSet != null)
-						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
+						datasets.push(dataSet);									
 				});
 			}
+			else if (paramName.toLowerCase().startsWith("csv")){
+				GeoTemConfig.getCsv(paramValue,function(json){
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null)
+						datasets.push(dataSet);			
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null)
+					datasets.push(dataSet);			
+			}
 		});
+		//Load the (optional!) dataset colors
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("color")){
+				//color is 1-based, index is 0-based!
+				var datasetID = parseInt(paramName.substring("color".length))-1;
+				if (datasets.length > datasetID){
+					if (typeof datasets[datasetID].color === "undefined"){
+						var color = new Object();
+						var colorsSelectedUnselected = paramValue.split(",");
+						if (colorsSelectedUnselected.length > 2)
+							return;
+						
+						var color1 = colorsSelectedUnselected[0];
+						if (color1.length != 6)
+							return;
+						
+						color.r1 = parseInt(color1.substr(0,2),16);
+						color.g1 = parseInt(color1.substr(2,2),16);
+						color.b1 = parseInt(color1.substr(4,2),16);
+						
+						//check if a unselected color is given
+						if (colorsSelectedUnselected.length == 2){
+							var color0 = colorsSelectedUnselected[1];
+							if (color0.length != 6)
+								return;
+							
+							color.r0 = parseInt(color0.substr(0,2),16);
+							color.g0 = parseInt(color0.substr(2,2),16);
+							color.b0 = parseInt(color0.substr(4,2),16);
+						} else {
+							//if not: use the selected color "halved"
+							color.r0 = Math.round(color.r1/2);
+							color.g0 = Math.round(color.g1/2);
+							color.b0 = Math.round(color.b1/2);
+						}
+						
+						datasets[datasetID].color = color;
+					}	
+				}
+			}	
+		});
+		if (datasets.length > 0)
+			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}
 };
