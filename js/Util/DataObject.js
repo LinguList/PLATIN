@@ -192,4 +192,6 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		
 		return color;
 	};
+	
+	Publisher.Publish('dataobjectAfterCreation', this);
 };
