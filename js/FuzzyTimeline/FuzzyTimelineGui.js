@@ -39,14 +39,15 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/32);
 	this.fuzzyTimelineContainer.style.position = 'relative';
 
-	this.sliderDiv = document.createElement("div");
-	$(this.sliderDiv).width("100%");
-	$(this.sliderDiv).height("25px");
-	div.appendChild(this.sliderDiv);
+	this.sliderTable = document.createElement("table");
+	$(this.sliderTable).addClass("ddbToolbar");
+	$(this.sliderTable).width("100%");
+	$(this.sliderTable).height("25px");
+	div.appendChild(this.sliderTable);
 	this.plotDiv = document.createElement("div");
 	$(this.plotDiv).css("float","left");
 	$(this.plotDiv).width("100%");
-	$(this.plotDiv).height($(this.fuzzyTimelineContainer).height()-$(this.sliderDiv).height());
+	$(this.plotDiv).height($(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height());
 	div.appendChild(this.plotDiv);
 	if (this.parent.options.showRangePiechart){
 		this.rangePiechartDiv = document.createElement("div");

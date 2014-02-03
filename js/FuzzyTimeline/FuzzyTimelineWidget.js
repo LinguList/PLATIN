@@ -60,7 +60,7 @@ FuzzyTimelineWidget.prototype = {
 		delete fuzzyTimeline.overallMax;
 		
 		$(fuzzyTimeline.gui.plotDiv).empty();
-		$(fuzzyTimeline.gui.sliderDiv).empty();
+		$(fuzzyTimeline.gui.sliderTable).empty();
 		delete fuzzyTimeline.rangeSlider;
 		$(fuzzyTimeline.gui.rangePiechartDiv).empty();
 		delete fuzzyTimeline.rangePiechart;

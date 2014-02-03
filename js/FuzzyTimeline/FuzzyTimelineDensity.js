@@ -187,11 +187,15 @@ FuzzyTimelineDensity.prototype = {
 	            },
 				grid: {
 		            hoverable: true,
-		            clickable: true
+		            clickable: true,
+			        backgroundColor: density.parent.options.backgroundColor,
+			        borderWidth: 0,
+		        },
+		        legend: {
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
-		            content: function(xval, yval){
+		            content: function(label, xval, yval, flotItem){
 		            	highlightString =	moment(xval-density.singleTickCenter()).format(tooltipFormatString) + " - " +
 		            						moment(xval+density.singleTickCenter()).format(tooltipFormatString) + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
@@ -212,6 +216,8 @@ FuzzyTimelineDensity.prototype = {
 		        	max : density.yValMax
 		        },
 			};
+		if (!density.parent.options.showYAxis)
+			options.yaxis.show=false;
 		
 		var highlight_select_plot_colors = [];		
 		var i = 0;
@@ -238,66 +244,75 @@ FuzzyTimelineDensity.prototype = {
 		density.plot = $.plot($(density.div), highlight_select_plot_colors, options);
 		density.parent.drawHandles();
 		
-		$(density.div).unbind("plothover");
-	    $(density.div).bind("plothover", function (event, pos, item) {
-	    	var hoverPoint;
-	    	//TODO: this could be wanted (if negative weight is used)
-	        if ((item)&&(item.datapoint[1] != 0)) {
-	        	//at begin and end of plot there are added 0 points
-	        	hoverPoint = item.dataIndex-1;
-	        }
-	        //remember last point, so that we don't redraw the current state
-	        //that "hoverPoint" may be undefined is on purpose
-	    	if (density.highlighted !== hoverPoint){
-    			density.highlighted = hoverPoint;
-	        	density.triggerHighlight(hoverPoint);
-	        }
-	    });
+		var rangeBars = density.parent.rangeBars;
+		if (typeof rangeBars !== "undefined")
+			$(density.div).unbind("plothover", rangeBars.hoverFunction);
+		$(density.div).unbind("plothover", density.hoverFunction);
+	    $(density.div).bind("plothover", density.hoverFunction);
 
 	    //this var prevents the execution of the plotclick event after a select event 
 	    density.wasSelection = false;
-		$(density.div).unbind("plotclick");
-	    $(density.div).bind("plotclick", function (event, pos, item) {
-	    	if (density.wasSelection)
-	    		density.wasSelection = false;
-	    	else {
-	        	//remove selection handles (if there were any)
-	        	density.parent.clearHandles();
-		    	
-		    	var selectPoint;
-		        //that date may be undefined is on purpose	    	
-		    	//TODO: ==0 could be wanted (if negative weight is used)
-		        if ((item)&&(item.datapoint[1] != 0)) {
-		        	//at begin and end of plot there are added 0 points
-		        	selectPoint = item.dataIndex-1;
-		        }
-	        	density.triggerSelection(selectPoint);
-	        }
-	    });
+	    $(density.div).unbind("plotclick");
+	    $(density.div).bind("plotclick", density.clickFunction);
 	    
 	    $(density.div).unbind("plotselected");
-	    $(density.div).bind("plotselected", function(event, ranges) {
-	    	var spanArray = density.parent.getSpanArray(density.singleTickWidth);
-	    	var startSpan, endSpan;
-	    	for (var i = 0; i < spanArray.length-1; i++){
-	    		if ((typeof startSpan === "undefined") && (ranges.xaxis.from <= spanArray[i+1]))
-	    			startSpan = i;
-	    		if ((typeof endSpan === "undefined") && (ranges.xaxis.to <= spanArray[i+1]))
-	    			endSpan = i;
-	    	}
-	    	
-	    	if ((typeof startSpan !== "undefined") && (typeof endSpan !== "undefined")){
-	        	density.triggerSelection(startSpan, endSpan);
-		    	density.wasSelection = true;
-
-		    	density.parent.clearHandles();
-		    	var xaxis = density.plot.getAxes().xaxis;
-		    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
-		    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
-		    	density.parent.addHandle(x1,x2);
-	    	}
-	    });
+	    $(density.div).bind("plotselected", density.selectFuntion);
 	},
+	
+	hoverFunction : function (event, pos, item) {
+    	var hoverPoint;
+    	//TODO: this could be wanted (if negative weight is used)
+        if ((item)&&(item.datapoint[1] != 0)) {
+        	//at begin and end of plot there are added 0 points
+        	hoverPoint = item.dataIndex-1;
+        }
+        //remember last point, so that we don't redraw the current state
+        //that "hoverPoint" may be undefined is on purpose
+    	if (density.highlighted !== hoverPoint){
+			density.highlighted = hoverPoint;
+        	density.triggerHighlight(hoverPoint);
+        }
+    },
+    
+    clickFunction : function (event, pos, item) {
+    	if (density.wasSelection)
+    		density.wasSelection = false;
+    	else {
+        	//remove selection handles (if there were any)
+        	density.parent.clearHandles();
+	    	
+	    	var selectPoint;
+	        //that date may be undefined is on purpose	    	
+	    	//TODO: ==0 could be wanted (if negative weight is used)
+	        if ((item)&&(item.datapoint[1] != 0)) {
+	        	//at begin and end of plot there are added 0 points
+	        	selectPoint = item.dataIndex-1;
+	        }
+        	density.triggerSelection(selectPoint);
+        }
+    },
+    
+    selectFuntion : function(event, ranges) {
+    	var spanArray = density.parent.getSpanArray(density.singleTickWidth);
+    	var startSpan, endSpan;
+    	for (var i = 0; i < spanArray.length-1; i++){
+    		if ((typeof startSpan === "undefined") && (ranges.xaxis.from <= spanArray[i+1]))
+    			startSpan = i;
+    		if ((typeof endSpan === "undefined") && (ranges.xaxis.to <= spanArray[i+1]))
+    			endSpan = i;
+    	}
+    	
+    	if ((typeof startSpan !== "undefined") && (typeof endSpan !== "undefined")){
+        	density.triggerSelection(startSpan, endSpan);
+	    	density.wasSelection = true;
+
+	    	density.parent.clearHandles();
+	    	var xaxis = density.plot.getAxes().xaxis;
+	    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
+	    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
+	    	density.parent.addHandle(x1,x2);
+    	}
+    },
 	
 	selectByX : function(x1, x2){
 		density = this;

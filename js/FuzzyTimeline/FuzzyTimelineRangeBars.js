@@ -156,7 +156,10 @@ FuzzyTimelineRangeBars.prototype = {
 		}
 		
 		for (var i = 0; i < tickCount; i++){
-			ticks[i] = [i,rangeBar.tickSpans[i].format(axisFormatString)];
+			var tickLabel = rangeBar.tickSpans[i].format(axisFormatString);
+			while ((tickLabel.length > 1) && (tickLabel.indexOf("0")==0))
+				tickLabel = tickLabel.substring(1);
+			ticks[i] = [i,tickLabel];
 		}
 		
 		var options = {
@@ -165,7 +168,9 @@ FuzzyTimelineRangeBars.prototype = {
 	            },
 				grid: {
 		            hoverable: true,
-		            clickable: true
+		            clickable: true,
+		            backgroundColor: rangeBar.parent.options.backgroundColor,
+		            borderWidth: 0,
 		        },
 		        xaxis: {          
 		        	  ticks: ticks
@@ -176,9 +181,14 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
-		            content: function(xval, yval){
-		            	highlightString =	rangeBar.tickSpans[xval].format(axisFormatString) + " - " +
-		            						rangeBar.tickSpans[xval+1].format(axisFormatString) + " : ";
+		            content: function(label, xval, yval, flotItem){
+		    			var fromLabel = rangeBar.tickSpans[xval].format(axisFormatString);
+		    			while ((fromLabel.length > 1) && (fromLabel.indexOf("0")==0))
+		    				fromLabel = fromLabel.substring(1);
+		    			var toLabel = rangeBar.tickSpans[xval+1].format(axisFormatString);
+		    			while ((toLabel.length > 1) && (toLabel.indexOf("0")==0))
+		    				toLabel = toLabel.substring(1);
+		            	highlightString =	fromLabel + " - " + toLabel + " : ";
 		            	//(max.)2 Nachkomma-Stellen von y-Wert anzeigen
 		            	highlightString +=	Math.round(yval*100)/100; 
 
@@ -189,6 +199,8 @@ FuzzyTimelineRangeBars.prototype = {
 		        	mode: "x"
 		        }
 			};
+		if (!rangeBar.parent.options.showYAxis)
+			options.yaxis.show=false;
 		
 		var highlight_select_plot_colors = [];		
 		var i = 0;
@@ -216,62 +228,74 @@ FuzzyTimelineRangeBars.prototype = {
 		rangeBar.plot = $.plot($(rangeBar.plotDiv), highlight_select_plot_colors, options);
 		rangeBar.parent.drawHandles();
 		
-		$(rangeBar.plotDiv).unbind("plothover");
-	    $(rangeBar.plotDiv).bind("plothover", function (event, pos, item) {
-	    	var hoverBar;
-	    	var spans;
-	        if (item) {
-	        	hoverBar = item.datapoint[0];
-	        }
-	        //remember last date, so that we don't redraw the current state
-	        //that date may be undefined is on purpose
-	    	if (rangeBar.highlighted !== hoverBar){
-	    		rangeBar.highlighted = hoverBar;
-	    		if (typeof hoverBar === "undefined")
-	    			rangeBar.triggerHighlight();
-	    		else
-	    			rangeBar.triggerHighlight(hoverBar);
-	        }
-	    });
+		var density = rangeBar.parent.density;
+		if (typeof density !== "undefined")
+			$(rangeBar.plotDiv).unbind("plothover", density.hoverFunction);
+		$(rangeBar.plotDiv).unbind("plothover", rangeBar.hoverFunction);
+	    $(rangeBar.plotDiv).bind("plothover", $.proxy(rangeBar.hoverFunction,rangeBar));
 
 	    //this var prevents the execution of the plotclick event after a select event 
 	    rangeBar.wasSelection = false;
 		$(rangeBar.plotDiv).unbind("plotclick");
-	    $(rangeBar.plotDiv).bind("plotclick", function (event, pos, item) {
-	    	if (rangeBar.wasSelection)
-	    		rangeBar.wasSelection = false;
-	    	else {
-	        	//remove selection handles (if there were any)
-	        	rangeBar.parent.clearHandles();
-	        	
-		    	var clickBar;
-		        if (item) {
-					//contains the x-value (date)
-		        	clickBar = item.datapoint[0];
-		        }  	
-	    		if (typeof clickBar === "undefined")
-	    			rangeBar.triggerSelection();
-	    		else
-	    			rangeBar.triggerSelection(clickBar);
-	        	wasDataClick = true;
-	        }
-	    });
+	    $(rangeBar.plotDiv).bind("plotclick", $.proxy(rangeBar.clickFunction,rangeBar));
 	    
 	    $(rangeBar.plotDiv).unbind("plotselected");
-	    $(rangeBar.plotDiv).bind("plotselected", function(event, ranges) {
-        	startBar = Math.floor(ranges.xaxis.from);
-        	endBar = Math.floor(ranges.xaxis.to);
-	    	rangeBar.triggerSelection(startBar, endBar);
-	    	rangeBar.wasSelection = true;
-	    	
-	    	rangeBar.parent.clearHandles();
-	    	var xaxis = rangeBar.plot.getAxes().xaxis;
-	    	var x1 = xaxis.p2c(ranges.xaxis.from) + rangeBar.plot.offset().left;
-	    	var x2 = xaxis.p2c(ranges.xaxis.to) + rangeBar.plot.offset().left;
-	    	rangeBar.parent.addHandle(x1,x2);
-	    });	
+	    $(rangeBar.plotDiv).bind("plotselected", $.proxy(rangeBar.selectFunction,rangeBar));	
 	},
 	
+	hoverFunction : function (event, pos, item) {
+		var rangeBar = this;
+    	var hoverBar;
+    	var spans;
+        if (item) {
+        	hoverBar = item.datapoint[0];
+        }
+        //remember last date, so that we don't redraw the current state
+        //that date may be undefined is on purpose
+    	if (rangeBar.highlighted !== hoverBar){
+    		rangeBar.highlighted = hoverBar;
+    		if (typeof hoverBar === "undefined")
+    			rangeBar.triggerHighlight();
+    		else
+    			rangeBar.triggerHighlight(hoverBar);
+        }
+    },
+	
+    clickFunction : function (event, pos, item) {
+    	var rangeBar = this;
+    	if (rangeBar.wasSelection)
+    		rangeBar.wasSelection = false;
+    	else {
+        	//remove selection handles (if there were any)
+        	rangeBar.parent.clearHandles();
+        	
+	    	var clickBar;
+	        if (item) {
+				//contains the x-value (date)
+	        	clickBar = item.datapoint[0];
+	        }  	
+    		if (typeof clickBar === "undefined")
+    			rangeBar.triggerSelection();
+    		else
+    			rangeBar.triggerSelection(clickBar);
+        	wasDataClick = true;
+        }
+    },
+    
+    selectFunction : function(event, ranges) {
+    	var rangeBar = this;
+    	startBar = Math.floor(ranges.xaxis.from);
+    	endBar = Math.floor(ranges.xaxis.to);
+    	rangeBar.triggerSelection(startBar, endBar);
+    	rangeBar.wasSelection = true;
+    	
+    	rangeBar.parent.clearHandles();
+    	var xaxis = rangeBar.plot.getAxes().xaxis;
+    	var x1 = xaxis.p2c(ranges.xaxis.from) + rangeBar.plot.offset().left;
+    	var x2 = xaxis.p2c(ranges.xaxis.to) + rangeBar.plot.offset().left;
+    	rangeBar.parent.addHandle(x1,x2);
+    },
+    
 	selectByX : function(x1, x2){
 		rangeBar = this;
 		var xaxis = rangeBar.plot.getAxes().xaxis;

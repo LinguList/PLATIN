@@ -37,19 +37,29 @@ function FuzzyTimelineRangeSlider(parent) {
 	
 	this.datasets;
 	
-	this.sliderParentDiv = this.parent.gui.sliderDiv;
+	this.sliderParentTable = this.parent.gui.sliderTable;
+	var headerRow = $("<tr></tr>");
+	var controlsRow = $("<tr></tr>");
+	$(this.sliderParentTable).append(headerRow).append(controlsRow);
+	
+	headerRow.append("<td>Time start</td>");
 	this.rangeStart = document.createElement("select");
-	$(this.sliderParentDiv).append("Start of timeline:");
-	$(this.sliderParentDiv).append(this.rangeStart);
+	controlsRow.append($("<td></td>").append(this.rangeStart));
+	
+	headerRow.append("<td>Time unit</td>");
 	this.rangeDropdown = document.createElement("select");
-	$(this.sliderParentDiv).append("Time slice width:");
-	$(this.sliderParentDiv).append(this.rangeDropdown);
-	this.startAnimation = document.createElement("button");
-	$(this.sliderParentDiv).append(this.startAnimation);
-	$(this.startAnimation).text("start");
-	this.pauseAnimation = document.createElement("button");
-	$(this.sliderParentDiv).append(this.pauseAnimation);
-	$(this.pauseAnimation).text("pause");
+	controlsRow.append($("<td></td>").append(this.rangeDropdown));
+	
+	headerRow.append("<td>Animation</td>");
+	this.startAnimation = document.createElement("div");
+	$(this.startAnimation).addClass("smallButton playDisabled");
+	this.pauseAnimation = document.createElement("div");
+	$(this.pauseAnimation).addClass("smallButton pauseDisabled");
+	controlsRow.append($("<td></td>").append(this.startAnimation).append(this.pauseAnimation));
+	
+	headerRow.append("<td>Dated Objects</td>");
+	this.numberDatedObjects = document.createElement("div");
+	controlsRow.append($("<td></td>").append(this.numberDatedObjects));
 }
 
 FuzzyTimelineRangeSlider.prototype = {
