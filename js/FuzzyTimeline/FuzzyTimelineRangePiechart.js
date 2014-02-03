@@ -44,9 +44,10 @@ FuzzyTimelineRangePiechart.prototype = {
 
 	initialize : function(datasets) {
 		var piechart = this;
-		piechart.datasets = datasets;
-		
-		piechart.drawPieChart(piechart.datasets);
+		if (piechart.parent.showRangePiechart){
+			piechart.datasets = datasets;
+			piechart.drawPieChart(piechart.datasets);
+		}
 	},
 	
 	drawPieChart : function(datasets){
@@ -195,33 +196,37 @@ FuzzyTimelineRangePiechart.prototype = {
 		
 	highlightChanged : function(objects) {
 		var piechart = this;
-		//check if this is an empty highlight
-		var emptyHighlight = true;
-		$(objects).each(function(){
-			if ((this instanceof Array) && (this.length > 0)){
-				emptyHighlight = false;
-				return false;
+		if (piechart.parent.showRangePiechart){
+			//check if this is an empty highlight
+			var emptyHighlight = true;
+			$(objects).each(function(){
+				if ((this instanceof Array) && (this.length > 0)){
+					emptyHighlight = false;
+					return false;
+				}
+			});
+			
+			if (emptyHighlight === false)
+				piechart.drawPieChart(GeoTemConfig.mergeObjects(piechart.selected, objects));
+			else{
+				//return to selection (or all objects, if no selection is active)
+				if (piechart.selected.length > 0)
+					piechart.drawPieChart(piechart.selected);
+				else
+					piechart.drawPieChart(piechart.datasets);
 			}
-		});
-		
-		if (emptyHighlight === false)
-			piechart.drawPieChart(GeoTemConfig.mergeObjects(piechart.selected, objects));
-		else{
-			//return to selection (or all objects, if no selection is active)
-			if (piechart.selected.length > 0)
-				piechart.drawPieChart(piechart.selected);
-			else
-				piechart.drawPieChart(piechart.datasets);
 		}
 	},
 
 	selectionChanged : function(selection) {
 		var piechart = this;
-		if( !GeoTemConfig.selectionEvents ){
-			return;
+		if (piechart.parent.showRangePiechart){
+			if( !GeoTemConfig.selectionEvents ){
+				return;
+			}
+			piechart.selected = selection;
+			piechart.highlightChanged([]);
 		}
-		piechart.selected = selection;
-		piechart.highlightChanged([]);
 	},
 	
 	triggerHighlight : function(highlightedObjects) {

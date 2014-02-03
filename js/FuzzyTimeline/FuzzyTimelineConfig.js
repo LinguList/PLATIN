@@ -36,6 +36,7 @@ function FuzzyTimelineConfig(options) {
 			 *	stacking - every span that on object overlaps gets the complete weight (limited by the amount the span is overlapped, e.g. first span and last might get less) 
 			 */
 			timelineMode : 'stacking',
+			showRangePiechart : false,
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

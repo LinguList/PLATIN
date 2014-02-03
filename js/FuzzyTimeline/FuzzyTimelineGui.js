@@ -45,14 +45,18 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	div.appendChild(this.sliderDiv);
 	this.plotDiv = document.createElement("div");
 	$(this.plotDiv).css("float","left");
-	$(this.plotDiv).width("75%");
+	$(this.plotDiv).width("100%");
 	$(this.plotDiv).height($(this.fuzzyTimelineContainer).height()-$(this.sliderDiv).height());
 	div.appendChild(this.plotDiv);
-	this.rangePiechartDiv = document.createElement("div");
-	$(this.rangePiechartDiv).css("float","right");
-	$(this.rangePiechartDiv).width("25%");
-	$(this.rangePiechartDiv).height("95%");
-	div.appendChild(this.rangePiechartDiv);
+	if (this.parent.options.showRangePiechart){
+		this.rangePiechartDiv = document.createElement("div");
+		$(this.rangePiechartDiv).css("float","right");
+		//alter plot div width (leave space for piechart)
+		$(this.plotDiv).width("75%");
+		$(this.rangePiechartDiv).width("25%");
+		$(this.rangePiechartDiv).height("95%");
+		div.appendChild(this.rangePiechartDiv);
+	}
 };
 
 FuzzyTimelineGui.prototype = {
