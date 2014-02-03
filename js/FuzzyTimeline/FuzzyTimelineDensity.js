@@ -190,6 +190,7 @@ FuzzyTimelineDensity.prototype = {
 		            clickable: true,
 			        backgroundColor: density.parent.options.backgroundColor,
 			        borderWidth: 0,
+			        minBorderMargin: 0,
 		        },
 		        legend: {
 		        },
@@ -209,7 +210,9 @@ FuzzyTimelineDensity.prototype = {
 		        },
 				xaxis: {
 					mode: "time",
-					timeformat:axisFormatString
+					timeformat:axisFormatString,
+					min : density.parent.overallMin, 
+					max : density.parent.overallMax,
 				},
 		        yaxis: {
 		        	min : density.yValMin,

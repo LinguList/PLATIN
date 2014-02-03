@@ -171,9 +171,12 @@ FuzzyTimelineRangeBars.prototype = {
 		            clickable: true,
 		            backgroundColor: rangeBar.parent.options.backgroundColor,
 		            borderWidth: 0,
+		            minBorderMargin: 0,
 		        },
 		        xaxis: {          
-		        	  ticks: ticks
+		        	ticks: ticks,
+		        	min : 0, 
+					max : tickCount,
 		        },
 		        yaxis: {
 		        	min : rangeBar.yValMin,
