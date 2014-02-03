@@ -109,10 +109,8 @@ FuzzyTimelineWidget.prototype = {
 		if (viewMode !== fuzzyTimeline.viewMode){
 			$(fuzzyTimeline.gui.plotDiv).empty();
 			if (viewMode === "density"){
-				delete fuzzyTimeline.rangeBars;
 				fuzzyTimeline.density = new FuzzyTimelineDensity(fuzzyTimeline,fuzzyTimeline.gui.plotDiv);
 			} else if (viewMode === "barchart"){
-				delete fuzzyTimeline.density;
 				fuzzyTimeline.rangeBars = new FuzzyTimelineRangeBars(fuzzyTimeline);
 			}
 			fuzzyTimeline.viewMode = viewMode;
