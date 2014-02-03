@@ -330,6 +330,8 @@ FuzzyTimelineWidget.prototype = {
 		}
 		fuzzyTimeline.handles.push({x1:x1,x2:x2,width:x2-x1});
 		fuzzyTimeline.drawHandles();
+		//enabled "play" button
+		$(fuzzyTimeline.rangeSlider.startAnimation).removeClass("playDisabled").addClass("playEnabled");
 	},
 	
 	selectByX : function(x1,x2){
@@ -437,6 +439,11 @@ FuzzyTimelineWidget.prototype = {
 		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
 		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
 		fuzzyTimeline.handles = [];
+		//disable buttons
+		$(fuzzyTimeline.rangeSlider.startAnimation).removeClass("playEnabled").addClass("playDisabled");
+		$(fuzzyTimeline.rangeSlider.pauseAnimation).removeClass("pauseEnabled").addClass("pauseDisabled");
+		//stop the animation (if one was running)
+		fuzzyTimeline.pauseAnimation();
 	},
 	
 	startAnimation : function(){

@@ -205,18 +205,22 @@ FuzzyTimelineRangeSlider.prototype = {
 		$(rangeSlider.rangeDropdown).change();
 		
 		$(rangeSlider.startAnimation).click(function(){
-			$(rangeSlider.startAnimation).prop('disabled', true);
-			$(rangeSlider.pauseAnimation).prop('disabled', false);
-			
-			rangeSlider.parent.startAnimation();
+			if ($(rangeSlider.startAnimation).hasClass("playEnabled")){
+				$(rangeSlider.startAnimation).removeClass("playEnabled").addClass("playDisabled");
+				$(rangeSlider.pauseAnimation).removeClass("pauseDisabled").addClass("pauseEnabled");
+				
+				rangeSlider.parent.startAnimation();
+			}
 		});
 
 		$(rangeSlider.pauseAnimation).prop('disabled', true);
 		$(rangeSlider.pauseAnimation).click(function(){
-			$(rangeSlider.startAnimation).prop('disabled', false);
-			$(rangeSlider.pauseAnimation).prop('disabled', true);
-			
-			rangeSlider.parent.pauseAnimation();
+			if ($(rangeSlider.pauseAnimation).hasClass("pauseEnabled")){
+				$(rangeSlider.startAnimation).removeClass("playDisabled").addClass("playEnabled");
+				$(rangeSlider.pauseAnimation).removeClass("pauseEnabled").addClass("pauseDisabled");
+				
+				rangeSlider.parent.pauseAnimation();
+			}
 		});
 	},
 	
