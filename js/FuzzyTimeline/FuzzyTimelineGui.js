@@ -34,18 +34,19 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	var fuzzyTimelineGui = this;
 	
 	this.fuzzyTimelineContainer = div;
+	//if no height is given, draw it in a 32/9 ratio 
 	if ($(this.fuzzyTimelineContainer).height() === 0)
 		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/32);
 	this.fuzzyTimelineContainer.style.position = 'relative';
 
 	this.sliderDiv = document.createElement("div");
 	$(this.sliderDiv).width("100%");
-	$(this.sliderDiv).height("5%");
+	$(this.sliderDiv).height("25px");
 	div.appendChild(this.sliderDiv);
 	this.plotDiv = document.createElement("div");
 	$(this.plotDiv).css("float","left");
 	$(this.plotDiv).width("75%");
-	$(this.plotDiv).height("95%");
+	$(this.plotDiv).height($(this.fuzzyTimelineContainer).height()-$(this.sliderDiv).height());
 	div.appendChild(this.plotDiv);
 	this.rangePiechartDiv = document.createElement("div");
 	$(this.rangePiechartDiv).css("float","right");
