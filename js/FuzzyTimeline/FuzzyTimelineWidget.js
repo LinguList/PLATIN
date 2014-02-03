@@ -472,7 +472,7 @@ FuzzyTimelineWidget.prototype = {
 		
 		fuzzyTimeline.loopId = setInterval(function(){
 			fuzzyTimeline.loopFunction(10);
-		}, 1000);
+		}, 100);
 	},
 
 	pauseAnimation : function(){
