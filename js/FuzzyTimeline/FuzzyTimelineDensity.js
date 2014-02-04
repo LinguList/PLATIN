@@ -414,7 +414,7 @@ FuzzyTimelineDensity.prototype = {
 				density.selected.push(objects);
 			});
 
-			selection = new Selection(density.selected, density);
+			selection = new Selection(density.selected, density.parent);
 		} else {
 			//empty selection
 			density.selected = [];

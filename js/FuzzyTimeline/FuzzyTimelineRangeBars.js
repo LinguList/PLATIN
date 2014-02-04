@@ -412,7 +412,7 @@ FuzzyTimelineRangeBars.prototype = {
 				}				
 				rangeBar.selected.push(objects);
 			});
-			selection = new Selection(rangeBar.selected, rangeBar);
+			selection = new Selection(rangeBar.selected, rangeBar.parent);
 		} else {
 			rangeBar.selected = [];
 			for (var i = 0; i < GeoTemConfig.datasets.length; i++)
