@@ -335,7 +335,7 @@ FuzzyTimelineWidget.prototype = {
 			x1 = x2;
 			x2 = temp;
 		}
-		fuzzyTimeline.handles.push({x1:x1,x2:x2,width:x2-x1});
+		fuzzyTimeline.handles.push({x1:x1,x2:x2});
 		fuzzyTimeline.drawHandles();
 		//enabled "play" button
 		$(fuzzyTimeline.rangeSlider.startAnimation).removeClass("playDisabled").addClass("playEnabled");
