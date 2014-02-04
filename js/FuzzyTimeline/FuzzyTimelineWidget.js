@@ -164,6 +164,10 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.rangePiechart.selectionChanged(fuzzyTimeline.selected);
 		else
 			fuzzyTimeline.rangePiechart.selectionChanged([]);
+		
+		//selections "overwrite" each other
+		if (selection.widget != fuzzyTimeline)
+			fuzzyTimeline.clearHandles();
 	},
 	
 	buildSpanArray : function(spanWidth) {
