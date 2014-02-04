@@ -37,17 +37,17 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	//if no height is given, draw it in a 32/9 ratio 
 	if ($(this.fuzzyTimelineContainer).height() === 0)
 		$(this.fuzzyTimelineContainer).height($(this.fuzzyTimelineContainer).width()*9/32);
-	this.fuzzyTimelineContainer.style.position = 'relative';
+	//this.fuzzyTimelineContainer.style.position = 'relative';
 
 	this.sliderTable = document.createElement("table");
 	$(this.sliderTable).addClass("ddbToolbar");
 	$(this.sliderTable).width("100%");
-	$(this.sliderTable).height("25px");
+	$(this.sliderTable).height("49px");
 	div.appendChild(this.sliderTable);
 	this.plotDiv = document.createElement("div");
-	$(this.plotDiv).css("float","left");
 	$(this.plotDiv).width("100%");
-	$(this.plotDiv).height($(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height());
+	var plotDIVHeight = $(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height();
+	$(this.plotDiv).height(plotDIVHeight);
 	div.appendChild(this.plotDiv);
 	if (this.parent.options.showRangePiechart){
 		this.rangePiechartDiv = document.createElement("div");
@@ -55,7 +55,7 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 		//alter plot div width (leave space for piechart)
 		$(this.plotDiv).width("75%");
 		$(this.rangePiechartDiv).width("25%");
-		$(this.rangePiechartDiv).height("95%");
+		$(this.rangePiechartDiv).height(plotDIVHeight);
 		div.appendChild(this.rangePiechartDiv);
 	}
 };
