@@ -58,8 +58,10 @@ function FuzzyTimelineRangeSlider(parent) {
 	controlsRow.append($("<td></td>").append(this.startAnimation).append(this.pauseAnimation));
 	
 	headerRow.append("<td>Dated Objects</td>");
-	this.numberDatedObjects = document.createElement("div");
-	controlsRow.append($("<td></td>").append(this.numberDatedObjects));
+	this.numberDatedObjects = 0;
+	this.numberDatedObjectsDIV = document.createElement("div");
+	$(this.numberDatedObjectsDIV).addClass("ddbElementsCount");
+	controlsRow.append($("<td></td>").append(this.numberDatedObjectsDIV));
 }
 
 FuzzyTimelineRangeSlider.prototype = {
@@ -74,13 +76,16 @@ FuzzyTimelineRangeSlider.prototype = {
 
 		//find smallest (most accurate) time-span
 		var smallestSpan;
+		rangeSlider.numberDatedObjects = 0;
 		$(this.datasets).each(function(){
 			$(this.objects).each(function(){
 				var dataObject = this;
 				var span;
 				if (dataObject.isTemporal){
+					rangeSlider.numberDatedObjects++;
 					smallestSpan = moment.duration(1,'milliseconds');
 				} else if (dataObject.isFuzzyTemporal){
+					rangeSlider.numberDatedObjects++;
 					span = moment.duration(dataObject.TimeSpanEnd-dataObject.TimeSpanBegin);
 					if ( (typeof smallestSpan === 'undefined') || (span < smallestSpan))
 						smallestSpan = span;
@@ -89,6 +94,9 @@ FuzzyTimelineRangeSlider.prototype = {
 			if ((typeof smallestSpan !== 'undefined') && (smallestSpan.asMilliseconds() === 1))
 				return false;
 		});
+		
+		//show number of objects that have a time in header
+		$(rangeSlider.numberDatedObjectsDIV).empty().append(rangeSlider.numberDatedObjects + " results");
 		
 		if (typeof smallestSpan === 'undefined')
 			return;
