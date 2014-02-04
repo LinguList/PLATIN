@@ -35,7 +35,7 @@ function FuzzyTimelineRangeBars(parent) {
 	
 	this.datasets;
 	//contains selected data
-	this.selected = [];
+	this.selected = undefined;
 	
 	this.datasetsPlot;
 	this.highlightedDatasetsPlot;
@@ -352,14 +352,16 @@ FuzzyTimelineRangeBars.prototype = {
 		}
 		var rangeBar = this;
 		var emptyHighlight = true;
-		var selected_highlighted = GeoTemConfig.mergeObjects(objects,rangeBar.selected);
+		var selected_highlighted = objects;
+		if (typeof rangeBar.selected !== "undefined")
+			var selected_highlighted = GeoTemConfig.mergeObjects(objects,rangeBar.selected);
 		$(selected_highlighted).each(function(){
 			if ((this instanceof Array) && (this.length > 0)){
 				emptyHighlight = false;
 				return false;
 			}
 		});
-		if (emptyHighlight){
+		if (emptyHighlight && (typeof rangeBar.selected === "undefined")){
 			rangeBar.highlightedDatasetsPlot = [];
 		} else {
 			rangeBar.highlightedDatasetsPlot = rangeBar.createPlot(selected_highlighted).plots;

@@ -40,7 +40,7 @@ function FuzzyTimelineDensity(parent,div) {
 	this.yValMax;
 	this.displayType;
 	//contains selected data
-	this.selected = [];
+	this.selected = undefined;
 	//contains the last selected "date"
 	this.highlighted;
 	
@@ -435,14 +435,16 @@ FuzzyTimelineDensity.prototype = {
 		}
 		var density = this;
 		var emptyHighlight = true;
-		var selected_highlighted = GeoTemConfig.mergeObjects(objects,density.selected);
+		var selected_highlighted = objects;
+		if (typeof density.selected !== "undefined")
+			selected_highlighted = GeoTemConfig.mergeObjects(objects,density.selected);
 		$(selected_highlighted).each(function(){
 			if ((this instanceof Array) && (this.length > 0)){
 				emptyHighlight = false;
 				return false;
 			}
 		});
-		if (emptyHighlight){
+		if (emptyHighlight && (typeof density.selected === "undefined")){
 			density.highlightedDatasetsPlot = [];
 		} else {
 			density.highlightedDatasetsPlot = density.createUDData(selected_highlighted).plots;

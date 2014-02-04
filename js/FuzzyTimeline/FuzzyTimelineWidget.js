@@ -31,7 +31,7 @@
 function FuzzyTimelineWidget(core, div, options) {
 
 	this.datasets;
-	this.selected = [];
+	this.selected = undefined;
 	this.overallMin;
 	this.overallMax;
 	
@@ -154,7 +154,10 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		fuzzyTimeline.selected = selection.objects;
+		if (selection.valid())
+			fuzzyTimeline.selected = selection.objects;
+		else 
+			delete fuzzyTimeline.selected;
 		if (fuzzyTimeline.viewMode === "density")
 			this.density.selectionChanged(fuzzyTimeline.selected);
 		else if (fuzzyTimeline.viewMode === "barchart")
