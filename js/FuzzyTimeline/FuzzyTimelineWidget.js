@@ -349,48 +349,79 @@ FuzzyTimelineWidget.prototype = {
 	
 	drawHandles : function(){
 		var fuzzyTimeline = this;
-		var y = fuzzyTimeline.gui.plotDiv.clientTop + fuzzyTimeline.gui.plotDiv.clientHeight / 3; 
 
 		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
 		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
+		$(fuzzyTimeline.gui.plotDiv).find(".plotHandleBox").remove();
+		
+		var plotHeight = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).height();
+		var plotWidth = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).width();
+		var plotOffset = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).getPlotOffset().left;
+		
 		$(fuzzyTimeline.handles).each(function(){
 			var handle = this;
-			var x1 = handle.x1;
-			var x2 = handle.x2;
+			
+			var moveLeftHandle = function(){
+				leftHandle.style.left = handle.x1-$(leftHandle).width() + "px";
+			};
+			
+			var moveRightHandle = function(){
+				rightHandle.style.left = handle.x2+ "px";
+			};
+			
+			var resizeHandleBox = function(){
+				handleBox.style.left = handle.x1+"px";
+				$(handleBox).width(handle.x2-handle.x1);
+			};
+			
+			var moveDragButton = function(){
+				dragButton.style.left = (handle.x1+handle.x2)/2 - $(dragButton).width()/2 + "px";
+			};
+			
 			var leftHandle = document.createElement("div");
 			leftHandle.title = GeoTemConfig.getString('leftHandle');
 			leftHandle.style.backgroundImage = "url(" + GeoTemConfig.path + "leftHandle.png" + ")";
 			leftHandle.setAttribute('class', 'plotHandle plotHandleIcon');
 			leftHandle.style.visibility = "visible";
 			$(fuzzyTimeline.gui.plotDiv).append(leftHandle);
-			leftHandle.style.left = (x1 - leftHandle.offsetWidth)+ "px";
-			leftHandle.style.top = y + "px";
+			moveLeftHandle();
+			leftHandle.style.top = plotHeight/2-$(leftHandle).height()/2 + "px";
 			
 			var rightHandle = document.createElement("div");
 			rightHandle.title = GeoTemConfig.getString('leftHandle');
 			rightHandle.style.backgroundImage = "url(" + GeoTemConfig.path + "rightHandle.png" + ")";
 			rightHandle.setAttribute('class', 'plotHandle plotHandleIcon');
 			rightHandle.style.visibility = "visible";
+			moveRightHandle();
 			$(fuzzyTimeline.gui.plotDiv).append(rightHandle);
-			rightHandle.style.left = (x2 - rightHandle.offsetWidth)+ "px";
-			rightHandle.style.top = y + "px";
 			
+			rightHandle.style.top = plotHeight/2-$(rightHandle).height()/2 + "px";
+			
+			var handleBox = document.createElement("div");
+			$(fuzzyTimeline.gui.plotDiv).append(handleBox);
+			$(handleBox).addClass("plotHandleBox");
+			resizeHandleBox();
+			$(handleBox).height(plotHeight);
+
 			var dragButton = document.createElement("div");
 			dragButton.title = GeoTemConfig.getString('dragTimeRange');
 			dragButton.style.backgroundImage = "url(" + GeoTemConfig.path + "drag.png" + ")";
 			dragButton.setAttribute('class', 'dragTimeRangeAlt plotHandleIcon');
 			$(fuzzyTimeline.gui.plotDiv).append(dragButton);
-			dragButton.style.left = (x1+x2)/2 - dragButton.offsetWidth/2 + "px";
-			dragButton.style.top = y + "px";
+			moveDragButton();
+			dragButton.style.top = plotHeight + "px";
 
 			$(leftHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
 					if ((x < handle.x2) &&
-						(x > fuzzyTimeline.gui.plotDiv.clientLeft) &&
-						(x < fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth) ){
-						leftHandle.style.left = (x - leftHandle.offsetWidth)+ "px";
-						handle.x1 = x;
+						(x >= plotOffset)){
+						x = x - leftHandle.offsetWidth;
+						handle.x1 = x + $(leftHandle).width();
+						
+						moveLeftHandle();
+						resizeHandleBox();
+						moveDragButton();
 					}
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
@@ -403,11 +434,14 @@ FuzzyTimelineWidget.prototype = {
 			$(rightHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					x = x - rightHandle.offsetWidth;
 					if ((x > handle.x1) &&
-						(x > fuzzyTimeline.gui.plotDiv.clientLeft) &&
-						(x < fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth) ){
-						rightHandle.style.left = (x - rightHandle.offsetWidth)+ "px";
+						(x <= plotOffset+plotWidth)){
 						handle.x2 = x;
+
+						moveRightHandle();
+						resizeHandleBox();
+						moveDragButton();
 					}
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
@@ -420,14 +454,14 @@ FuzzyTimelineWidget.prototype = {
 			$(dragButton).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
-					var xdiff = x - $(dragButton).offset().left - dragButton.offsetWidth/2;
-					var x1 = handle.x1+xdiff;
-					var x2 = handle.x2+xdiff;
-					dragButton.style.left = (x1+x2)/2 - dragButton.offsetWidth/2 + "px";
-					leftHandle.style.left = (x1 - leftHandle.offsetWidth)+ "px";
-					rightHandle.style.left = (x2 - rightHandle.offsetWidth)+ "px";
-					handle.x1 = x1;
-					handle.x2 = x2;
+					var xdiff = x - $(dragButton).offset().left - $(dragButton).width()/2;
+					handle.x1 = handle.x1+xdiff;
+					handle.x2 = handle.x2+xdiff;
+					
+					moveLeftHandle();
+					moveRightHandle();
+					resizeHandleBox();
+					moveDragButton();
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
 					fuzzyTimeline.selectByX(handle.x1,handle.x2);
@@ -442,6 +476,7 @@ FuzzyTimelineWidget.prototype = {
 		var fuzzyTimeline = this;
 		$(fuzzyTimeline.gui.plotDiv).find(".plotHandle").remove();
 		$(fuzzyTimeline.gui.plotDiv).find(".dragTimeRangeAlt").remove();
+		$(fuzzyTimeline.gui.plotDiv).find(".plotHandleBox").remove();
 		fuzzyTimeline.handles = [];
 		//disable buttons
 		$(fuzzyTimeline.rangeSlider.startAnimation).removeClass("playEnabled").addClass("playDisabled");
@@ -456,21 +491,35 @@ FuzzyTimelineWidget.prototype = {
 			$(fuzzyTimeline.handles).each(function(){
 				if (typeof steps === "undefined")
 					steps = 1;
+				
 				var handle = this;
 				var x1 = handle.x1;
 				var x2 = handle.x2;
-				var width = handle.width;
-				var plotMax = fuzzyTimeline.gui.plotDiv.clientLeft + fuzzyTimeline.gui.plotDiv.clientWidth;
+				
+				if (typeof handle.width === "undefined")
+					handle.width = x2-x1;
+				
+				var plotWidth = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).width();
+				var plotOffset = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).getPlotOffset().left;
+				
+				var plotMax = plotWidth+plotOffset;
+				
 				//TODO: has to be plotMin
-				if (!((x1 === 0)&&(x2-x1 <= width))){
+				if (!((x1 === plotOffset)&&(x2-x1 <= handle.width))){
 					x1 += steps;
 				}
-				if (x2 <= plotMax)
+				if (x2 <= plotMax){
 					x2 += steps;
+					if (x2 > plotMax)
+						x2 = plotMax;
+					if (x2-x1 > handle.width){
+						x1 = x2-handle.width;
+					}
+				}
 				if (x1 >= plotMax){
 					//TODO: has to be plotMin
-					x1 = 0;
-					x2 = 0;
+					x1 = plotOffset;
+					x2 = plotOffset;
 				}
 				
 				handle.x1 = x1;
@@ -489,5 +538,9 @@ FuzzyTimelineWidget.prototype = {
 	pauseAnimation : function(){
 		var fuzzyTimeline = this;
 		clearInterval(fuzzyTimeline.loopId);
+		$(fuzzyTimeline.handles).each(function(){
+			var handle = this;
+			delete handle.width;
+		});
 	},
 };

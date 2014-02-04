@@ -174,6 +174,17 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
 .plotHandleIcon {
     height: 43px;
     width: 14px;
+    margin: 0;
+    padding: 0;
+}
+
+.plotHandleBox {
+	position: absolute;
+	background-color: #e8cfac;
+	filter: alpha(opacity=50);
+	opacity: 0.5;
+	margin: 0;
+	padding: 0;	
 }
 
 .plotToolbar {

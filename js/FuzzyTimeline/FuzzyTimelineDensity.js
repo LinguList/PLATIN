@@ -311,8 +311,9 @@ FuzzyTimelineDensity.prototype = {
 
 	    	density.parent.clearHandles();
 	    	var xaxis = density.plot.getAxes().xaxis;
-	    	var x1 = xaxis.p2c(ranges.xaxis.from) + density.plot.offset().left;
-	    	var x2 = xaxis.p2c(ranges.xaxis.to) + density.plot.offset().left;
+	    	var x1 = density.plot.pointOffset({x:ranges.xaxis.from,y:0}).left;
+	    	var x2 = density.plot.pointOffset({x:ranges.xaxis.to,y:0}).left;
+	    	
 	    	density.parent.addHandle(x1,x2);
     	}
     },
@@ -320,8 +321,9 @@ FuzzyTimelineDensity.prototype = {
 	selectByX : function(x1, x2){
 		density = this;
 		var xaxis = density.plot.getAxes().xaxis;
-    	var from = xaxis.c2p(x1-density.plot.offset().left);
-    	var to = xaxis.c2p(x2-density.plot.offset().left);
+		var offset = density.plot.getPlotOffset().left;
+    	var from = xaxis.c2p(x1-offset);
+    	var to = xaxis.c2p(x2-offset);
 
     	var spanArray = density.parent.getSpanArray(density.singleTickWidth);
     	var startSpan, endSpan;

@@ -294,16 +294,17 @@ FuzzyTimelineRangeBars.prototype = {
     	
     	rangeBar.parent.clearHandles();
     	var xaxis = rangeBar.plot.getAxes().xaxis;
-    	var x1 = xaxis.p2c(ranges.xaxis.from) + rangeBar.plot.offset().left;
-    	var x2 = xaxis.p2c(ranges.xaxis.to) + rangeBar.plot.offset().left;
+    	var x1 = rangeBar.plot.pointOffset({x:ranges.xaxis.from,y:0}).left;
+    	var x2 = rangeBar.plot.pointOffset({x:ranges.xaxis.to,y:0}).left;
     	rangeBar.parent.addHandle(x1,x2);
     },
     
 	selectByX : function(x1, x2){
 		rangeBar = this;
 		var xaxis = rangeBar.plot.getAxes().xaxis;
-    	var from = Math.floor(xaxis.c2p(x1-rangeBar.plot.offset().left));
-    	var to = Math.floor(xaxis.c2p(x2-rangeBar.plot.offset().left));
+		var offset = rangeBar.plot.getPlotOffset().left;
+    	var from = Math.floor(xaxis.c2p(x1-offset));
+    	var to = Math.floor(xaxis.c2p(x2-offset));
     	
 		rangeBar.triggerSelection(from, to);
 	},	
