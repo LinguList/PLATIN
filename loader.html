@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html height="100%">
 
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -23,7 +23,7 @@
 	<script src="js/Build/Loader/Loader.js"></script>
   </head>
 
-  <body>
+  <body height="100%">
 
     <noscript>
       <div style="width: 22em; position: absolute; left: 50%; margin-left: -11em; color: red; background-color: white; border: 1px solid red; padding: 4px; font-family: sans-serif">
@@ -31,13 +31,39 @@
       </div>
     </noscript>
 
-	<fieldset id="dataloaderContainerDiv" style="position:relative;">
-		<legend>Load Data</legend>
-	</fieldset>
-	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
-		<legend>Load Overlay</legend>
-	</fieldset>
 	<table width=100%>
+		<tr height='101px'>
+			<td colspan=2 width=100% style='min-height:101px'>
+				<div width=100% height=100% style='position:relative'>
+					<span style='height:101px; float:left;'>
+						<img src='images/topoi.png' />
+						<div style='min-height:101px; display:inline;'>
+							<font size='+3'>PLATIN</font>
+							PLace And TIme Navigator
+						</div>
+						<img src='images/mpiwg.gif'/>
+					</span>
+					<span style='float:right'>
+						ursprünglich gefördert von
+						<img src='images/dariah.png'/>
+					</span>
+				</div>
+			</td>
+		</tr>
+		<tr >
+			<td width=100%>
+				<fieldset id="dataloaderContainerDiv" style="position:relative;">
+					<legend>Load Data</legend>
+				</fieldset>
+			</td>
+		</tr>
+		<tr>
+			<td width=100%>
+				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+					<legend>Load Overlay</legend>
+				</fieldset>
+			</td>
+		</tr>
 		<tr>
 			<td width=100%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
@@ -57,7 +83,7 @@
 		});
 		var timeDiv = document.getElementById("plotContainerDiv");
 		var time = new WidgetWrapper();
-		var timeWidget = new TimeWidget(time,timeDiv,{
+		var timeWidget = new FuzzyTimelineWidget(time,timeDiv,{
 			timeTitle: "Publication Date"
 		});
 		var tableDiv = document.getElementById("tableContainerDiv");
