@@ -44,11 +44,18 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	$(this.sliderTable).width("100%");
 	$(this.sliderTable).height("49px");
 	div.appendChild(this.sliderTable);
+	
+	this.plotDIVHeight = $(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height();
+	var plotScrollContainer = $("<div></div>");
+	plotScrollContainer.css("overflow-x","auto");
+	plotScrollContainer.css("overflow-y","hidden");
+	plotScrollContainer.width("100%");
+	plotScrollContainer.height(this.plotDIVHeight);
+	$(div).append(plotScrollContainer);
 	this.plotDiv = document.createElement("div");
 	$(this.plotDiv).width("100%");
-	var plotDIVHeight = $(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height();
-	$(this.plotDiv).height(plotDIVHeight);
-	div.appendChild(this.plotDiv);
+	$(this.plotDiv).height(this.plotDIVHeight);
+	plotScrollContainer.append(this.plotDiv);
 	if (this.parent.options.showRangePiechart){
 		this.rangePiechartDiv = document.createElement("div");
 		$(this.rangePiechartDiv).css("float","right");

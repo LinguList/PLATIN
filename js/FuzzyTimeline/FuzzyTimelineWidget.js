@@ -196,6 +196,10 @@ FuzzyTimelineWidget.prototype = {
 		return this.buildSpanArray(spanWidth);
 	},
 	
+	clearSpanArray : function(){
+		this.spanHash = [];
+	},
+	
 	getTicks : function(dataObject, spanWidth) {
 		var datemin,datemax;
 		if (dataObject.isTemporal){
@@ -546,4 +550,17 @@ FuzzyTimelineWidget.prototype = {
 			delete handle.width;
 		});
 	},
+	
+	//This function enlargens the plot area
+	zoomPlot : function(zoomFactor){
+		var fuzzyTimeline = this;
+		if (zoomFactor > 1){
+			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
+			//leave place for the scrollbar
+			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
+		} else{
+			$(fuzzyTimeline.gui.plotDiv).width("100%");
+			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
+		}
+	}
 };

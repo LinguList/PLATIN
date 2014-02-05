@@ -317,11 +317,10 @@ FuzzyTimelineRangeBars.prototype = {
 		var tickCount = rangeBar.tickSpans.length-1;
 		
 		if (tickCount > rangeBar.options.maxBars){
-			tickCount = rangeBar.options.maxBars;
-			rangeBar.spanWidth = (rangeBar.parent.overallMax-rangeBar.parent.overallMin)/tickCount;
-			rangeBar.tickSpans = rangeBar.parent.getSpanArray(rangeBar.spanWidth);
-			tickCount = rangeBar.tickSpans.length-1;
-		}
+			var zoomFactor = tickCount / rangeBar.options.maxBars;
+			rangeBar.parent.zoomPlot(zoomFactor);
+		} else
+			rangeBar.parent.zoomPlot(1);
 		
 		rangeBar.yValMin = 0;
 		rangeBar.yValMax = 0;

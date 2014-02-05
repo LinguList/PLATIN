@@ -39,6 +39,7 @@ function FuzzyTimelineConfig(options) {
 			showRangePiechart : false,
 			backgroundColor : "#EEEEEE",
 			showYAxis : true,
+			showAllPossibleSpans : false,
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
