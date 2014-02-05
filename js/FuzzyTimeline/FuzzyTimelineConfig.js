@@ -38,7 +38,7 @@ function FuzzyTimelineConfig(options) {
 			timelineMode : 'stacking',
 			showRangePiechart : false,
 			backgroundColor : "#EEEEEE",
-			showYAxis : false,
+			showYAxis : true,
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
