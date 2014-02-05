@@ -28,7 +28,7 @@
  */
 function FuzzyTimelineRangeSlider(parent) {
 
-	this.rangeSlider = this;
+	var rangeSlider = this;
 	
 	this.parent = parent;
 	this.options = parent.options;
