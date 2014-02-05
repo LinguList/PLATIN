@@ -81,6 +81,17 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.time.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.tooltip.js'
+			}],GeoTemCoLoader.loadMomentJS);
+		}
+		else {
+			GeoTemCoLoader.loadMomentJS();
+		}
+	},
+	
+	loadMomentJS : function() {
+		if (typeof moment == 'undefined') {
+			(new DynaJsLoader()).loadScripts([{
+				url : GeoTemCoLoader.urlPrefix + 'lib/momentjs/moment.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
@@ -255,6 +266,20 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineDensity.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangeSlider.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangePiechart.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangeBars.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingConfig.js',
 		}, {
