@@ -81,6 +81,10 @@ Dataloader.prototype = {
 		GeoTemConfig.addDataset(dataSet);
 	},
 	
+	distributeDatasets : function(datasets) {
+		GeoTemConfig.addDatasets(datasets);
+	},
+	
 	addStaticLoader : function() {
 		if (this.options.staticKML.length > 0){
 			$(this.parent.gui.loaderTypeSelect).append("<option value='StaticLoader'>Static Data</option>");

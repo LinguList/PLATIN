@@ -142,18 +142,57 @@ GeoTemConfig.applySettings = function(settings) {
 	$.extend(this, settings);
 };
 
+//Keeps track of how many colors where assigned yet.
+GeoTemConfig.assignedColorCount = 0;
 GeoTemConfig.getColor = function(id){
-	if( GeoTemConfig.colors.length <= id ){
-		GeoTemConfig.colors.push({
-			r1 : Math.floor((Math.random()*255)+1),
-			g1 : Math.floor((Math.random()*255)+1),
-			b1 : Math.floor((Math.random()*255)+1),
-			r0 : 230,
-			g0 : 230,
-			b0 : 230
-		});
+	if (typeof GeoTemConfig.datasets[id].color === "undefined"){
+		var color;
+		
+		while (true){
+			if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+				color = {
+					r1 : Math.floor((Math.random()*255)+1),
+					g1 : Math.floor((Math.random()*255)+1),
+					b1 : Math.floor((Math.random()*255)+1),
+					r0 : 230,
+					g0 : 230,
+					b0 : 230
+				};
+			} else
+				color = GeoTemConfig.colors[GeoTemConfig.assignedColorCount];
+			
+			//make sure that no other dataset has this color
+			//TODO: one could also check that they are not too much alike
+			var found = false;
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++){
+				var dataset = GeoTemConfig.datasets[i];
+				
+				if (typeof dataset.color === "undefined")
+					continue;
+
+				if (	(dataset.color.r1 == color.r1) && 
+						(dataset.color.g1 == color.g1) &&
+						(dataset.color.b1 == color.b1) ){
+					found = true;
+					break;
+				}
+			}
+			if (found === true){
+				if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+					//next time skip over this color
+					GeoTemConfig.assignedColorCount++;
+				}
+				continue;
+			} else {
+				GeoTemConfig.colors.push(color);
+				break;
+			}
+		}
+		GeoTemConfig.datasets[id].color = color;
+
+		GeoTemConfig.assignedColorCount++;
 	}
-	return GeoTemConfig.colors[id];
+	return GeoTemConfig.datasets[id].color;
 };
 
 GeoTemConfig.getAverageDatasetColor = function(id, objects){
@@ -271,6 +310,13 @@ GeoTemConfig.datasets = [];
 
 GeoTemConfig.addDataset = function(newDataset){
 	GeoTemConfig.datasets.push(newDataset);
+	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+};
+
+GeoTemConfig.addDatasets = function(newDatasets){
+	$(newDatasets).each(function(){
+		GeoTemConfig.datasets.push(this);
+	});	
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
 };
 
