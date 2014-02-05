@@ -39,7 +39,10 @@ function FuzzyTimelineConfig(options) {
 			showRangePiechart : false,
 			backgroundColor : "#EEEEEE",
 			showYAxis : true,
-			showAllPossibleSpans : false,
+			//whether time-spans that "enlargen" the plot are allowed
+			//if set to true, a span that creates more "bars" than fit on the screen
+			//will lead to a width-increase of the chart (and a scroll bar appears)
+			showAllPossibleSpans : true,
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

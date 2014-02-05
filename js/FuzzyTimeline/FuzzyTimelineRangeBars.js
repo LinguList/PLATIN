@@ -188,7 +188,7 @@ FuzzyTimelineRangeBars.prototype = {
 		    			var fromLabel = rangeBar.tickSpans[xval].format(axisFormatString);
 		    			while ((fromLabel.length > 1) && (fromLabel.indexOf("0")==0))
 		    				fromLabel = fromLabel.substring(1);
-		    			var toLabel = rangeBar.tickSpans[xval+1].format(axisFormatString);
+		    			var toLabel = rangeBar.tickSpans[xval+1].clone().subtract("ms",1).format(axisFormatString);
 		    			while ((toLabel.length > 1) && (toLabel.indexOf("0")==0))
 		    				toLabel = toLabel.substring(1);
 		            	highlightString =	fromLabel + " - " + toLabel + " : ";
