@@ -154,9 +154,13 @@ FuzzyTimelineRangeBars.prototype = {
 		} else if (rangeBar.spanWidth<12*31*24*60*60*1000){
 			axisFormatString = "YYYY/MM";
 		}
-		
+		//only show ~10 labels on the x-Axis (increase if zoomed)
+		var labelModulo = Math.ceil(tickCount/(10*rangeBar.parent.zoomFactor));
 		for (var i = 0; i < tickCount; i++){
-			var tickLabel = rangeBar.tickSpans[i].format(axisFormatString);
+			var tickLabel = "";
+			if (i%labelModulo==0){
+				tickLabel = rangeBar.tickSpans[i].format(axisFormatString);
+			}
 			while ((tickLabel.length > 1) && (tickLabel.indexOf("0")==0))
 				tickLabel = tickLabel.substring(1);
 			ticks[i] = [i,tickLabel];

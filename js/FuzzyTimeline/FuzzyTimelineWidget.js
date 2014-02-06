@@ -49,6 +49,7 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.spanHash = [];
 	
 	this.handles = [];
+	this.zoomFactor = 1;
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -554,6 +555,7 @@ FuzzyTimelineWidget.prototype = {
 	//This function enlargens the plot area
 	zoomPlot : function(zoomFactor){
 		var fuzzyTimeline = this;
+		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
 			//leave place for the scrollbar
