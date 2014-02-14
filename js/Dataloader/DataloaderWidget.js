@@ -90,18 +90,16 @@ DataloaderWidget.prototype = {
 			if (typeof dataLoaderWidget.options.proxy != 'undefined')
 				paramValue = dataLoaderWidget.options.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
-				GeoTemConfig.getKml(paramValue,function(kmlDoc){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-					if (dataSet != null)
-						datasets.push(dataSet);									
-				});
+				var kmlDoc = GeoTemConfig.getKml(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
+				if (dataSet != null)
+					datasets.push(dataSet);									
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
-				GeoTemConfig.getCsv(paramValue,function(json){
-					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-					if (dataSet != null)
-						datasets.push(dataSet);			
-				});
+				var json = GeoTemConfig.getCsv(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null)
+					datasets.push(dataSet);			
 			}
 			else if (paramName.toLowerCase().startsWith("local")){
 				var csv = $.remember({name:encodeURIComponent(origURL)});
