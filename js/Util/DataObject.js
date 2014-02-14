@@ -202,6 +202,38 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 					this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
 				}
 				
+				if (timeSpanBeginGranularity === 0){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanBeginGranularity === 1){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanBeginGranularity === 2){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanBeginGranularity === 3){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanBeginGranularity === 4){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanBeginGranularity === 5){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanBeginGranularity === 6){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
+				if (timeSpanEndGranularity === 0){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanEndGranularity === 1){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanEndGranularity === 2){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanEndGranularity === 3){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanEndGranularity === 4){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanEndGranularity === 5){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanEndGranularity === 6){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
 				if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 1000)
 					this.TimeSpanGranularity = SimileAjax.DateTime.MILLENNIUM;
 				else if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 100)
@@ -231,6 +263,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 			}
 		}
 	}
+
 	
 	this.getDate = function(dateId) {
 		return this.dates[dateId].date;
