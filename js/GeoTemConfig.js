@@ -505,16 +505,18 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
 	//is not supported in jQuery native $.get
     var req = new XMLHttpRequest();
     req.open("GET",url,async);
-    req.responseType = "text";
+    //can only be set on asynchronous now
+    //req.responseType = "text";
+    var json;
     req.onload = function() {
-    	var json = GeoTemConfig.convertCsv(req.response);
+    	json = GeoTemConfig.convertCsv(req.response);
     	if( asyncFunc )
     		asyncFunc(json);
     };
 	req.send();
 	
 	if( !async ){
-		return kmlDom;
+		return json;
 	}
 };
 
