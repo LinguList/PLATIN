@@ -572,6 +572,7 @@ FuzzyTimelineWidget.prototype = {
 	//This function enlargens the plot area
 	zoomPlot : function(zoomFactor){
 		var fuzzyTimeline = this;
+		var oldZoomFactor = fuzzyTimeline.zoomFactor; 
 		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
@@ -581,5 +582,14 @@ FuzzyTimelineWidget.prototype = {
 			$(fuzzyTimeline.gui.plotDiv).width("100%");
 			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
 		}
+		
+		//fit handles
+		//this does not make much sense, as the selections are _completely_ different
+		//for each scale rate, as the objects may reside in different "ticks" of the graph
+		$(fuzzyTimeline.handles).each(function(){
+			var handle = this;
+			handle.x1 = handle.x1 * (zoomFactor/oldZoomFactor);
+			handle.x2 = handle.x2 * (zoomFactor/oldZoomFactor);
+		});
 	}
 };
