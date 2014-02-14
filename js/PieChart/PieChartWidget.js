@@ -42,6 +42,54 @@ function PieChartWidget(core, div, options) {
 }
 
 PieChartWidget.prototype = {
+		
+	addCategorizedPieChart : function(watchedDataset, watchedColumn, type, categories){
+		var selectionFunction;
+		if (type === "text"){
+			//create selection function for the pie chart
+			var selectionFunction = function(columnData){
+				var categoryLabel;
+				$(categories).each(function(){
+					if ($.inArray(columnData,this.values) != -1){
+						categoryLabel = this.label;
+						//exit .each
+						return false;
+					}
+					if (typeof categoryLabel !== "undefined")
+						return false;
+				});
+				
+				if (typeof categoryLabel === "undefined")
+					categoryLabel = "unknown";
+
+				return categoryLabel;
+			};
+		} else if (type === "numeral"){
+			//create selection function for the pie chart
+			var selectionFunction = function(columnData){
+				var categoryLabel;
+				var columnDataNumeric = parseFloat(columnData);
+				for (var i = 0; i < categories.length; i++){
+					if (columnDataNumeric<=categories[i]){
+						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categories[i];
+						break;
+					}						
+				}
+				
+				if (typeof categoryLabel === "undefined")
+					categoryLabel = "unknown";
+
+				return categoryLabel;
+			};			
+		} else
+			return;
+
+		//make categories easy accessible for later usage
+		selectionFunction.type = type;
+		selectionFunction.categories = categories;
+		
+		this.addPieChart(watchedDataset, watchedColumn, selectionFunction);
+	},
 	
 	addPieChart : function(watchedDataset, watchedColumn, selectionFunction){
 		var newPieChart = new PieChart(this, watchedDataset, watchedColumn, selectionFunction);
@@ -53,8 +101,12 @@ PieChartWidget.prototype = {
 	},
 
 	initWidget : function(data) {
+		var piechart = this;
 		this.datasets = data;
-		this.selected = this.datasets; 
+		piechart.selected = [];
+		$(this.datasets).each(function(){
+			piechart.selected.push(this.objects);
+		})
 		
 		this.gui.refreshColumnSelector();
 		

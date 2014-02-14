@@ -1,5 +1,5 @@
 /*
-* OverlayloaderConfig.js
+* StorytellingConfig.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,17 +20,16 @@
 */
 
 /**
- * @class OverlayloaderConfig
- * Overlayloader Configuration File
+ * @class StorytellingConfig
+ * Storytelling Configuration File
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  */
-function OverlayloaderConfig(options) {
+function StorytellingConfig(options) {
 
 	this.options = {
-			wms_overlays : [
-							//e.g. {name:'name', server:'url', layer:'layer'},
-			],
-			proxy : 'php/proxy.php?address='
+			proxy : 'php/proxy.php?address=',
+			dariahStorage : false,
+			localStorage : true
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

@@ -70,7 +70,8 @@ TableWidget.prototype = {
 			var tableTabTableRow = document.createElement('tr');
 			$(tableTabTable).append(tableTabTableRow);
 			tableTab.setAttribute('class', 'tableTab');
-			tableTab.style.backgroundColor = tableWidget.options.unselectedCellColor;
+			var c = GeoTemConfig.getColor(index);
+			tableTab.style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
 			tableTab.onclick = function() {
 				tableWidget.selectTable(index);
 			}
@@ -159,12 +160,13 @@ TableWidget.prototype = {
 		if (this.activeTable != index) {
 			if ( typeof this.activeTable != 'undefined') {
 				this.tables[this.activeTable].hide();
-				this.tableTabs[this.activeTable].style.backgroundColor = this.options.unselectedCellColor;
+				var c = GeoTemConfig.getColor(this.activeTable);
+				this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
 			}
 			this.activeTable = index;
 			this.tables[this.activeTable].show();
 			var c = GeoTemConfig.getColor(this.activeTable);
-			this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r0 + ',' + c.g0 + ',' + c.b0 + ')';
+			this.tableTabs[this.activeTable].style.backgroundColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
 			this.core.triggerRise(index);
 		}
 

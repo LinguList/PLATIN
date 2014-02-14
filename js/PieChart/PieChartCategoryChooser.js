@@ -30,7 +30,7 @@
  * @param {String} columnName name of the column
  */
 
-function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName) {
+function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName, type, categories) {
 
 	var pieChartCategoryChooser = this;
 	
@@ -38,6 +38,7 @@ function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName) {
 	this.options = options;
 	this.datasetIndex = parseInt(datasetIndex);
 	this.columnName = columnName;
+	this.chartData;
 		
 	this.dialog = $("<div></div>");
 	this.dialog.html("").dialog({modal: true}).dialog('open');
@@ -45,7 +46,15 @@ function PieChartCategoryChooser(pieChart, options, datasetIndex, columnName) {
 	//to asure that the dialog is above (z-index of) the toolbars
 	$(".ui-front").css("z-index","10001");
 	
-	this.loadValues(datasetIndex, columnName);	
+	var allNumeric = this.loadValues(datasetIndex, columnName);	
+
+	if (typeof allNumeric === "undefined")
+		return;
+	if (allNumeric === true){
+		this.createNumeralBasedChooser(this.chartData, categories);			
+	} else {
+		this.createTextBasedChooser(this.chartData, categories);
+	}
 };
 
 PieChartCategoryChooser.prototype = {
@@ -54,7 +63,8 @@ PieChartCategoryChooser.prototype = {
 		var pieChartCategoryChooser = this;
 		
 		var allNumeric = true;
-		var chartData = [];
+		pieChartCategoryChooser.chartData = [];
+		var chartData = pieChartCategoryChooser.chartData; 
 		$(GeoTemConfig.datasets[datasetIndex].objects).each(function(){
 			var columnData = 
 				pieChartCategoryChooser.parent.getElementData(this, columnName);
@@ -68,26 +78,67 @@ PieChartCategoryChooser.prototype = {
 		
 		if (chartData.length === 0)
 			return;
-		
-		if (allNumeric === true){
-			this.createNumeralBasedChooser(chartData);			
-		} else {
-			this.createTextBasedChooser(chartData);
-		}
+		else
+			return allNumeric; 
 	},
 	
-	createTextBasedChooser : function(chartData){
+	createTextBasedChooser : function(chartData, categories){
 		var pieChartCategoryChooser = this;
+		
+		var addCategory = function(name,elements){
+			var newCategoryContainer = document.createElement("fieldset");
+			var newCategoryLegend = document.createElement("legend");
+			var newCategoryName = document.createElement("input");
+			$(newCategoryName).width("80%");
+			newCategoryName.type = "text";
+			newCategoryName.value = name;
+			var newCategoryRemove = document.createElement("button");
+			$(newCategoryRemove).text("X");
+			$(newCategoryRemove).click(function(){
+				$(newCategoryContainer).find("li").each(function(){
+					//move all elements to unselected list
+					//("unselected" is defined below)
+					//prepend so the items appear on top
+					$(this).prependTo(unselected);
+				});				
+				//and remove this category
+				$(newCategoryContainer).remove();
+			});
+			$(newCategoryLegend).append(newCategoryName);
+			$(newCategoryLegend).append(newCategoryRemove);
+			$(newCategoryContainer).append(newCategoryLegend);
+			$(newCategoryContainer).width("200px");
+			$(newCategoryContainer).css("float","left");
+			var newCategory = document.createElement("ul");
+			$(newCategory).addClass("connectedSortable");
+			$(newCategory).css("background", "#eee");
+			newCategoryContainer.appendChild(newCategory);
+			$(newCategory).append("<br/>");
+			cell.appendChild(newCategoryContainer);
+			//if there are pre-selected elements (e.g. "edit")
+			//add them and remove them from unselected value list
+			if (typeof elements !== "undefined"){
+				$(elements).each(function(){
+					var value = this;
+					//add to category
+					$(newCategory).append("<li>"+value+"</li>");
+					//remove from unselected list 
+					$(unselected).find("li").filter(function(){
+						return ($(this).text() === ""+value);
+					}).remove();
+				});
+			}
+
+			$( ".connectedSortable" ).sortable({
+				connectWith: ".connectedSortable" 
+			}).disableSelection();
+		};
 		
 		var table = document.createElement("table");
 		var row = document.createElement("tr");
 		table.appendChild(row);
 		var cell = document.createElement("td");
 		row.appendChild(cell);
-		var addCategoryName = document.createElement("input");
-		addCategoryName.type = "text";
-		addCategoryName.value = "category name";
-		cell.appendChild(addCategoryName);
 		cell = document.createElement("td");
 		row.appendChild(cell);
 		var addCategoryButton = document.createElement("button");
@@ -119,27 +170,19 @@ PieChartCategoryChooser.prototype = {
 			$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
 		});
 		
-		$(addCategoryButton).click(function(){
-			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend>"+$(addCategoryName).val()+"</legend>");
-			$(newCategoryContainer).width("188px");
-			$(newCategoryContainer).css("float","left");
-			var newCategory = document.createElement("ul");
-			$(newCategory).addClass("connectedSortable");
-			$(newCategory).css("background", "#eee");
-			newCategoryContainer.appendChild(newCategory);
-			$(newCategory).append("<br/>");
-			cell.appendChild(newCategoryContainer);		
-
-			$( ".connectedSortable" ).sortable({
-				connectWith: ".connectedSortable" 
-			}).disableSelection();
-		});
+		if (typeof categories !== "undefined"){
+			$(categories).each(function(){
+				var category = this;
+				addCategory(category.label, category.values);
+			});
+		}
+		
+		$(addCategoryButton).click(function(){addCategory();});
 		
 		$(applyCategoryButton).click(function(){
 			var categories = [];
 			$(cell).children().each(function(){
-				var label = $(this).find("legend").text();
+				var label = $(this).find("legend > input").val();
 				var values = [];
 				$(this).find("li").each(function(){
 					values.push($(this).text());
@@ -155,28 +198,10 @@ PieChartCategoryChooser.prototype = {
 			
 			categories.push({label:"other",values:values});
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				$(categories).each(function(){
-					if ($.inArray(columnData,this.values) != -1){
-						categoryLabel = this.label;
-						//exit .each
-						return false;
-					}
-					if (typeof categoryLabel !== "undefined")
-						return false;
-				});
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, 
+					"text", categories);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");
@@ -191,7 +216,7 @@ PieChartCategoryChooser.prototype = {
 	    $(this.dialog).dialog("option", "height", dHeight);
 	},
 	
-	createNumeralBasedChooser : function(chartData){
+	createNumeralBasedChooser : function(chartData, existingCategories){
 		var numericChartData = [];
 		for (var i = 0; i < chartData.length; i++){
 			numericChartData.push(parseFloat(chartData[i]));
@@ -252,7 +277,7 @@ PieChartCategoryChooser.prototype = {
 			$(unselected).append("<li class='ui-state-default'>"+this+"</li>");
 		});
 		
-		$(addCategoryButton).click(function(){
+		var addCategory = function(boundary){
 			//check if another handle can be added
 			if ((handles.length>0) && (handles[handles.length-1] === max))
 				return false;
@@ -260,7 +285,9 @@ PieChartCategoryChooser.prototype = {
 			if (handles.length>0)
 				$(slider).slider("destroy");
 
-			handles.push(max);
+			if (typeof boundary === "undefined")
+				boundary = max;
+			handles.push(boundary);
 			
 			$(slider).slider({
 				min:min,
@@ -303,7 +330,7 @@ PieChartCategoryChooser.prototype = {
 			});
 
 			var newCategoryContainer = document.createElement("fieldset");
-			$(newCategoryContainer).append("<legend><="+max+"</legend>");
+			$(newCategoryContainer).append("<legend><="+boundary+"</legend>");
 			$(newCategoryContainer).width("188px");
 			$(newCategoryContainer).css("float","left");
 			var newCategory = document.createElement("ul");
@@ -314,31 +341,24 @@ PieChartCategoryChooser.prototype = {
 			categories.push(newCategory);
 			
 			placeValues();
-		});
+		};
 		
+		$(addCategoryButton).click(function(){addCategory();});
+
+		if (typeof existingCategories !== "undefined"){
+			$(existingCategories).each(function(){
+				var boundary = this;
+				addCategory(boundary);
+			});
+		}
+
 		$(applyCategoryButton).click(function(){
 			var categorieBoundaries = handles;
 			
-			//create selection function for the pie chart
-			var selectionFunction = function(columnData){
-				var categoryLabel;
-				var columnDataNumeric = parseFloat(columnData);
-				for (var i = 0; i < categorieBoundaries.length; i++){
-					if (columnDataNumeric<=categorieBoundaries[i]){
-						categoryLabel = pieChartCategoryChooser.columnName + "<=" + categorieBoundaries[i];
-						break;
-					}						
-				}
-				
-				if (typeof categoryLabel === "undefined")
-					categoryLabel = "unknown";
-
-				return categoryLabel;
-			};
-			
 			//create pie chart
-			pieChartCategoryChooser.parent.addPieChart(
-					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName, selectionFunction);
+			pieChartCategoryChooser.parent.addCategorizedPieChart(
+					pieChartCategoryChooser.datasetIndex, pieChartCategoryChooser.columnName,
+					"numeral", categorieBoundaries);
 		
 			//close dialog
 			$(pieChartCategoryChooser.dialog).dialog("close");

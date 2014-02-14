@@ -65,6 +65,7 @@ Table.prototype = {
 		if (table.options.tableSelectPage) {
 			var selectPageItems = true;
 			this.selectPage = document.createElement('div');
+			$(this.selectPage).css("float","left");
 			this.selectPage.setAttribute('class', 'smallButton selectPage');
 			this.selectPage.title = GeoTemConfig.getString('selectTablePageItemsHelp');
 			selectors.appendChild(this.selectPage);
@@ -102,6 +103,7 @@ Table.prototype = {
 			var selectAllItems = true;
 			this.selectAll = document.createElement('div');
 			this.selectAll.setAttribute('class', 'smallButton selectAll');
+			$(this.selectAll).css("float","left");
 			table.selectAll.title = GeoTemConfig.getString('selectAllTableItemsHelp');
 			selectors.appendChild(this.selectAll);
 			this.selectAll.onclick = function() {
@@ -127,6 +129,7 @@ Table.prototype = {
 		if (table.options.tableInvertSelection) {
 			this.invertSelection = document.createElement('div');
 			this.invertSelection.setAttribute('class', 'smallButton invertSelection');
+			$(this.invertSelection).css("float","left");
 			table.invertSelection.title = GeoTemConfig.getString('invertSelectionHelp');
 			selectors.appendChild(this.invertSelection);
 			this.invertSelection.onclick = function() {
@@ -145,6 +148,7 @@ Table.prototype = {
 		if (table.options.tableShowSelected) {
 			this.showSelected = document.createElement('div');
 			this.showSelected.setAttribute('class', 'smallButton showSelected');
+			$(this.showSelected).css("float","left");
 			table.showSelected.title = GeoTemConfig.getString('showSelectedHelp');
 			selectors.appendChild(this.showSelected);
 			this.showSelected.onclick = function() {
@@ -170,6 +174,7 @@ Table.prototype = {
 		
 		if (table.options.tableSelectByText) {
 			this.selectByTextDiv = document.createElement('div');
+			$(this.selectByTextDiv).css("float","left");
 			$(this.selectByTextDiv).css("vertical-align", "top");
 			//TODO: improve appearance (wrong margin)
 			$(this.selectByTextDiv).css("display", "inline-block");
@@ -193,9 +198,8 @@ Table.prototype = {
 		
 		if (table.options.tableCreateNewFromSelected) {
 			this.createNewFromSelected = document.createElement('div');
-			//TODO: add real image
 			this.createNewFromSelected.setAttribute('class', 'smallButton createNewRefined');
-			//TODO: add help
+			$(this.createNewFromSelected).css("float","left");
 			this.createNewFromSelected.title = GeoTemConfig.getString('createNewFromSelectedHelp');
 			selectors.appendChild(this.createNewFromSelected);
 			this.createNewFromSelected.onclick = function() {
@@ -224,12 +228,39 @@ Table.prototype = {
 		navigation.appendChild(results);
 
 		var pagination = document.createElement("td");
+		$(pagination).css('float', 'right');
 		navigation.appendChild(pagination);
 
 		this.resultsInfo = document.createElement('div');
 		this.resultsInfo.setAttribute('class', 'resultsInfo');
 		results.appendChild(this.resultsInfo);
 
+		this.resultsDropdown = document.createElement('div');
+		this.resultsDropdown.setAttribute('class', 'resultsDropdown');
+		pagination.appendChild(this.resultsDropdown);
+		var itemNumbers = [];
+		var addItemNumber = function(count, index) {
+			var setItemNumber = function() {
+				table.updateIndices(count);
+				table.update();
+			}
+			itemNumbers.push({
+				name : count,
+				onclick : setItemNumber
+			});
+		}
+		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
+			addItemNumber(table.options.validResultsPerPage[i], i);
+		}
+		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, GeoTemConfig.getString('paginationDropdownHelp'));
+		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
+			if (table.options.initialResultsPerPage == table.options.validResultsPerPage[i]) {
+				dropdown.setEntry(i);
+				break;
+			}
+		}
+		dropdown.div.title = GeoTemConfig.getString('paginationDropdownHelp');
+		
 		this.firstPage = document.createElement('div');
 		this.firstPage.setAttribute('class', 'paginationButton');
 		this.firstPage.title = GeoTemConfig.getString('paginationFirsPageHelp');
@@ -279,32 +310,6 @@ Table.prototype = {
 			}
 		}
 
-		this.resultsDropdown = document.createElement('div');
-		this.resultsDropdown.setAttribute('class', 'resultsDropdown');
-		pagination.appendChild(this.resultsDropdown);
-		var itemNumbers = [];
-		var addItemNumber = function(count, index) {
-			var setItemNumber = function() {
-				table.updateIndices(count);
-				table.update();
-			}
-			itemNumbers.push({
-				name : count,
-				onclick : setItemNumber
-			});
-		}
-		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
-			addItemNumber(table.options.validResultsPerPage[i], i);
-		}
-		var dropdown = new Dropdown(this.resultsDropdown, itemNumbers, 'selectMapType');
-		for (var i = 0; i < table.options.validResultsPerPage.length; i++) {
-			if (table.options.initialResultsPerPage == table.options.validResultsPerPage[i]) {
-				dropdown.setEntry(i);
-				break;
-			}
-		}
-		dropdown.div.title = GeoTemConfig.getString('paginationDropdownHelp');
-
 		this.input = document.createElement("div");
 		this.input.style.overflow = 'auto';
 		this.tableDiv.appendChild(this.input);
@@ -324,55 +329,6 @@ Table.prototype = {
 		if (GeoTemConfig.allowFilter) {
 			var cell = document.createElement('th');
 			this.elementListHeader.appendChild(cell);
-		}
-
-		if ( typeof (this.elements[0]) == 'undefined') {
-			return;
-		}
-
-		var ascButtons = [];
-		var descButtons = [];
-		var clearButtons = function() {
-			for (var i in ascButtons ) {
-				ascButtons[i].setAttribute('class', 'sort sortAscDeactive');
-			}
-			for (var i in descButtons ) {
-				descButtons[i].setAttribute('class', 'sort sortDescDeactive');
-			}
-		}
-		var addSortButton = function(key) {
-			table.keyHeaderList.push(key);
-			var cell = document.createElement('th');
-			table.elementListHeader.appendChild(cell);
-			var sortAsc = document.createElement('div');
-			var sortDesc = document.createElement('div');
-			var span = document.createElement('div');
-			span.setAttribute('class', 'headerLabel');
-			span.innerHTML = key;
-			cell.appendChild(sortDesc);
-			cell.appendChild(span);
-			cell.appendChild(sortAsc);
-			sortAsc.setAttribute('class', 'sort sortAscDeactive');
-			sortAsc.title = GeoTemConfig.getString('sortAZHelp');
-			sortDesc.setAttribute('class', 'sort sortDescDeactive');
-			sortDesc.title = GeoTemConfig.getString('sortZAHelp');
-			ascButtons.push(sortAsc);
-			descButtons.push(sortDesc);
-			sortAsc.onclick = function() {
-				clearButtons();
-				sortAsc.setAttribute('class', 'sort sortAscActive');
-				table.sortAscending(key);
-				table.update();
-			}
-			sortDesc.onclick = function() {
-				clearButtons();
-				sortDesc.setAttribute('class', 'sort sortDescActive');
-				table.sortDescending(key);
-				table.update();
-			}
-		}
-		for (var key in this.elements[0].object.tableContent) {
-			addSortButton(key);
 		}
 		
 		//Bottom pagination elements
@@ -439,6 +395,55 @@ Table.prototype = {
 				table.update();
 			}
 		}
+
+		if ( typeof (this.elements[0]) == 'undefined') {
+			return;
+		}
+
+		var ascButtons = [];
+		var descButtons = [];
+		var clearButtons = function() {
+			for (var i in ascButtons ) {
+				ascButtons[i].setAttribute('class', 'sort sortAscDeactive');
+			}
+			for (var i in descButtons ) {
+				descButtons[i].setAttribute('class', 'sort sortDescDeactive');
+			}
+		}
+		var addSortButton = function(key) {
+			table.keyHeaderList.push(key);
+			var cell = document.createElement('th');
+			table.elementListHeader.appendChild(cell);
+			var sortAsc = document.createElement('div');
+			var sortDesc = document.createElement('div');
+			var span = document.createElement('div');
+			span.setAttribute('class', 'headerLabel');
+			span.innerHTML = key;
+			cell.appendChild(sortDesc);
+			cell.appendChild(span);
+			cell.appendChild(sortAsc);
+			sortAsc.setAttribute('class', 'sort sortAscDeactive');
+			sortAsc.title = GeoTemConfig.getString('sortAZHelp');
+			sortDesc.setAttribute('class', 'sort sortDescDeactive');
+			sortDesc.title = GeoTemConfig.getString('sortZAHelp');
+			ascButtons.push(sortAsc);
+			descButtons.push(sortDesc);
+			sortAsc.onclick = function() {
+				clearButtons();
+				sortAsc.setAttribute('class', 'sort sortAscActive');
+				table.sortAscending(key);
+				table.update();
+			}
+			sortDesc.onclick = function() {
+				clearButtons();
+				sortDesc.setAttribute('class', 'sort sortDescActive');
+				table.sortDescending(key);
+				table.update();
+			}
+		}
+		for (var key in this.elements[0].object.tableContent) {
+			addSortButton(key);
+		}
 	},
 
 	sortAscending : function(key) {
@@ -467,11 +472,18 @@ Table.prototype = {
 			this.selected = false;
 		});
 		
+		var selectedCount = 0;
 		$(this.elements).filter(function(index){
 			return this.object.contains(text);
 		}).each(function(){
 			this.selected = true;
+			selectedCount++;
 		});
+		
+		//only show selected elements
+		this.showSelectedItems = true;
+		this.showElementsLength = selectedCount;
+		this.showSelected.setAttribute('class', 'smallButton showAll');
 		
 		this.update();
 		this.parent.tableSelection();
@@ -653,7 +665,18 @@ Table.prototype = {
 				var text = e.object.tableContent[key];
 				if (typeof text === "undefined")
 					text = "";
-				var cell = $("<td/>").appendTo(itemRow);
+				var cell = $("<td></td>").appendTo(itemRow);
+
+				//align the elements (if unset: "center")
+				if (typeof table.options.verticalAlign !== "undefined"){
+					if (table.options.verticalAlign === "top")
+						$(cell).attr("valign","top");
+					else if (table.options.verticalAlign === "center")
+						$(cell).attr("valign","center");
+					else if (table.options.verticalAlign === "bottom")
+						$(cell).attr("valign","bottom");
+				}
+
 				if (table.options.tableContentOffset && text.length < table.options.tableContentOffset) {
 					$(cell).html(text);
 				} else {
@@ -701,9 +724,11 @@ Table.prototype = {
 	},
 
 	reset : function() {
-		this.showSelectedItems = false;
-		this.showElementsLength = this.elements.length;
-		this.showSelected.setAttribute('class', 'smallButton showSelected');
+		if (!this.options.tableKeepShowSelected){
+			this.showSelectedItems = false;
+			this.showElementsLength = this.elements.length;
+			this.showSelected.setAttribute('class', 'smallButton showSelected');
+		}
 		this.updateIndices(this.resultsPerPage);
 	},
 

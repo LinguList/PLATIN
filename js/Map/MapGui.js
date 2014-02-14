@@ -169,6 +169,10 @@ function MapGui(map, div, options, iid) {
 		this.container.appendChild(this.homeButton);
 		this.homeButton.style.left = "20px";
 		this.homeButton.onclick = function() {
+			if (map.mds.getAllObjects() == null){
+				map.openlayersMap.setCenter(new OpenLayers.LonLat(0, 0));
+				map.openlayersMap.zoomTo(0);
+			}
 			gui.map.drawObjectLayer(true);
 		}
 	}
@@ -185,6 +189,10 @@ function MapGui(map, div, options, iid) {
 	this.osmLink.setAttribute('class', 'osmLink');
 	this.osmLink.innerHTML = '(c) <a href=' + linkForOsm + '>OpenStreetMap contributors</a>, <a href=' + linkForLicense + '>CC-BY-SA</a>';
 	this.mapWindow.appendChild(this.osmLink);
+	this.osmMapQuestLink = document.createElement("div");
+	this.osmMapQuestLink.setAttribute('class', 'osmLink');
+	this.osmMapQuestLink.innerHTML = '(c) Data, imagery and map information provided by MapQuest <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="http://developer.mapquest.com/content/osm/mq_logo.png"> <a href=' + linkForOsm + '>OpenStreetMap contributors</a>, <a href=' + linkForLicense + '>CC-BY-SA</a>';
+	this.mapWindow.appendChild(this.osmMapQuestLink);
 
 	//		var tooltip = document.createElement("div");
 	//		tooltip.setAttribute('class','ddbTooltip');

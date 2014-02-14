@@ -1,5 +1,5 @@
 /*
-* OverlayloaderConfig.js
+* FuzzyTimelineConfig.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,17 +20,29 @@
 */
 
 /**
- * @class OverlayloaderConfig
- * Overlayloader Configuration File
+ * @class FuzzyTimelineConfig
+ * FuzzyTimeline Configuration File
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
  */
-function OverlayloaderConfig(options) {
+function FuzzyTimelineConfig(options) {
 
 	this.options = {
-			wms_overlays : [
-							//e.g. {name:'name', server:'url', layer:'layer'},
-			],
-			proxy : 'php/proxy.php?address='
+			proxy : 'php/proxy.php?address=',
+			//TODO: experiment with number of ticks, 150 seems to be ok for now
+			maxBars : 50,
+			maxDensityTicks : 150,
+			/*drawing modes: 
+			 *	fuzzy - weight is distributed over all spans an object overlaps, so that the sum remains the weight, 
+			 *	stacking - every span that on object overlaps gets the complete weight (limited by the amount the span is overlapped, e.g. first span and last might get less) 
+			 */
+			timelineMode : 'stacking',
+			showRangePiechart : false,
+			backgroundColor : "#EEEEEE",
+			showYAxis : true,
+			//whether time-spans that "enlargen" the plot are allowed
+			//if set to true, a span that creates more "bars" than fit on the screen
+			//will lead to a width-increase of the chart (and a scroll bar appears)
+			showAllPossibleSpans : true,
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

@@ -142,18 +142,57 @@ GeoTemConfig.applySettings = function(settings) {
 	$.extend(this, settings);
 };
 
+//Keeps track of how many colors where assigned yet.
+GeoTemConfig.assignedColorCount = 0;
 GeoTemConfig.getColor = function(id){
-	if( GeoTemConfig.colors.length <= id ){
-		GeoTemConfig.colors.push({
-			r1 : Math.floor((Math.random()*255)+1),
-			g1 : Math.floor((Math.random()*255)+1),
-			b1 : Math.floor((Math.random()*255)+1),
-			r0 : 230,
-			g0 : 230,
-			b0 : 230
-		});
+	if (typeof GeoTemConfig.datasets[id].color === "undefined"){
+		var color;
+		
+		while (true){
+			if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+				color = {
+					r1 : Math.floor((Math.random()*255)+1),
+					g1 : Math.floor((Math.random()*255)+1),
+					b1 : Math.floor((Math.random()*255)+1),
+					r0 : 230,
+					g0 : 230,
+					b0 : 230
+				};
+			} else
+				color = GeoTemConfig.colors[GeoTemConfig.assignedColorCount];
+			
+			//make sure that no other dataset has this color
+			//TODO: one could also check that they are not too much alike
+			var found = false;
+			for (var i = 0; i < GeoTemConfig.datasets.length; i++){
+				var dataset = GeoTemConfig.datasets[i];
+				
+				if (typeof dataset.color === "undefined")
+					continue;
+
+				if (	(dataset.color.r1 == color.r1) && 
+						(dataset.color.g1 == color.g1) &&
+						(dataset.color.b1 == color.b1) ){
+					found = true;
+					break;
+				}
+			}
+			if (found === true){
+				if( GeoTemConfig.colors.length <= GeoTemConfig.assignedColorCount ){
+					//next time skip over this color
+					GeoTemConfig.assignedColorCount++;
+				}
+				continue;
+			} else {
+				GeoTemConfig.colors.push(color);
+				break;
+			}
+		}
+		GeoTemConfig.datasets[id].color = color;
+
+		GeoTemConfig.assignedColorCount++;
 	}
-	return GeoTemConfig.colors[id];
+	return GeoTemConfig.datasets[id].color;
 };
 
 GeoTemConfig.getAverageDatasetColor = function(id, objects){
@@ -274,6 +313,13 @@ GeoTemConfig.addDataset = function(newDataset){
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
 };
 
+GeoTemConfig.addDatasets = function(newDatasets){
+	$(newDatasets).each(function(){
+		GeoTemConfig.datasets.push(this);
+	});	
+	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+};
+
 GeoTemConfig.removeDataset = function(index){
 	GeoTemConfig.datasets.splice(index,1);
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
@@ -299,6 +345,23 @@ GeoTemConfig.convertCsv = function(text){
 		var innerArray = csvArray[i];
 		var dataObject = new Object();
 		var tableContent = new Object(); 
+		/* exclude lines with no content */
+		var hasContent = false;
+		for (var j = 0; j < innerArray.length; j++) {
+			if (typeof innerArray[j] !== "undefined"){
+				if (typeof innerArray[j] === "string"){
+					if (innerArray[j].length > 0)
+						hasContent = true;
+				} else {
+					hasContent = true;
+				}
+			}
+			
+			if (hasContent === true)
+				break;
+		}
+		if (hasContent === false)
+			continue;
 	   	/* loop inner array */
 		for (var j = 0; j < innerArray.length; j++) {
 			/* Name */
@@ -442,16 +505,18 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
 	//is not supported in jQuery native $.get
     var req = new XMLHttpRequest();
     req.open("GET",url,async);
-    req.responseType = "text";
+    //can only be set on asynchronous now
+    //req.responseType = "text";
+    var json;
     req.onload = function() {
-    	var json = GeoTemConfig.convertCsv(req.response);
+    	json = GeoTemConfig.convertCsv(req.response);
     	if( asyncFunc )
     		asyncFunc(json);
     };
 	req.send();
 	
 	if( !async ){
-		return kmlDom;
+		return json;
 	}
 };
 
@@ -629,12 +694,6 @@ GeoTemConfig.loadKml = function(kml) {
 		var name, description, place, granularity, lon, lat, tableContent = [], time = [], location = [];
 		var weight = 1;
 		var timeData = false, mapData = false;
-		try {
-			name = placemark.getElementsByTagName("name")[0].childNodes[0].nodeValue;
-			tableContent["name"] = name;
-		} catch(e) {
-			name = "";
-		}
 
 		try {
 			description = placemark.getElementsByTagName("description")[0].childNodes[0].nodeValue;
@@ -695,16 +754,56 @@ GeoTemConfig.loadKml = function(kml) {
 				//or is not in valid XHTML syntax
 			}
 			
+			//check whether the description element contains content in the form of equations
+			//e.g. someDescriptor = someValue, where these eqations are separated by <br/>
+			//if yes, this data will be loaded as separate columns
+			var descriptionRows = description.replace(/<\s*br\s*[\/]*\s*>/g,"<br/>"); 
+			$(descriptionRows.split("<br/>")).each(function(){
+				var row = this;
+				
+				if (typeof row === "undefined")
+					return;
+				
+				var headerAndValue = row.split("=");
+				if (headerAndValue.length != 2)
+					return;
+
+				var header = $.trim(headerAndValue[0]);
+				var value = $.trim(headerAndValue[1]);
+				
+				if ($.inArray(header, descriptionTableHeaders) === -1)
+					descriptionTableHeaders.push(header);
+
+				if (tableContent[header] != null)
+					//append if a field occures more than once 
+					tableContent[header] += "\n" + value;
+				else
+					tableContent[header] = value;
+			});
+
 			tableContent["description"] = description;
 		} catch(e) {
 			description = "";
 		}
 
 		try {
+			name = placemark.getElementsByTagName("name")[0].childNodes[0].nodeValue;
+			tableContent["name"] = name;
+		} catch(e) {
+			if (typeof tableContent["name"] !== "undefined")
+				name = tableContent["name"];
+			else
+				name = "";
+		}		
+
+		try {
 			place = placemark.getElementsByTagName("address")[0].childNodes[0].nodeValue;
 			tableContent["place"] = place;
 		} catch(e) {
-			place = "";
+			if (typeof tableContent["place"] !== "undefined")
+				place = tableContent["place"];
+			else
+				place = "";
 		}
 
 		try {
@@ -736,17 +835,18 @@ GeoTemConfig.loadKml = function(kml) {
 			}
 		} catch(e) {
 			try {
-				throw "e";
-				var timeSpanTag = placemark.getElementsByTagName("TimeSpan")[0];
-				var tuple1 = GeoTemConfig.getTimeData(timeSpanTag.getElementsByTagName("begin")[0].childNodes[0].nodeValue);
-				timeStart = tuple1.d;
-				granularity = tuple1.g;
-				var tuple2 = GeoTemConfig.getTimeData(timeSpanTag.getElementsByTagName("end")[0].childNodes[0].nodeValue);
-				timeEnd = tuple2.d;
-				if (tuple2.g > granularity) {
-					granularity = tuple2.g;
+				if (	(typeof tableContent["TimeSpan:begin"] === "undefined") &&
+						(typeof tableContent["TimeSpan:end"] === "undefined") ){
+					var timeStart = $(placemark).find("TimeSpan begin").text();
+					var timeEnd = $(placemark).find("TimeSpan end").text();
+					
+					if ( (timeStart != "") && (timeStart != "") ){
+						tableContent["TimeSpan:begin"] = timeStart;
+						tableContent["TimeSpan:end"] = timeEnd;
+
+						timeData = true;
+					}
 				}
-				timeData = true;
 			} catch(e) {
 				if (!GeoTemConfig.incompleteData) {
 					continue;
@@ -788,7 +888,7 @@ GeoTemConfig.createKMLfromDataset = function(index){
 		var place = this.getPlace(0,0);
 		var lat = this.getLatitude(0);
 		var lon = this.getLongitude(0);
-		var timeStamp = this.getDate(0);
+		var timeStamp = this.getDate(0).toISOString();
 		  
 		var kmlEntry = "<Placemark>";
 		
@@ -809,6 +909,114 @@ GeoTemConfig.createKMLfromDataset = function(index){
 	return(kmlContent);
 };
 
+GeoTemConfig.createCSVfromDataset = function(index){
+	var csvContent = "";
+	var header = ["name", "description", "weight"];
+	var tableContent = [];
+	
+	var firstDataObject = GeoTemConfig.datasets[index].objects[0];
+	
+	for(var key in firstDataObject.tableContent){
+		var found = false;
+		$(header).each(function(index,val){
+			if (val === key){
+				found = true;
+				return false;
+			}				
+		});
+		if (found === true)
+			continue;
+		else
+			tableContent.push(key);
+	}
+	
+	var isFirst = true;
+	$(header).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+
+		//Rename according to CSV import definition
+		if (val === "name")
+			val = "Name";
+		else if (val === "description")
+			val = "Description";
+		csvContent += "\""+val+"\"";
+	});
+	$(tableContent).each(function(key,val){
+		if (isFirst){
+			isFirst = false;
+		} else {
+			csvContent += ",";
+		}
+		csvContent += "\""+val+"\"";
+	});
+	//Names according to CSV import definition
+	csvContent +=  ",\"Address\",\"Latitude\",\"Longitude\",\"TimeStamp\"";
+	csvContent += "\n";
+	
+	var isFirstRow = true;
+	$(GeoTemConfig.datasets[index].objects).each(function(){
+		var elem = this;
+		
+		if (isFirstRow){
+			isFirstRow = false;
+		} else {
+			csvContent += "\n";
+		}
+		
+		var isFirst = true;
+		$(header).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem[val]+"\"";
+		});
+		$(tableContent).each(function(key,val){
+			if (isFirst){
+				isFirst = false;
+			} else {
+				csvContent += ",";
+			}
+			csvContent += "\""+elem.tableContent[val]+"\"";
+		});
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if (elem.isGeospatial){
+			csvContent += elem.locations[0].place;
+		}
+		csvContent += "\"";
+
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLatitude(0) !== "undefined") ){
+			csvContent += elem.getLatitude(0);
+		}
+		csvContent += "\"";
+
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isGeospatial) && (typeof elem.getLongitude(0) !== "undefined") ){
+			csvContent += elem.getLongitude(0);
+		}
+		csvContent += "\"";
+		
+		csvContent += ",";
+		csvContent += "\"";
+		if ( (elem.isTemporal) && (typeof elem.getDate(0) !== "undefined") ){
+			//TODO: not supported in IE8 switch to moment.js
+			csvContent += elem.getDate(0).toISOString();
+		}
+		csvContent += "\"";
+	});
+	  
+	return(csvContent);
+};
 /**
  * iterates over Datasets/DataObjects and loads color values
  * from the "color0" and "color1" elements, which contains RGB

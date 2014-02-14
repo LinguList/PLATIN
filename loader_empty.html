@@ -6,10 +6,15 @@
     <title>GeoTemCo</title>
 
  	<style type="text/css">
-		.legend table, .legend > div {
+		.legend > table, .legend > div {
+			width: 200px !important;
 		    height: 100px !important;
 			display: block;
-			overflow-y: scroll;		    
+			overflow-y: scroll;
+			position: absolute;
+			right: 0px;
+			bottom: 0px;
+			font-size: 12px;
 		}
 	</style>
 
@@ -26,13 +31,26 @@
       </div>
     </noscript>
 
-	<fieldset id="dataloaderContainerDiv" style="position:relative;">
-		<legend>Load Data</legend>
-	</fieldset>
-	<fieldset id="overlayloaderContainerDiv" style="position:relative;">
-		<legend>Load Overlay</legend>
-	</fieldset>
 	<table width=100%>
+		<tr >
+			<td width=50%>
+				<fieldset id="dataloaderContainerDiv" style="position:relative;">
+					<legend>Load Data</legend>
+				</fieldset>
+			</td>
+			<td rowspan=2 width=50% valign=top>
+				<fieldset id="storytellingContainerDiv" style="position:relative;">
+					<legend>Data History</legend>
+				</fieldset>			
+			</td>
+		</tr>
+		<tr>
+			<td width=50%>
+				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+					<legend>Load Overlay</legend>
+				</fieldset>
+			</td>
+		</tr>
 		<tr>
 			<td width=50%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
@@ -55,7 +73,7 @@
 		});
 		var timeDiv = document.getElementById("plotContainerDiv");
 		var time = new WidgetWrapper();
-		var timeWidget = new TimeWidget(time,timeDiv,{
+		var timeWidget = new FuzzyTimelineWidget(time,timeDiv,{
 			timeTitle: "Publication Date"
 		});
 		var tableDiv = document.getElementById("tableContainerDiv");
@@ -74,6 +92,10 @@
 		var piechartDiv = document.getElementById("piechartContainerDiv");
 		var piechart = new WidgetWrapper();
 		var piechartWidget = new PieChartWidget(piechart,piechartDiv);
+		
+		var storytellingDiv = document.getElementById("storytellingContainerDiv");
+		var storytelling = new WidgetWrapper();
+		var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
 		
 		dataloaderWidget.loadFromURL();
 	});

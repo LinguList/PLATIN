@@ -1,5 +1,5 @@
 /*
-* OverlayloaderConfig.js
+* Storytelling.js
 *
 * Copyright (c) 2013, Sebastian Kruse. All rights reserved.
 *
@@ -20,20 +20,55 @@
 */
 
 /**
- * @class OverlayloaderConfig
- * Overlayloader Configuration File
+ * @class Storytelling
+ * Implementation of story telling "storage"
  * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {HTML object} parent div to append the Storytelling widget
  */
-function OverlayloaderConfig(options) {
+function Storytelling(parent) {
 
-	this.options = {
-			wms_overlays : [
-							//e.g. {name:'name', server:'url', layer:'layer'},
-			],
-			proxy : 'php/proxy.php?address='
-	};
-	if ( typeof options != 'undefined') {
-		$.extend(this.options, options);
+	this.index;
+	this.storytelling = this;
+	
+	this.parent = parent;
+	this.options = parent.options;
+
+	this.initialize();
+}
+
+Storytelling.prototype = {
+
+	remove : function() {
+	},
+	
+	initialize : function() {
+	},
+	
+	triggerHighlight : function(columnElement) {
+	},
+
+	triggerSelection : function(columnElement) {
+	},
+
+	deselection : function() {
+	},
+
+	filtering : function() {
+	},
+
+	inverseFiltering : function() {
+	},
+
+	triggerRefining : function() {
+	},
+
+	reset : function() {
+	},
+	
+	show : function() {		
+	},
+
+	hide : function() {
 	}
-
 };
