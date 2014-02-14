@@ -122,6 +122,116 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 		this.isTemporal = true;
 	}
 
+	//TODO: allow more than one timespan (as with dates/places)
+	this.isFuzzyTemporal = false;
+	if (this.isTemporal) {
+		this.isTemporal = false;
+		this.isFuzzyTemporal = true;
+		
+		var date = this.dates[0].date;
+		var granularity = this.dates[0].granularity;
+		
+		this.TimeSpanGranularity = granularity;
+		
+		if (granularity === SimileAjax.DateTime.YEAR){
+			this.TimeSpanBegin = moment(date).startOf("year");
+			this.TimeSpanEnd = moment(date).endOf("year");
+		} else if (granularity === SimileAjax.DateTime.MONTH){
+			this.TimeSpanBegin = moment(date).startOf("month");
+			this.TimeSpanEnd = moment(date).endOf("month");
+		} else if (granularity === SimileAjax.DateTime.DAY){
+			this.TimeSpanBegin = moment(date).startOf("day");
+			this.TimeSpanEnd = moment(date).endOf("day");
+		} else if (granularity === SimileAjax.DateTime.HOUR){
+			this.TimeSpanBegin = moment(date).startOf("hour");
+			this.TimeSpanEnd = moment(date).endOf("hour");
+		} else if (granularity === SimileAjax.DateTime.MINUTE){
+			this.TimeSpanBegin = moment(date).startOf("minute");
+			this.TimeSpanEnd = moment(date).endOf("minute");
+		} else if (granularity === SimileAjax.DateTime.SECOND){
+			this.TimeSpanBegin = moment(date).startOf("second");
+			this.TimeSpanEnd = moment(date).endOf("second");
+		} else if (granularity === SimileAjax.DateTime.MILLISECOND){
+			//this is a "real" exact time
+			this.isTemporal = true;
+			this.isFuzzyTemporal = false;
+		}
+	} else if (	(typeof this.tableContent["TimeSpan:begin"] !== "undefined") &&
+				(typeof this.tableContent["TimeSpan:end"] !== "undefined") ){
+		//parse according to ISO 8601
+		//don't use the default "cross browser support" from moment.js
+		//cause it won't work correctly with negative years
+		var formats = [	"YYYYYY",
+		               	"YYYYYY-MM",
+		               	"YYYYYY-MM-DD",
+		               	"YYYYYY-MM-DDTHH",
+		               	"YYYYYY-MM-DDTHH:mm",
+		               	"YYYYYY-MM-DDTHH:mm:ss",
+		               	"YYYYYY-MM-DDTHH:mm:ss.SSS"
+		               ];
+		this.TimeSpanBegin = moment(this.tableContent["TimeSpan:begin"],formats.slice());
+		this.TimeSpanEnd = moment(this.tableContent["TimeSpan:end"],formats.slice());
+		if ((this.TimeSpanBegin instanceof Object) && this.TimeSpanBegin.isValid() && 
+			(this.TimeSpanEnd instanceof Object) && this.TimeSpanEnd.isValid()){
+			//check whether dates are correctly sorted
+			if (this.TimeSpanBegin>this.TimeSpanEnd){
+				//dates are in the wrong order
+				if (typeof console !== "undefined")
+					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
+				
+			} else {
+				var timeSpanBeginGranularity = formats.indexOf(this.TimeSpanBegin._f);
+				var timeSpanEndGranularity = formats.indexOf(this.TimeSpanEnd._f);
+				var timeSpanGranularity = Math.max(	timeSpanBeginGranularity,
+													timeSpanEndGranularity );
+
+				//set granularity according to formats above
+				if (timeSpanGranularity === 0){
+					this.TimeSpanGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanGranularity === 1){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanGranularity === 2){
+					this.TimeSpanGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanGranularity === 3){
+					this.TimeSpanGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanGranularity === 4){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanGranularity === 5){
+					this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanGranularity === 6){
+					this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
+				if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 1000)
+					this.TimeSpanGranularity = SimileAjax.DateTime.MILLENNIUM;
+				else if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 100)
+					this.TimeSpanGranularity = SimileAjax.DateTime.CENTURY;
+				else if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 10)
+					this.TimeSpanGranularity = SimileAjax.DateTime.DECADE;
+				
+				//also set upper bounds according to granularity
+				//(lower bound is already correct)
+				if (timeSpanEndGranularity === 0){
+					this.TimeSpanEnd.endOf("year");
+				} else if (timeSpanEndGranularity === 1){
+					this.TimeSpanEnd.endOf("month");
+				} else if (timeSpanEndGranularity === 2){
+					this.TimeSpanEnd.endOf("day");
+				} else if (timeSpanEndGranularity === 3){
+					this.TimeSpanEnd.endOf("hour");
+				} else if (timeSpanEndGranularity === 4){
+					this.TimeSpanEnd.endOf("minute");
+				} else if (timeSpanEndGranularity === 5){
+					this.TimeSpanEnd.endOf("second");
+				} else if (timeSpanEndGranularity === 6){
+					//has max accuracy, so no change needed
+				}
+
+				this.isFuzzyTemporal = true;
+			}
+		}
+	}
+	
 	this.getDate = function(dateId) {
 		return this.dates[dateId].date;
 	}
@@ -195,3 +305,4 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	
 	Publisher.Publish('dataobjectAfterCreation', this);
 };
+
