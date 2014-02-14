@@ -880,7 +880,37 @@ GeoTemConfig.loadKml = function(kml) {
 
 GeoTemConfig.createKMLfromDataset = function(index){
 	var kmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document>";
-	
+
+	//credits: Anatoly Mironov, http://stackoverflow.com/questions/2573521/how-do-i-output-an-iso-8601-formatted-string-in-javascript
+	function pad(number) {
+		var r = String(number);
+		if ( r.length === 1 ) {
+			r = '0' + r;
+		}
+		return r;
+	}
+
+	var dateToISOString = function(date, granularity) {
+		var ISOString = date.getFullYear();
+
+		if (granularity <= SimileAjax.DateTime.MONTH)
+			ISOString += '-' + pad( date.getMonth() + 1 );
+		if (granularity <= SimileAjax.DateTime.DAY)
+			ISOString += '-' + pad( date.getDate() );
+		if (granularity <= SimileAjax.DateTime.HOUR){
+			ISOString += 'T' + pad( date.getHours() );
+			if (granularity <= SimileAjax.DateTime.MINUTE)
+				ISOString += ':' + pad( date.getMinutes() );
+			if (granularity <= SimileAjax.DateTime.SECOND)
+				ISOString += ':' + pad( date.getSeconds() );
+			if (granularity <= SimileAjax.DateTime.MILLISECOND)
+				ISOString += '.' + String( (date.getMilliseconds()/1000).toFixed(3) ).slice( 2, 5 );
+			ISOString += 'Z';
+		}
+		
+		return ISOString;
+	};
+      
 	$(GeoTemConfig.datasets[index].objects).each(function(){
 		var name = this.name;
 		var description = this.description;
@@ -888,8 +918,7 @@ GeoTemConfig.createKMLfromDataset = function(index){
 		var place = this.getPlace(0,0);
 		var lat = this.getLatitude(0);
 		var lon = this.getLongitude(0);
-		var timeStamp = this.getDate(0).toISOString();
-		  
+		
 		var kmlEntry = "<Placemark>";
 		
 		kmlEntry += "<name><![CDATA[" + name + "]]></name>";
@@ -897,7 +926,14 @@ GeoTemConfig.createKMLfromDataset = function(index){
 		kmlEntry += "<description><![CDATA[" + description + "]]></description>";
 		kmlEntry += "<Point><coordinates>" + lon + "," + lat + "</coordinates></Point>";
 		  
-		kmlEntry += "<TimeStamp><when>" + timeStamp + "</when></TimeStamp>";
+		if (this.isTemporal){
+			kmlEntry += "<TimeStamp><when>" + dateToISOString(this.getDate(0), this.getTimeGranularity(0)) + "</when></TimeStamp>";
+		} else if (this.isFuzzyTemporal){
+			kmlEntry +=	"<TimeSpan>"+
+							"<begin>" + dateToISOString(this.TimeSpanBegin.utc().toDate(), this.TimeSpanBeginGranularity) + "</begin>" +
+							"<end>" + dateToISOString(this.TimeSpanEnd.utc().toDate(), this.TimeSpanEndGranularity) + "</end>" +
+						"</TimeSpan>";
+		}
 		
 		kmlEntry += "</Placemark>";
 		      
