@@ -472,6 +472,16 @@ FuzzyTimelineWidget.prototype = {
 					moveDragButton();
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
+					if (handle.x1 < plotOffset)
+						handle.x1 = plotOffset;
+					if (handle.x2 > plotOffset+plotWidth)
+						handle.x2 = plotOffset+plotWidth;
+					
+					moveLeftHandle();
+					moveRightHandle();
+					resizeHandleBox();
+					moveDragButton();
+					
 					fuzzyTimeline.selectByX(handle.x1,handle.x2);
 					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
