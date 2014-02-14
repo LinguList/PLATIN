@@ -886,7 +886,7 @@ GeoTemConfig.createKMLfromDataset = function(index){
 		var place = this.getPlace(0,0);
 		var lat = this.getLatitude(0);
 		var lon = this.getLongitude(0);
-		var timeStamp = this.getDate(0);
+		var timeStamp = this.getDate(0).toISOString();
 		  
 		var kmlEntry = "<Placemark>";
 		
