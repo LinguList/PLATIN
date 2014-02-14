@@ -364,6 +364,8 @@ FuzzyTimelineWidget.prototype = {
 		
 		var plotHeight = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).height();
 		var plotWidth = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).width();
+		//flot sends the wrong width if we extend the parent div, so scale it accordingly
+		plotWidth = plotWidth*fuzzyTimeline.zoomFactor;
 		var plotOffset = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).getPlotOffset().left;
 		
 		$(fuzzyTimeline.handles).each(function(){
@@ -422,6 +424,7 @@ FuzzyTimelineWidget.prototype = {
 			$(leftHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					if ((x < handle.x2) &&
 						(x >= plotOffset)){
 						x = x - leftHandle.offsetWidth;
@@ -442,6 +445,7 @@ FuzzyTimelineWidget.prototype = {
 			$(rightHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					x = x - rightHandle.offsetWidth;
 					if ((x > handle.x1) &&
 						(x <= plotOffset+plotWidth)){
@@ -462,6 +466,9 @@ FuzzyTimelineWidget.prototype = {
 			$(dragButton).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					//TODO: for some reason we don't need the scoll offset here
+					//this should be investigated?
+					//x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					var xdiff = x - $(dragButton).offset().left - $(dragButton).width()/2;
 					handle.x1 = handle.x1+xdiff;
 					handle.x2 = handle.x2+xdiff;
