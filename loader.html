@@ -18,9 +18,9 @@
 		}
 	</style>
 
- 	<script src="js/Util/Publisher.js"></script>
- 	<script src="js/Build/Loader/DynaJsLoader.js"></script>
-	<script src="js/Build/Loader/Loader.js"></script>
+	<link href="css/geotemco.css" rel="stylesheet" type="text/css">
+ 	<script src="lib/jquery/jquery.min.js"></script>
+ 	<script src="geotemco-min.js"></script>
   </head>
 
   <body height="100%">
@@ -82,7 +82,6 @@
     <div id="tableContainerDiv" style="position:relative;"></div>
 
     <script>
-	Publisher.Subscribe( 'GeoTemCoReady', this, function(){
 		var datasets = [];
 		var mapDiv = document.getElementById("mapContainerDiv");
 		var map = new WidgetWrapper();
@@ -130,7 +129,6 @@
         storytelling.display(datasets);
 
         dataloaderWidget.loadFromURL();
-	});
     </script>
 
   </body>
