@@ -1,9 +1,9 @@
 # Rakefile - create single combined nd compressed javascript file
 
 COMPRESS="java -jar lib/yuicompressor-2.4.2.jar"
-COMPRESSED_OUTPUT_FILE='geotemco-min.js'
-OUTPUT_FILE='geotemco.js'
-CSS_FILE='css/geotemco.css'
+COMPRESSED_OUTPUT_FILE='platin-min.js'
+OUTPUT_FILE='platin.js'
+CSS_FILE='css/platin.css'
 
 task :default => :all
 

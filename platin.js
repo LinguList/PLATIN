@@ -41,9 +41,9 @@ var arrayIndex = function(array, obj) {
 var GeoTemCoMinifier_urlPrefix;
 for (var i = 0; i < document.getElementsByTagName("script").length; i++) {
 	var script = document.getElementsByTagName("script")[i];
-	var index = script.src.indexOf("geotemco.js");
+	var index = script.src.indexOf("platin.js");
 	if (index == -1) {
-		index = script.src.indexOf("geotemco-min.js");
+		index = script.src.indexOf("platin-min.js");
 	}
 	if (index != -1) {
 		GeoTemCoMinifier_urlPrefix = script.src.substring(0, index);
