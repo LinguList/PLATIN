@@ -71,10 +71,10 @@ js/PieChart/PieChartConfig.js
 js/PieChart/PieChartGui.js
 js/PieChart/PieChartHashFunctions.js
 js/PieChart/PieChartWidget.js
-js/StoryTelling/Storytelling.js
-js/StoryTelling/StorytellingConfig.js
-js/StoryTelling/StorytellingGui.js
-js/StoryTelling/StorytellingWidget.js
+js/Storytelling/Storytelling.js
+js/Storytelling/StorytellingConfig.js
+js/Storytelling/StorytellingGui.js
+js/Storytelling/StorytellingWidget.js
 js/Util/DataObject.js
 js/Util/Dataset.js
 js/Time/TimeDataSource.js
