@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the Dataloader widget div
  * @param {JSON} options user specified configuration that overwrites options in DataloaderConfig.js
  */
-function DataloaderWidget(core, div, options) {
+DataloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);

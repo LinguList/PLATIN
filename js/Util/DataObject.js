@@ -40,7 +40,7 @@
  * @param {Openlayers.Projection} projection of the coordinates (optional)
  */
 
-function DataObject(name, description, locations, dates, weight, tableContent, projection) {
+DataObject = function(name, description, locations, dates, weight, tableContent, projection) {
 
 	this.name = $.trim(name);
 	this.description = $.trim(description);

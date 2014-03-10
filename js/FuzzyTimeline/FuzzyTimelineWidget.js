@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the FuzzyTimeline widget div
  * @param {JSON} options user specified configuration that overwrites options in FuzzyTimelineConfig.js
  */
-function FuzzyTimelineWidget(core, div, options) {
+FuzzyTimelineWidget = function(core, div, options) {
 
 	this.datasets;
 	this.selected = undefined;

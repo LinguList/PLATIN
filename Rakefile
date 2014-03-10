@@ -95,7 +95,7 @@ lib/jquery-ui/jquery-ui-1.10.3.custom.css
 css/style.css)
 
 def cat_files(outputfile, basename)
-  File.open(outputfile, 'w') do |x|
+  File.open(outputfile, 'a') do |x|
     Files.each do |f|
       x.puts(File.open(f).read.gsub('REPLACEME-REPLACEME', basename))
     end
@@ -113,7 +113,16 @@ end
 # Just one big JS file, no compression.
 file OUTPUT_FILE => Files do
   basename = File.basename(OUTPUT_FILE, ".js")
+  
+  File.open(OUTPUT_FILE, 'w') do |x|
+    x.puts("(function($){\n\nvar jQuery = $;");
+  end
+  
   cat_files(OUTPUT_FILE, basename)
+
+  File.open(OUTPUT_FILE, 'a') do |x|
+    x.puts("})(jQuery);");
+  end
 end
 
 task :copyJqueryUIImageDirectory do
@@ -136,7 +145,17 @@ end
 # Compress it.
 file COMPRESSED_OUTPUT_FILE => Files do
   basename = File.basename(COMPRESSED_OUTPUT_FILE, ".js")
+  
+  File.open(OUTPUT_FILE, 'w') do |x|
+    x.puts("(function($){\n\nvar jQuery = $;");
+  end
+  
   cat_files(OUTPUT_FILE, basename)
+
+  File.open(OUTPUT_FILE, 'a') do |x|
+    x.puts("})(jQuery);");
+  end
+  
   system "#{COMPRESS} #{OUTPUT_FILE} >> #{COMPRESSED_OUTPUT_FILE}"
 end
 

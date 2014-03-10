@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the Overlayloader widget div
  * @param {JSON} options user specified configuration that overwrites options in OverlayloaderConfig.js
  */
-function OverlayloaderWidget(core, div, options) {
+OverlayloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);

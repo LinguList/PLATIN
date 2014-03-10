@@ -37,7 +37,7 @@ $.fn.cleanWhitespace = function() {
 	return this;
 };
 
-var GeoTemConfig = {
+GeoTemConfig = {
 
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered

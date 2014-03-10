@@ -29,7 +29,7 @@
  *
  * @param {Object} widget either a map, time or table widget
  */
-function WidgetWrapper() {
+WidgetWrapper = function() {
 
 	var wrapper = this;
 
