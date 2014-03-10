@@ -1,3 +1,6 @@
+(function($){
+
+var jQuery = $;
 /*
 * basic.js
 *
@@ -30019,7 +30022,7 @@ $.fn.cleanWhitespace = function() {
 	return this;
 };
 
-var GeoTemConfig = {
+GeoTemConfig = {
 
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered
@@ -32754,7 +32757,7 @@ function MapGui(map, div, options, iid) {
  * @param {HTML object} div parent div to append the map widget div
  * @param {JSON} options user specified configuration that overwrites options in MapConfig.js
  */
-function MapWidget(core, div, options) {
+MapWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -34623,7 +34626,7 @@ function TimeGui(plot, div, options, iid) {
  * @param {HTML object} div parent div to append the time widget div
  * @param {JSON} options user specified configuration that overwrites options in TimeConfig.js
  */
-function TimeWidget(core, div, options) {
+TimeWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -36028,7 +36031,7 @@ function TableGui(table, div, options) {
  * @param {HTML object} div parent div to append the table widget div
  * @param {JSON} options user specified configuration that overwrites options in TableConfig.js
  */
-function TableWidget(core, div, options) {
+TableWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -37547,7 +37550,7 @@ function DataloaderGui(dataloader, div, options) {
  * @param {HTML object} div parent div to append the Dataloader widget div
  * @param {JSON} options user specified configuration that overwrites options in DataloaderConfig.js
  */
-function DataloaderWidget(core, div, options) {
+DataloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -39295,7 +39298,7 @@ FuzzyTimelineRangeSlider.prototype = {
  * @param {HTML object} div parent div to append the FuzzyTimeline widget div
  * @param {JSON} options user specified configuration that overwrites options in FuzzyTimelineConfig.js
  */
-function FuzzyTimelineWidget(core, div, options) {
+FuzzyTimelineWidget = function(core, div, options) {
 
 	this.datasets;
 	this.selected = undefined;
@@ -40361,7 +40364,7 @@ function OverlayloaderGui(overlayloader, div, options) {
  * @param {HTML object} div parent div to append the Overlayloader widget div
  * @param {JSON} options user specified configuration that overwrites options in OverlayloaderConfig.js
  */
-function OverlayloaderWidget(core, div, options) {
+OverlayloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -41774,7 +41777,7 @@ function bit_rol(num, cnt)
  * @param {HTML object} div parent div to append the PieChart widget div
  * @param {JSON} options user specified configuration that overwrites options in PieChartConfig.js
  */
-function PieChartWidget(core, div, options) {
+PieChartWidget = function(core, div, options) {
 
 	this.datasets;
 	this.selected;
@@ -42127,7 +42130,7 @@ StorytellingGui.prototype = {
  * @param {HTML object} div parent div to append the Storytelling widget div
  * @param {JSON} options user specified configuration that overwrites options in StorytellingConfig.js
  */
-function StorytellingWidget(core, div, options) {
+StorytellingWidget = function(core, div, options) {
 
 	this.datasets;
 	this.core = core;
@@ -42337,7 +42340,7 @@ StorytellingWidget.prototype = {
  * @param {Openlayers.Projection} projection of the coordinates (optional)
  */
 
-function DataObject(name, description, locations, dates, weight, tableContent, projection) {
+DataObject = function(name, description, locations, dates, weight, tableContent, projection) {
 
 	this.name = $.trim(name);
 	this.description = $.trim(description);
@@ -42668,7 +42671,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
  * @param {Array} objects data item arrays from different datasets
  * @param {String} label label for the datasets
  */
-function Dataset(objects, label, url, type) {
+Dataset = function(objects, label, url, type) {
 
 	this.objects = objects;
 	this.label = label;
@@ -45592,7 +45595,7 @@ if ( typeof Publisher == 'undefined') {
  *
  * @param {Object} widget either a map, time or table widget
  */
-function WidgetWrapper() {
+WidgetWrapper = function() {
 
 	var wrapper = this;
 
@@ -45695,3 +45698,4 @@ OpenLayers._getScriptLocation = function() {
 };
 
 GeoTemConfig.configure(GeoTemCoMinifier_urlPrefix);
+})(jQuery);
