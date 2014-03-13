@@ -3,7 +3,7 @@ Place and Time Navigator
 
 a fork and extension of [GeoTemCo](https://github.com/stjaenicke/GeoTemCo)
 
-developed at the [Max-Planck-Institute for the History of Science](http://www.mpiwg-berlin.mpg.de) with funding from [TOPOI](http://topoi.org).
+developed at the [Max-Planck-Institute for the History of Science](http://www.mpiwg-berlin.mpg.de) with funding from [TOPOI](http://topoi.org) within the Project [Atlas der Innovationen](http://www.topoi.org/group/d-6/).
 
 ## Introduction
 

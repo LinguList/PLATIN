@@ -31,7 +31,7 @@
  * @param {HTML object} div parent div to append the table widget div
  * @param {JSON} options user specified configuration that overwrites options in TableConfig.js
  */
-function TableWidget(core, div, options) {
+TableWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);

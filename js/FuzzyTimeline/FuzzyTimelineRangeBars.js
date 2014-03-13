@@ -332,6 +332,7 @@ FuzzyTimelineRangeBars.prototype = {
 		var plotAndHash = rangeBar.createPlot(datasets);
 		rangeBar.datasetsPlot = plotAndHash.plots;
 		rangeBar.datasetsHash = plotAndHash.hashs;
+		delete rangeBar.highlightedDatasetsPlot;
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		

@@ -344,6 +344,7 @@ FuzzyTimelineDensity.prototype = {
 		//calculate tick width (will be in ms)
 		delete density.tickCount;
 		delete density.singleTickWidth;
+		delete density.highlightedDatasetsPlot;
 		density.parent.zoomPlot(1);
 		if (typeof tickWidth !== "undefined"){
 			density.singleTickWidth = tickWidth;

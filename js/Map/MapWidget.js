@@ -31,7 +31,7 @@
  * @param {HTML object} div parent div to append the map widget div
  * @param {JSON} options user specified configuration that overwrites options in MapConfig.js
  */
-function MapWidget(core, div, options) {
+MapWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);

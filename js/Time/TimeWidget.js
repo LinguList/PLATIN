@@ -31,7 +31,7 @@
  * @param {HTML object} div parent div to append the time widget div
  * @param {JSON} options user specified configuration that overwrites options in TimeConfig.js
  */
-function TimeWidget(core, div, options) {
+TimeWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
