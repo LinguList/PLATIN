@@ -130,7 +130,34 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
-		
+		$.each($.url().param(),function(paramName, paramValue){
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			if (paramName.toLowerCase().startsWith("filter")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+				
+				if (typeof dataset === "undefined")
+					return;
+				
+				var filter = JSON.parse(paramValue);
+				var filteredObjects = [];
+				for(var i = 0; i < dataset.objects.length; i++){
+					var dataObject = dataset.objects[i];
+					if ($.inArray(dataObject.index,filter) != -1){
+						filteredObjects.push(dataObject);
+					}
+				}
+				var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+				datasets.push(filteredDataset);
+			}
+		});
 		//Load the (optional!) dataset colors
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
