@@ -158,16 +158,27 @@ DataloaderWidget.prototype = {
 				if (typeof dataset === "undefined")
 					return;
 				
-				var filter = JSON.parse(paramValue);
-				var filteredObjects = [];
-				for(var i = 0; i < dataset.objects.length; i++){
-					var dataObject = dataset.objects[i];
-					if ($.inArray(dataObject.index,filter) != -1){
-						filteredObjects.push(dataObject);
+				var filterValues = function(paramValue){
+					var filter = JSON.parse(paramValue);
+					var filteredObjects = [];
+					for(var i = 0; i < dataset.objects.length; i++){
+						var dataObject = dataset.objects[i];
+						if ($.inArray(dataObject.index,filter) != -1){
+							filteredObjects.push(dataObject);
+						}
 					}
+					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+					datasets.push(filteredDataset);
 				}
-				var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
-				datasets.push(filteredDataset);
+				
+				if (paramValue instanceof Array){
+					for (var i=0; i < paramValue.length; i++){
+						filterValues(paramValue[i]);
+					}
+				} else {
+					filterValues(paramValue);
+				}
+
 			}
 		});
 		//Load the (optional!) dataset colors
