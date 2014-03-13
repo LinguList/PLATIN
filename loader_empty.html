@@ -64,7 +64,6 @@
     <div id="tableContainerDiv" style="position:relative;"></div>
 
     <script>
-	Publisher.Subscribe( 'GeoTemCoReady', this, function(){
 		var datasets = [];
 		var mapDiv = document.getElementById("mapContainerDiv");
 		var map = new WidgetWrapper();
@@ -98,7 +97,6 @@
 		var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
 		
 		dataloaderWidget.loadFromURL();
-	});
     </script>
 
   </body>
