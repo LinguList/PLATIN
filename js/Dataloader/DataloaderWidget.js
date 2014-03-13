@@ -92,14 +92,26 @@ DataloaderWidget.prototype = {
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);									
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				var json = GeoTemConfig.getCsv(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("local")){
 				var csv = $.remember({name:encodeURIComponent(origURL)});
@@ -108,10 +120,17 @@ DataloaderWidget.prototype = {
 				var fileName = origURL.substring("GeoBrowser_dataset_".length);
 				var json = GeoTemConfig.convertCsv(csv);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 		});
+		
 		//Load the (optional!) dataset colors
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
@@ -153,6 +172,18 @@ DataloaderWidget.prototype = {
 				}
 			}	
 		});
+		//delete undefined entries in the array
+		//(can happen if the sequence given in the URL is not complete
+		// e.g. kml0=..,kml2=..)
+		//this also reorders the array,	 starting with 0
+		var tempDatasets = [];
+		for(var index in datasets){
+			if (datasets[index] instanceof Dataset){
+				tempDatasets.push(datasets[index]);
+			}
+		}
+		datasets = tempDatasets;
+		
 		if (datasets.length > 0)
 			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}
