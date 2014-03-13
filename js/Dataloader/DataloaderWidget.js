@@ -121,7 +121,7 @@ DataloaderWidget.prototype = {
 				var json = GeoTemConfig.convertCsv(csv);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
 				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(3));
+					var datasetID = parseInt(paramName.substr(5));
 					if (!isNaN(datasetID)){
 						datasets[datasetID] = dataSet;
 					} else {
