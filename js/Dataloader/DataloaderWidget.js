@@ -113,6 +113,18 @@ DataloaderWidget.prototype = {
 					}
 				}
 			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				var json = GeoTemConfig.getJson(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(4));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
 			else if (paramName.toLowerCase().startsWith("local")){
 				var csv = $.remember({name:encodeURIComponent(origURL)});
 				//TODO: this is a bad idea and will be changed upon having a better
