@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html height="100%">
+
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>PLATIN</title>
+
+ 	<style type="text/css">
+		.legend > table, .legend > div {
+			width: 200px !important;
+		    height: 100px !important;
+			display: block;
+			overflow-y: scroll;
+			position: absolute;
+			right: 0px;
+			bottom: 0px;
+			font-size: 12px;
+		}
+	</style>
+
+ 	<script src="js/Util/Publisher.js"></script>
+ 	<script src="js/Build/Loader/DynaJsLoader.js"></script>
+	<script src="js/Build/Loader/Loader.js"></script>
+  </head>
+
+  <body height="100%">
+
+    <noscript>
+      <div style="width: 22em; position: absolute; left: 50%; margin-left: -11em; color: red; background-color: white; border: 1px solid red; padding: 4px; font-family: sans-serif">
+        Your web browser must have JavaScript enabled in order for this application to display correctly.
+      </div>
+    </noscript>
+
+	<table width=100%>
+		<tr height='101px'>
+			<td colspan=2 width=100% style='min-height:101px'>
+				<div width=100% height=100% style='position:relative'>
+					<span style='height:101px; float:left;'>
+						<img src='images/topoi.png' />
+						<div style='min-height:101px; display:inline;'>
+							<font size='+3'>PLATIN</font>
+							PLace And TIme Navigator
+						</div>
+						<img src='images/mpiwg.gif'/>
+					</span>
+					<span style='float:right'>
+						ursprünglich gefördert von
+						<img src='images/dariah.png'/>
+					</span>
+				</div>
+			</td>
+		</tr>
+		<tr >
+			<td width=50%>
+				<fieldset id="dataloaderContainerDiv" style="position:relative;">
+					<legend>Load Data</legend>
+				</fieldset>
+			</td>
+			<td rowspan=2 width=50% valign=top>
+				<fieldset id="storytellingContainerDiv" style="position:relative;">
+					<legend>Data History</legend>
+				</fieldset>			
+			</td>
+		</tr>
+		<tr>
+			<td width=50%>
+				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
+					<legend>Load Overlay</legend>
+				</fieldset>
+			</td>
+		</tr>
+		<tr>
+			<td width=50%>
+			    <div id="mapContainerDiv" style="position:relative;"></div>
+			</td>
+			<td width=50%>
+				<div id="piechartContainerDiv" style="height:580px; position:relative;"></div>
+			</td>
+		</tr>
+	</table>
+    <div id="plotContainerDiv" style="position:relative;"></div>
+    <div id="tableContainerDiv" style="position:relative;"></div>
+
+    <script>
+    Publisher.Subscribe( 'GeoTemCoReady', this, function(){
+		var datasets = [];
+		var mapDiv = document.getElementById("mapContainerDiv");
+		var map = new WidgetWrapper();
+		var mapWidget = new MapWidget(map,mapDiv,{
+			mapTitle: "Publication Place"
+		});
+		var timeDiv = document.getElementById("plotContainerDiv");
+		var time = new WidgetWrapper();
+		var timeWidget = new FuzzyTimelineWidget(time,timeDiv,{
+			timeTitle: "Publication Date"
+		});
+		var tableDiv = document.getElementById("tableContainerDiv");
+		var table = new WidgetWrapper();
+		var tableWidget = new TableWidget(table,tableDiv);
+		
+        var dataloaderDiv = document.getElementById("dataloaderContainerDiv");
+        var dataloader = new WidgetWrapper();
+        var dataloaderWidget = new DataloaderWidget(dataloader,dataloaderDiv);
+
+        var overlayloaderDiv = document.getElementById("overlayloaderContainerDiv");
+        var overlayloader = new WidgetWrapper();
+        var overlayloaderWidget = new OverlayloaderWidget(overlayloader,overlayloaderDiv);
+        overlayloaderWidget.attachMapWidget(mapWidget);
+
+        var piechartDiv = document.getElementById("piechartContainerDiv");
+        var piechart = new WidgetWrapper();
+        var piechartWidget = new PieChartWidget(piechart,piechartDiv);
+
+        var storytellingDiv = document.getElementById("storytellingContainerDiv");
+        var storytelling = new WidgetWrapper();
+        var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
+
+        dataloaderWidget.loadFromURL();
+    });
+    </script>
+
+  </body>
+
+</html>
