@@ -42,118 +42,128 @@ function MapConfig(options) {
 					type:'XYZ'	 	
 				},
 				{
-					name: 'Contemporary Map (1994)',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					name: 'Contemporary Map (2010)',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry2010'
+				},
+				{
+					name: 'Historical Map of 2006',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry2006'
+				},
+				{
+					name: 'Historical Map of 1994',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1994'
 				},
 				{
 					name: 'Historical Map of 1945',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1945'
 				},
 				{
 					name: 'Historical Map of 1938',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1938'
 				},
 				{
 					name: 'Historical Map of 1920',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1920'
 				},
 				{
 					name: 'Historical Map of 1914',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1914'
 				},
 				{
 					name: 'Historical Map of 1880',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1880'
 				},
 				{
 					name: 'Historical Map of 1815',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1815'
 				},
 				{
 					name: 'Historical Map of 1783',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1783'
 				},
 				{
 					name: 'Historical Map of 1715',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1715'
 				},
 				{
 					name: 'Historical Map of 1650',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1650'
 				},
 				{
 					name: 'Historical Map of 1530',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1530'
 				},
 				{
 					name: 'Historical Map of 1492',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1492'
 				},
 				{
 					name: 'Historical Map of 1279',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1279'
 				},
 				{
 					name: 'Historical Map of 1000',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1000'
 				},
 				{
 					name: 'Historical Map of 800',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry800'
 				},
 				{
 					name: 'Historical Map of 600',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry600'
 				},
 				{
 					name: 'Historical Map of 400',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry400'
 				},
 				{
 					name: 'Historical Map of 1 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1bc'
 				},
 				{
 					name: 'Historical Map of 200 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry200bc'
 				},
 				{
 					name: 'Historical Map of 323 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry323bc'
 				},
 				{
 					name: 'Historical Map of 500 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry500bc'
 				},
 				{
 					name: 'Historical Map of 1000 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry1000bc'
 				},
 				{
 					name: 'Historical Map of 2000 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
 					layer: 'historic:cntry2000bc'
 				},
 		],
