@@ -30034,6 +30034,7 @@ GeoTemConfig = {
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
+	allowColumnRenaming : true,
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -30643,9 +30644,20 @@ GeoTemConfig.loadJson = function(JSON) {
 					dates.push(time);
 				}
 			}
-			var weight = item.weight || 1;
+			var weight = parseInt(item.weight) || 1;
 			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
 			var projection = new OpenLayers.Projection("EPSG:4326");
+
+			//add all "other" attributes to table data
+			//this is a hack to allow "invalid" JSONs
+			var specialAttributes = ["id", "name", "description", "lon", "lat", "place", "time", 
+			                        "tableContent", "location", "time"];
+			for (var attribute in item){
+				if ($.inArray(attribute, specialAttributes) == -1){
+					tableContent[attribute] = item[attribute];
+				}
+			}
+			
 			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
@@ -31076,6 +31088,104 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
 				console.error("Object '" + this.name + "' has invalid color information");
 		}
 	});
+};
+
+/**
+ * renames (or copies, see below) a column of each DataObject in a Dataset
+ * @param {Dataset} dataset the dataset where the rename should take place
+ * @param {String} oldColumn name of column that will be renamed
+ * @param {String} newColumn new name of column
+ * @param {Boolean} keepOld keep old column (copy mode)
+ * @return an array of data objects
+ */
+GeoTemConfig.renameColumn = function(dataset, oldColumn, newColumn, keepOld){
+	if (typeof keepOld === "undefined"){
+		keepOld = true;
+	}
+	var oldColumObject = {};
+	if (oldColumn.indexOf("[") != -1){
+		oldColumObject.columnName = oldColumn.split("[")[0];
+		var IndexAndAttribute = oldColumn.split("[")[1];
+		if (IndexAndAttribute.indexOf("]") != -1){
+			oldColumObject.type = 2;
+			oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+			var attribute = IndexAndAttribute.split("]")[1];
+			if (attribute.length > 0){
+				oldColumObject.type = 3;
+				oldColumObject.attribute = attribute.split(".")[1];
+			}
+		}
+	} else {
+		oldColumObject.type = 1;
+		oldColumObject.name = oldColumn;
+	}
+
+	var newColumObject = {};
+	if (newColumn.indexOf("[") != -1){
+		newColumObject.name = newColumn.split("[")[0];
+		var IndexAndAttribute = newColumn.split("[")[1];
+		if (IndexAndAttribute.indexOf("]") != -1){
+			newColumObject.type = 2;
+			newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+			var attribute = IndexAndAttribute.split("]")[1];
+			if (attribute.length > 0){
+				newColumObject.type = 3;
+				newColumObject.attribute = attribute.split(".")[1];
+			}
+		}
+	} else {
+		newColumObject.type = 1;
+		newColumObject.name = newColumn;
+	}
+
+	for (var i = 0; i < dataset.objects.length; i++){
+		var dataObject = dataset.objects[i];
+		
+		//get value from old column name
+		var value;
+		if (oldColumObject.type == 1){
+			value = dataObject[oldColumObject.name];
+			if (typeof value === "undefined"){
+				value = dataObject.tableContent[oldColumObject.name];
+			}
+			if (!keepOld){
+				delete dataObject.tableContent[oldColumObject.name];
+				delete dataObject[oldColumObject.name];
+			}
+		} else if (oldColumObject.type == 2){
+			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+			if (!keepOld){
+				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+			}
+		} else if (oldColumObject.type == 3){
+			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+			if (!keepOld){
+				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+			}
+		} 
+
+		//create new column
+		if (newColumObject.type == 1){
+			dataObject[newColumObject.name] = value;
+			dataObject.tableContent[newColumObject.name] = value;
+		} else if (newColumObject.type == 2){
+			if (typeof dataObject[newColumObject.name] == "undefined"){
+				dataObject[newColumObject.name] = [];
+			}
+			dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
+		} else if (newColumObject.type == 3){
+			if (typeof dataObject[newColumObject.name] == "undefined"){
+				dataObject[newColumObject.name] = [];
+			}
+			if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
+				dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
+			}
+			dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
+		}
+		
+		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
+				dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+	}
 };
 /*
 * MapControl.js
@@ -37674,6 +37784,8 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			if (paramName.toLowerCase().startsWith("filter")){
@@ -37711,6 +37823,65 @@ DataloaderWidget.prototype = {
 					filterValues(paramValue);
 				}
 
+			}
+		});
+		//load (optional!) attribute renames
+		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
+		//examples:
+		//	&rename1={"latitude":"lat1","longitude":"lon1"}
+		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("rename")){
+				var datasetID = parseInt(paramName.substr(5));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+
+				if (typeof dataset === "undefined")
+					return;
+				
+				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
+						timespanEndAttr){
+					if (typeof index === "undefined"){
+						index = 0;
+					}
+					
+					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,latAttr,"locations["+index+"].latitude");
+						GeoTemConfig.renameColumn(dataset,lonAttr,"locations["+index+"].longitude");
+					}
+					
+					if (typeof placeAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,placeAttr,"locations["+index+"].place");
+					}
+
+					if (typeof dateAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,dateAttr,"dates["+index+"]");
+					}
+
+					if ((typeof timespanBeginAttr !== "undefined") && 
+							(typeof timespanEndAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,timespanBeginAttr,"tableContent[TimeSpan:begin]");
+						GeoTemConfig.renameColumn(dataset,timespanEndAttr,"tableContent[TimeSpan:end]");
+					}
+				};
+				
+				var renames = JSON.parse(paramValue);
+
+				if (renames instanceof Array){
+					for (var i=0; i < renames.length; i++){
+						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd);
+					}
+				} else {
+					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
+							renames.timeSpanBegin,renames.timeSpanEnd);
+				}
 			}
 		});
 		//Load the (optional!) dataset colors
@@ -42477,6 +42648,20 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 					if (typeof console !== "undefined")
 						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
@@ -42511,6 +42696,12 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				this.dates[i] = GeoTemConfig.getTimeData(this.dates[i]);
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)
