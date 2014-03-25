@@ -134,6 +134,12 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				this.dates[i] = GeoTemConfig.getTimeData(this.dates[i]);
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)
