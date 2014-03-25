@@ -658,7 +658,7 @@ GeoTemConfig.loadJson = function(JSON) {
 					dates.push(time);
 				}
 			}
-			var weight = item.weight || 1;
+			var weight = parseInt(item.weight) || 1;
 			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
 			var projection = new OpenLayers.Projection("EPSG:4326");
 			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
