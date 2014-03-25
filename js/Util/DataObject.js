@@ -86,6 +86,20 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 					if (typeof console !== "undefined")
 						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
