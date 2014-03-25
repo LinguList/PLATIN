@@ -142,6 +142,8 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			if (paramName.toLowerCase().startsWith("filter")){
@@ -179,6 +181,65 @@ DataloaderWidget.prototype = {
 					filterValues(paramValue);
 				}
 
+			}
+		});
+		//load (optional!) attribute renames
+		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
+		//examples:
+		//	&rename1={"latitude":"lat1","longitude":"lon1"}
+		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("rename")){
+				var datasetID = parseInt(paramName.substr(5));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+
+				if (typeof dataset === "undefined")
+					return;
+				
+				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
+						timespanEndAttr){
+					if (typeof index === "undefined"){
+						index = 0;
+					}
+					
+					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,latAttr,"locations["+index+"].latitude");
+						GeoTemConfig.renameColumn(dataset,lonAttr,"locations["+index+"].longitude");
+					}
+					
+					if (typeof placeAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,placeAttr,"locations["+index+"].place");
+					}
+
+					if (typeof dateAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,dateAttr,"dates["+index+"]");
+					}
+
+					if ((typeof timespanBeginAttr !== "undefined") && 
+							(typeof timespanEndAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,timespanBeginAttr,"tableContent[TimeSpan:begin]");
+						GeoTemConfig.renameColumn(dataset,timespanEndAttr,"tableContent[TimeSpan:end]");
+					}
+				};
+				
+				var renames = JSON.parse(paramValue);
+
+				if (renames instanceof Array){
+					for (var i=0; i < renames.length; i++){
+						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd);
+					}
+				} else {
+					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
+							renames.timeSpanBegin,renames.timeSpanEnd);
+				}
 			}
 		});
 		//Load the (optional!) dataset colors
