@@ -142,6 +142,8 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			if (paramName.toLowerCase().startsWith("filter")){
