@@ -179,6 +179,12 @@ FuzzyTimelineDensity.prototype = {
 			tooltipFormatString = "YYYY/MM";
 		}
 
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+		function shadeRGBColor(color, percent) {
+		    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+		    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+		}
+		
 		//credits: Tupak Goliam @ http://stackoverflow.com/a/3821786
         var drawLines = function(plot, ctx) {
             var data = plot.getData();
@@ -186,30 +192,36 @@ FuzzyTimelineDensity.prototype = {
             var offset = plot.getPlotOffset();
             for (var i = 0; i < data.length; i++) {
                 var series = data[i];
-                var color = series.color;
-                ctx.lineWidth = 2;
+                var lineWidth = 1;
                 
                 for (var j = 0; j < series.data.length-1; j++) {
                     var d = (series.data[j]);
                     var d2 = (series.data[j+1]);
-                    
-                    ctx.strokeStyle=color;
-                    //hide lines that "connect" 0 and 0
-                    //essentially blanking out the 0 values 
-                    if ((d[1]==0)&&(d2[1]==0)){
-                    	ctx.strokeStyle="rgba(1, 1, 1, 0)";
-                        //continue;
-                    }
                     
                     var x = offset.left + axes.xaxis.p2c(d[0]);
                     var y = offset.top + axes.yaxis.p2c(d[1]);
                     
                     var x2 = offset.left + axes.xaxis.p2c(d2[0]);
                     var y2 = offset.top + axes.yaxis.p2c(d2[1]);
+
+                    //hide lines that "connect" 0 and 0
+                    //essentially blanking out the 0 values 
+                    if ((d[1]==0)&&(d2[1]==0)){
+                        continue;
+                    }
                     
+                    ctx.strokeStyle=series.color;
+                    ctx.lineWidth = lineWidth;
                     ctx.beginPath();
                     ctx.moveTo(x,y);
                     ctx.lineTo(x2,y2);
+
+                    //add shadow (esp. to make background lines more visible)
+                    ctx.shadowColor = shadeRGBColor(series.color,-0.3);
+                    ctx.shadowBlur=1;
+                    ctx.shadowOffsetX = 1; 
+                    ctx.shadowOffsetY = 1;
+                    
                     ctx.stroke();
                 }    
             }
