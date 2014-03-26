@@ -27,7 +27,6 @@
 function PlacetableConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address='
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

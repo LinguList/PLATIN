@@ -27,7 +27,6 @@
 function PieChartConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			restrictPieChartSize : 0.25, // restrict size to percantage of window size (false for no restriction)
 			localStoragePrefix : "GeoBrowser_PieChart_", // prefix for value name in LocalStorage
 			allowLocalStorage : true, //whether LocalStorage save and load should be allowed (and buttons shown) 

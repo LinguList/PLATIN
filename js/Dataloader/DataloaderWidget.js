@@ -87,8 +87,8 @@ DataloaderWidget.prototype = {
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
-			if (typeof dataLoaderWidget.options.proxy != 'undefined')
-				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);

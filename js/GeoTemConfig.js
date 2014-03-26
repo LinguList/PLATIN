@@ -50,6 +50,7 @@ GeoTemConfig = {
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	allowColumnRenaming : true,
+	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
