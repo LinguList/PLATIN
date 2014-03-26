@@ -184,7 +184,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        yaxis: {
 		        	min : rangeBar.yValMin,
-		        	max : rangeBar.yValMax
+		        	max : rangeBar.yValMax*1.05
 		        },
 		        tooltip: true,
 		        tooltipOpts: {

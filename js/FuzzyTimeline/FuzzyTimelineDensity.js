@@ -264,7 +264,7 @@ FuzzyTimelineDensity.prototype = {
 				},
 		        yaxis: {
 		        	min : density.yValMin,
-		        	max : density.yValMax
+		        	max : density.yValMax*1.05
 		        },
                 hooks: { 
                     draw  : drawLines
