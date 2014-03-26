@@ -127,8 +127,6 @@ FuzzyTimelineDensity.prototype = {
 								weight = this.weight * ticks.lastTickPercentage;
 							else
 								weight = this.weight;
-							
-							weight = this.weight;
 						}
 						
 						chartDataCounter[i] += weight;
