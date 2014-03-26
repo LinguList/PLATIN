@@ -162,12 +162,22 @@ FuzzyTimelineRangeSlider.prototype = {
 				humanizedSpan = duration.minutes() + "min";
 			else if (duration < moment.duration(1,'day'))
 				humanizedSpan = duration.hours() + "h";
-			else if (duration < moment.duration(1,'month'))
-				humanizedSpan = duration.days() + " days";
-			else if (duration < moment.duration(1,'year'))
-				humanizedSpan = duration.months() + " months";
-			else 
-				humanizedSpan = duration.years() + " years";
+			else if (duration < moment.duration(1,'month')){
+				var days = duration.days();
+				humanizedSpan = days + " day";
+				if (days > 1)
+					humanizedSpan += "s";
+			} else if (duration < moment.duration(1,'year')){
+				var months = duration.months();
+				humanizedSpan = months + " month";
+				if (months > 1)
+					humanizedSpan += "s";
+			} else {
+				var years = duration.years();
+				humanizedSpan = years + " year";
+				if (years > 1)
+					humanizedSpan += "s";
+			}
 			$(rangeSlider.rangeDropdown).append("<option index='"+index+"'>"+humanizedSpan+"</option>");
 			index++;
 		});
