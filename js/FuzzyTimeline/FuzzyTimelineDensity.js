@@ -127,8 +127,6 @@ FuzzyTimelineDensity.prototype = {
 								weight = this.weight * ticks.lastTickPercentage;
 							else
 								weight = this.weight;
-							
-							weight = this.weight;
 						}
 						
 						chartDataCounter[i] += weight;
@@ -180,10 +178,60 @@ FuzzyTimelineDensity.prototype = {
 			axisFormatString = "%Y/%m";
 			tooltipFormatString = "YYYY/MM";
 		}
+
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+		function shadeRGBColor(color, percent) {
+		    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+		    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+		}
 		
+		//credits: Tupak Goliam @ http://stackoverflow.com/a/3821786
+        var drawLines = function(plot, ctx) {
+            var data = plot.getData();
+            var axes = plot.getAxes();
+            var offset = plot.getPlotOffset();
+            for (var i = 0; i < data.length; i++) {
+                var series = data[i];
+                var lineWidth = 1;
+                
+                for (var j = 0; j < series.data.length-1; j++) {
+                    var d = (series.data[j]);
+                    var d2 = (series.data[j+1]);
+                    
+                    var x = offset.left + axes.xaxis.p2c(d[0]);
+                    var y = offset.top + axes.yaxis.p2c(d[1]);
+                    
+                    var x2 = offset.left + axes.xaxis.p2c(d2[0]);
+                    var y2 = offset.top + axes.yaxis.p2c(d2[1]);
+
+                    //hide lines that "connect" 0 and 0
+                    //essentially blanking out the 0 values 
+                    if ((d[1]==0)&&(d2[1]==0)){
+                        continue;
+                    }
+                    
+                    ctx.strokeStyle=series.color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.beginPath();
+                    ctx.moveTo(x,y);
+                    ctx.lineTo(x2,y2);
+
+                    //add shadow (esp. to make background lines more visible)
+                    ctx.shadowColor = shadeRGBColor(series.color,-0.3);
+                    ctx.shadowBlur=1;
+                    ctx.shadowOffsetX = 1; 
+                    ctx.shadowOffsetY = 1;
+                    
+                    ctx.stroke();
+                }    
+            }
+        }; 	
+
 		var options = {
 				series:{
-	                lines:{show: true}
+					//width:0 because line is drawn in own routine above
+					//but everything else (data points, shadow) should be drawn
+	                lines:{show: true, lineWidth: 0, shadowSize: 0},
 	            },
 				grid: {
 		            hoverable: true,
@@ -218,6 +266,9 @@ FuzzyTimelineDensity.prototype = {
 		        	min : density.yValMin,
 		        	max : density.yValMax
 		        },
+                hooks: { 
+                    draw  : drawLines
+                },
 			};
 		if (!density.parent.options.showYAxis)
 			options.yaxis.show=false;
