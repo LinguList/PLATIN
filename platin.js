@@ -24621,7 +24621,7 @@ Dual licenced under the MIT license or GPLv3. See LICENSE.markdown.
  * http://www.uselesscode.org/javascript/csv/
  */
 var CSV=(function(){var f=/^\d+$/,g=/^\d*\.\d+$|^\d+\.\d*$/,i=/^\s|\s$|,|"|\n/,b=(function(){if(String.prototype.trim){return function(j){return j.trim()}}else{return function(j){return j.replace(/^\s*/,"").replace(/\s*$/,"")}}}());function h(j){return Object.prototype.toString.apply(j)==="[object Number]"}function a(j){return Object.prototype.toString.apply(j)==="[object String]"}function d(j){if(j.charAt(j.length-1)!=="\n"){return j}else{return j.substring(0,j.length-1)}}function e(k){var p,m="",o,n,l;for(n=0;n<k.length;n+=1){o=k[n];for(l=0;l<o.length;l+=1){p=o[l];if(a(p)){p=p.replace(/"/g,'""');if(i.test(p)||f.test(p)||g.test(p)){p='"'+p+'"'}else{if(p===""){p='""'}}}else{if(h(p)){p=p.toString(10)}else{if(p===null){p=""}else{p=p.toString()}}}m+=l<o.length-1?p+",":p}m+="\n"}return m}function c(t,p){t=d(t);var q="",l=false,m=false,o="",r=[],j=[],k,n;n=function(s){if(m!==true){if(s===""){s=null}else{if(p===true){s=b(s)}}if(f.test(s)){s=parseInt(s,10)}else{if(g.test(s)){s=parseFloat(s,10)}}}return s};for(k=0;k<t.length;k+=1){q=t.charAt(k);if(l===false&&(q===","||q==="\n")){o=n(o);r.push(o);if(q==="\n"){j.push(r);r=[]}o="";m=false}else{if(q!=='"'){o+=q}else{if(!l){l=true;m=true}else{if(t.charAt(k+1)==='"'){o+='"';k+=1}else{l=false}}}}}o=n(o);r.push(o);j.push(r);return j}if(typeof exports==="object"){exports.arrayToCsv=e;exports.csvToArray=c}return{arrayToCsv:e,csvToArray:c}}());
-/* Javascript plotting library for jQuery, version 0.8.2.
+/* Javascript plotting library for jQuery, version 0.8.3-alpha.
 
 Copyright (c) 2007-2013 IOLA and Ole Laursen.
 Licensed under the MIT license.
@@ -26329,8 +26329,8 @@ Licensed under the MIT license.
             axis.tickDecimals = Math.max(0, maxDec != null ? maxDec : dec);
             axis.tickSize = opts.tickSize || size;
 
-            // Time mode was moved to a plug-in in 0.8, but since so many people use this
-            // we'll add an especially friendly make sure they remembered to include it.
+            // Time mode was moved to a plug-in in 0.8, and since so many people use it
+            // we'll add an especially friendly reminder to make sure they included it.
 
             if (opts.mode == "time" && !axis.tickGenerator) {
                 throw new Error("Time mode requires the flot.time plugin.");
@@ -26586,26 +26586,34 @@ Licensed under the MIT license.
                     yrange.from = Math.max(yrange.from, yrange.axis.min);
                     yrange.to = Math.min(yrange.to, yrange.axis.max);
 
-                    if (xrange.from == xrange.to && yrange.from == yrange.to)
+                    var xequal = xrange.from === xrange.to,
+                        yequal = yrange.from === yrange.to;
+
+                    if (xequal && yequal) {
                         continue;
+                    }
 
                     // then draw
-                    xrange.from = xrange.axis.p2c(xrange.from);
-                    xrange.to = xrange.axis.p2c(xrange.to);
-                    yrange.from = yrange.axis.p2c(yrange.from);
-                    yrange.to = yrange.axis.p2c(yrange.to);
+                    xrange.from = Math.floor(xrange.axis.p2c(xrange.from));
+                    xrange.to = Math.floor(xrange.axis.p2c(xrange.to));
+                    yrange.from = Math.floor(yrange.axis.p2c(yrange.from));
+                    yrange.to = Math.floor(yrange.axis.p2c(yrange.to));
 
-                    if (xrange.from == xrange.to || yrange.from == yrange.to) {
-                        // draw line
+                    if (xequal || yequal) {
+                        var lineWidth = m.lineWidth || options.grid.markingsLineWidth,
+                            subPixel = lineWidth % 2 ? 0.5 : 0;
                         ctx.beginPath();
                         ctx.strokeStyle = m.color || options.grid.markingsColor;
-                        ctx.lineWidth = m.lineWidth || options.grid.markingsLineWidth;
-                        ctx.moveTo(xrange.from, yrange.from);
-                        ctx.lineTo(xrange.to, yrange.to);
+                        ctx.lineWidth = lineWidth;
+                        if (xequal) {
+                            ctx.moveTo(xrange.to + subPixel, yrange.from);
+                            ctx.lineTo(xrange.to + subPixel, yrange.to);
+                        } else {
+                            ctx.moveTo(xrange.from, yrange.to + subPixel);
+                            ctx.lineTo(xrange.to, yrange.to + subPixel);                            
+                        }
                         ctx.stroke();
-                    }
-                    else {
-                        // fill area
+                    } else {
                         ctx.fillStyle = m.color || options.grid.markingsColor;
                         ctx.fillRect(xrange.from, yrange.to,
                                      xrange.to - xrange.from,
@@ -27740,7 +27748,7 @@ Licensed under the MIT license.
         return plot;
     };
 
-    $.plot.version = "0.8.2";
+    $.plot.version = "0.8.3-alpha";
 
     $.plot.plugins = [];
 
@@ -27984,13 +27992,16 @@ More detail and specific examples can be found in the included HTML file.
 			for (var i = 0; i < data.length; ++i) {
 				var value = data[i].data[0][1];
 				if (numCombined < 2 || value / total > options.series.pie.combine.threshold) {
-					newdata.push({
-						data: [[1, value]],
-						color: data[i].color,
-						label: data[i].label,
-						angle: value * Math.PI * 2 / total,
-						percent: value / (total / 100)
-					});
+					newdata.push(
+						$.extend(data[i], {     /* extend to allow keeping all other original data values
+						                           and using them e.g. in labelFormatter. */
+							data: [[1, value]],
+							color: data[i].color,
+							label: data[i].label,
+							angle: value * Math.PI * 2 / total,
+							percent: value / (total / 100)
+						})
+					);
 				}
 			}
 
@@ -29424,19 +29435,48 @@ API.txt for details.
 	// on the function, so we need to re-expose it here.
 
 	$.plot.formatDate = formatDate;
+	$.plot.dateGenerator = dateGenerator;
 
 })(jQuery);
 /*
  * jquery.flot.tooltip
  * 
  * description: easy-to-use tooltips for Flot charts
- * version: 0.6.5
+ * version: 0.6.7
  * author: Krzysztof Urbas @krzysu [myviews.pl]
  * website: https://github.com/krzysu/flot.tooltip
  * 
- * build on 2014-01-23
+ * build on 2014-03-26
  * released under MIT License, 2012
 */ 
+// IE8 polyfill for Array.indexOf
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement, fromIndex) {
+        if ( this === undefined || this === null ) {
+            throw new TypeError( '"this" is null or not defined' );
+        }
+        var length = this.length >>> 0; // Hack to convert object.length to a UInt32
+        fromIndex = +fromIndex || 0;
+        if (Math.abs(fromIndex) === Infinity) {
+            fromIndex = 0;
+        }
+        if (fromIndex < 0) {
+            fromIndex += length;
+            if (fromIndex < 0) {
+                fromIndex = 0;
+            }
+        }
+
+        for (;fromIndex < length; fromIndex++) {
+            if (this[fromIndex] === searchElement) {
+                return fromIndex;
+            }
+        }
+
+        return -1;
+    };
+}
+
 (function ($) {
 
     // plugin options, default values
@@ -29446,6 +29486,8 @@ API.txt for details.
             content: "%s | X: %x | Y: %y",
             // allowed templates are:
             // %s -> series label,
+            // %lx -> x axis label (requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels),
+            // %ly -> y axis label (requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels),
             // %x -> X value,
             // %y -> Y value,
             // %x.2 -> precision of X value,
@@ -29479,6 +29521,16 @@ API.txt for details.
 
         var that = this;
 
+        // detect other flot plugins
+        var plotPluginsLength = $.plot.plugins.length;
+        this.plotPlugins = [];
+
+        if (plotPluginsLength) {
+            for (var p = 0; p < plotPluginsLength; p++) {
+                this.plotPlugins.push($.plot.plugins[p].name);
+            }
+        }
+
         plot.hooks.bindEvents.push(function (plot, eventHolder) {
 
             // get plot options
@@ -29496,13 +29548,13 @@ API.txt for details.
             // bind event
             $( plot.getPlaceholder() ).bind("plothover", plothover);
 
-			$(eventHolder).bind('mousemove', mouseMove);
+            $(eventHolder).bind('mousemove', mouseMove);
         });
 
-		plot.hooks.shutdown.push(function (plot, eventHolder){
-			$(plot.getPlaceholder()).unbind("plothover", plothover);
-			$(eventHolder).unbind("mousemove", mouseMove);
-		});
+        plot.hooks.shutdown.push(function (plot, eventHolder){
+            $(plot.getPlaceholder()).unbind("plothover", plothover);
+            $(eventHolder).unbind("mousemove", mouseMove);
+        });
 
         function mouseMove(e){
             var pos = {};
@@ -29511,8 +29563,8 @@ API.txt for details.
             that.updateTooltipPosition(pos);
         }
 
-		function plothover(event, pos, item) {
-			var $tip = that.getDomElement();
+        function plothover(event, pos, item) {
+            var $tip = that.getDomElement();
             if (item) {
                 var tipText;
 
@@ -29555,7 +29607,7 @@ API.txt for details.
             if(this.tooltipOptions.defaultTheme) {
                 $tip.css({
                     'background': '#fff',
-                    'z-index': '100',
+                    'z-index': '1040',
                     'padding': '0.4em 0.6em',
                     'border-radius': '0.5em',
                     'font-size': '0.8em',
@@ -29593,6 +29645,8 @@ API.txt for details.
 
         var percentPattern = /%p\.{0,1}(\d{0,})/;
         var seriesPattern = /%s/;
+        var xLabelPattern = /%lx/; // requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels, will be ignored if plugin isn't loaded
+        var yLabelPattern = /%ly/; // requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels, will be ignored if plugin isn't loaded
         var xPattern = /%x\.{0,1}(\d{0,})/;
         var yPattern = /%y\.{0,1}(\d{0,})/;
         var xPatternWithoutPrecision = "%x";
@@ -29633,6 +29687,24 @@ API.txt for details.
             content = content.replace(seriesPattern, "");
         }
 
+        // x axis label match
+        if( this.hasAxisLabel('xaxis', item) ) {
+            content = content.replace(xLabelPattern, item.series.xaxis.options.axisLabel);
+        }
+        else {
+            //remove %lx if axis label is undefined or axislabels plugin not present
+            content = content.replace(xLabelPattern, "");
+        }
+
+        // y axis label match
+        if( this.hasAxisLabel('yaxis', item) ) {
+            content = content.replace(yLabelPattern, item.series.yaxis.options.axisLabel);
+        }
+        else {
+            //remove %ly if axis label is undefined or axislabels plugin not present
+            content = content.replace(yLabelPattern, "");
+        }
+
         // time mode axes with custom dateFormat
         if(this.isTimeMode('xaxis', item) && this.isXDateFormat(item)) {
             content = content.replace(xPattern, this.timestampToDate(x, this.tooltipOptions.xDateFormat));
@@ -29652,9 +29724,35 @@ API.txt for details.
 
         // change x from number to given label, if given
         if(typeof item.series.xaxis.ticks !== 'undefined') {
-            if(item.series.xaxis.ticks.length > item.dataIndex && !this.isTimeMode('xaxis', item))
-                content = content.replace(xPattern, item.series.xaxis.ticks[item.dataIndex].label);
+
+            var ticks;
+            if(this.hasRotatedXAxisTicks(item)) {
+                // xaxis.ticks will be an empty array if tickRotor is being used, but the values are available in rotatedTicks
+                ticks = 'rotatedTicks';
+            }
+            else {
+                ticks = 'ticks';
+            }
+
+            // see https://github.com/krzysu/flot.tooltip/issues/65
+            var tickIndex = item.dataIndex + item.seriesIndex;
+
+            if(item.series.xaxis[ticks].length > tickIndex && !this.isTimeMode('xaxis', item))
+                content = content.replace(xPattern, item.series.xaxis[ticks][tickIndex].label);
         }
+
+        // change y from number to given label, if given
+        if(typeof item.series.yaxis.ticks !== 'undefined') {
+            for (var index in item.series.yaxis.ticks) {
+                if (item.series.yaxis.ticks.hasOwnProperty(index)) {
+                    var value = (this.isCategoriesMode('yaxis', item)) ? item.series.yaxis.ticks[index].label : item.series.yaxis.ticks[index].v;
+                    if (value === y) {
+                        content = content.replace(yPattern, item.series.yaxis.ticks[index].label);
+                    }
+                }
+            }
+        }
+
         // if no value customization, use tickFormatter by default
         if(typeof item.series.xaxis.tickFormatter !== 'undefined') {
             //escape dollar
@@ -29681,6 +29779,10 @@ API.txt for details.
         return (typeof this.tooltipOptions.yDateFormat !== 'undefined' && this.tooltipOptions.yDateFormat !== null);
     };
 
+    FlotTooltip.prototype.isCategoriesMode = function(axisName, item) {
+        return (typeof item.series[axisName].options.mode !== 'undefined' && item.series[axisName].options.mode === 'categories');
+    };
+
     //
     FlotTooltip.prototype.timestampToDate = function(tmst, dateFormat) {
         var theDate = new Date(tmst*1);
@@ -29704,6 +29806,18 @@ API.txt for details.
         return content;
     };
 
+    // other plugins detection below
+
+    // check if flot-axislabels plugin (https://github.com/markrcote/flot-axislabels) is used and that an axis label is given
+    FlotTooltip.prototype.hasAxisLabel = function(axisName, item) {
+        return (this.plotPlugins.indexOf('axisLabels') !== -1 && typeof item.series[axisName].options.axisLabel !== 'undefined' && item.series[axisName].options.axisLabel.length > 0);
+    };
+
+    // check whether flot-tickRotor, a plugin which allows rotation of X-axis ticks, is being used
+    FlotTooltip.prototype.hasRotatedXAxisTicks = function(item) {
+        return ($.grep($.plot.plugins, function(p){ return p.name === "tickRotor"; }).length === 1 && typeof item.series.xaxis.rotatedTicks !== 'undefined');
+    };
+
     //
     var init = function(plot) {
       new FlotTooltip(plot);
@@ -29714,7 +29828,7 @@ API.txt for details.
         init: init,
         options: defaultOptions,
         name: 'tooltip',
-        version: '0.6.1'
+        version: '0.6.7'
     });
 
 })(jQuery);
@@ -38120,8 +38234,6 @@ FuzzyTimelineDensity.prototype = {
 								weight = this.weight * ticks.lastTickPercentage;
 							else
 								weight = this.weight;
-							
-							weight = this.weight;
 						}
 						
 						chartDataCounter[i] += weight;
@@ -38173,10 +38285,60 @@ FuzzyTimelineDensity.prototype = {
 			axisFormatString = "%Y/%m";
 			tooltipFormatString = "YYYY/MM";
 		}
+
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+		function shadeRGBColor(color, percent) {
+		    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+		    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+		}
 		
+		//credits: Tupak Goliam @ http://stackoverflow.com/a/3821786
+        var drawLines = function(plot, ctx) {
+            var data = plot.getData();
+            var axes = plot.getAxes();
+            var offset = plot.getPlotOffset();
+            for (var i = 0; i < data.length; i++) {
+                var series = data[i];
+                var lineWidth = 1;
+                
+                for (var j = 0; j < series.data.length-1; j++) {
+                    var d = (series.data[j]);
+                    var d2 = (series.data[j+1]);
+                    
+                    var x = offset.left + axes.xaxis.p2c(d[0]);
+                    var y = offset.top + axes.yaxis.p2c(d[1]);
+                    
+                    var x2 = offset.left + axes.xaxis.p2c(d2[0]);
+                    var y2 = offset.top + axes.yaxis.p2c(d2[1]);
+
+                    //hide lines that "connect" 0 and 0
+                    //essentially blanking out the 0 values 
+                    if ((d[1]==0)&&(d2[1]==0)){
+                        continue;
+                    }
+                    
+                    ctx.strokeStyle=series.color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.beginPath();
+                    ctx.moveTo(x,y);
+                    ctx.lineTo(x2,y2);
+
+                    //add shadow (esp. to make background lines more visible)
+                    ctx.shadowColor = shadeRGBColor(series.color,-0.3);
+                    ctx.shadowBlur=1;
+                    ctx.shadowOffsetX = 1; 
+                    ctx.shadowOffsetY = 1;
+                    
+                    ctx.stroke();
+                }    
+            }
+        }; 	
+
 		var options = {
 				series:{
-	                lines:{show: true}
+					//width:0 because line is drawn in own routine above
+					//but everything else (data points, shadow) should be drawn
+	                lines:{show: true, lineWidth: 0, shadowSize: 0},
 	            },
 				grid: {
 		            hoverable: true,
@@ -38209,8 +38371,11 @@ FuzzyTimelineDensity.prototype = {
 				},
 		        yaxis: {
 		        	min : density.yValMin,
-		        	max : density.yValMax
+		        	max : density.yValMax*1.05
 		        },
+                hooks: { 
+                    draw  : drawLines
+                },
 			};
 		if (!density.parent.options.showYAxis)
 			options.yaxis.show=false;
@@ -38734,7 +38899,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        yaxis: {
 		        	min : rangeBar.yValMin,
-		        	max : rangeBar.yValMax
+		        	max : rangeBar.yValMax*1.05
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
@@ -39399,10 +39564,11 @@ FuzzyTimelineRangeSlider.prototype = {
 			moment.duration(5000, 'years'),
 			moment.duration(10000, 'years'),
 			];
-		
+		var overallSpan = rangeSlider.parent.overallMax-rangeSlider.parent.overallMin;
 		//only add spans that are not too small for the data
 		for (var i = 0; i < fixedSpans.length; i++){
-			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5))
+			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5)) &&
+					(fixedSpans[i].asMilliseconds() < overallSpan)
 					&&
 					(
 							rangeSlider.parent.options.showAllPossibleSpans ||
@@ -39425,12 +39591,22 @@ FuzzyTimelineRangeSlider.prototype = {
 				humanizedSpan = duration.minutes() + "min";
 			else if (duration < moment.duration(1,'day'))
 				humanizedSpan = duration.hours() + "h";
-			else if (duration < moment.duration(1,'month'))
-				humanizedSpan = duration.days() + " days";
-			else if (duration < moment.duration(1,'year'))
-				humanizedSpan = duration.months() + " months";
-			else 
-				humanizedSpan = duration.years() + " years";
+			else if (duration < moment.duration(1,'month')){
+				var days = duration.days();
+				humanizedSpan = days + " day";
+				if (days > 1)
+					humanizedSpan += "s";
+			} else if (duration < moment.duration(1,'year')){
+				var months = duration.months();
+				humanizedSpan = months + " month";
+				if (months > 1)
+					humanizedSpan += "s";
+			} else {
+				var years = duration.years();
+				humanizedSpan = years + " year";
+				if (years > 1)
+					humanizedSpan += "s";
+			}
 			$(rangeSlider.rangeDropdown).append("<option index='"+index+"'>"+humanizedSpan+"</option>");
 			index++;
 		});
