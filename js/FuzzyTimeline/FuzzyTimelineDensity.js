@@ -178,10 +178,48 @@ FuzzyTimelineDensity.prototype = {
 			axisFormatString = "%Y/%m";
 			tooltipFormatString = "YYYY/MM";
 		}
-		
+
+		//credits: Tupak Goliam @ http://stackoverflow.com/a/3821786
+        var drawLines = function(plot, ctx) {
+            var data = plot.getData();
+            var axes = plot.getAxes();
+            var offset = plot.getPlotOffset();
+            for (var i = 0; i < data.length; i++) {
+                var series = data[i];
+                var color = series.color;
+                ctx.lineWidth = 2;
+                
+                for (var j = 0; j < series.data.length-1; j++) {
+                    var d = (series.data[j]);
+                    var d2 = (series.data[j+1]);
+                    
+                    ctx.strokeStyle=color;
+                    //hide lines that "connect" 0 and 0
+                    //essentially blanking out the 0 values 
+                    if ((d[1]==0)&&(d2[1]==0)){
+                    	ctx.strokeStyle="rgba(1, 1, 1, 0)";
+                        //continue;
+                    }
+                    
+                    var x = offset.left + axes.xaxis.p2c(d[0]);
+                    var y = offset.top + axes.yaxis.p2c(d[1]);
+                    
+                    var x2 = offset.left + axes.xaxis.p2c(d2[0]);
+                    var y2 = offset.top + axes.yaxis.p2c(d2[1]);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x,y);
+                    ctx.lineTo(x2,y2);
+                    ctx.stroke();
+                }    
+            }
+        }; 	
+
 		var options = {
 				series:{
-	                lines:{show: true}
+					//width:0 because line is drawn in own routine above
+					//but everything else (data points, shadow) should be drawn
+	                lines:{show: true, lineWidth: 0, shadowSize: 0},
 	            },
 				grid: {
 		            hoverable: true,
@@ -216,6 +254,9 @@ FuzzyTimelineDensity.prototype = {
 		        	min : density.yValMin,
 		        	max : density.yValMax
 		        },
+                hooks: { 
+                    draw  : drawLines
+                },
 			};
 		if (!density.parent.options.showYAxis)
 			options.yaxis.show=false;
