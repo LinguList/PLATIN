@@ -37,7 +37,7 @@ $.fn.cleanWhitespace = function() {
 	return this;
 };
 
-var GeoTemConfig = {
+GeoTemConfig = {
 
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered
@@ -49,6 +49,8 @@ var GeoTemConfig = {
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
+	allowColumnRenaming : true,
+	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -658,9 +660,20 @@ GeoTemConfig.loadJson = function(JSON) {
 					dates.push(time);
 				}
 			}
-			var weight = item.weight || 1;
+			var weight = parseInt(item.weight) || 1;
 			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
 			var projection = new OpenLayers.Projection("EPSG:4326");
+
+			//add all "other" attributes to table data
+			//this is a hack to allow "invalid" JSONs
+			var specialAttributes = ["id", "name", "description", "lon", "lat", "place", "time", 
+			                        "tableContent", "location", "time"];
+			for (var attribute in item){
+				if ($.inArray(attribute, specialAttributes) == -1){
+					tableContent[attribute] = item[attribute];
+				}
+			}
+			
 			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
@@ -1091,4 +1104,102 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
 				console.error("Object '" + this.name + "' has invalid color information");
 		}
 	});
+};
+
+/**
+ * renames (or copies, see below) a column of each DataObject in a Dataset
+ * @param {Dataset} dataset the dataset where the rename should take place
+ * @param {String} oldColumn name of column that will be renamed
+ * @param {String} newColumn new name of column
+ * @param {Boolean} keepOld keep old column (copy mode)
+ * @return an array of data objects
+ */
+GeoTemConfig.renameColumn = function(dataset, oldColumn, newColumn, keepOld){
+	if (typeof keepOld === "undefined"){
+		keepOld = true;
+	}
+	var oldColumObject = {};
+	if (oldColumn.indexOf("[") != -1){
+		oldColumObject.columnName = oldColumn.split("[")[0];
+		var IndexAndAttribute = oldColumn.split("[")[1];
+		if (IndexAndAttribute.indexOf("]") != -1){
+			oldColumObject.type = 2;
+			oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+			var attribute = IndexAndAttribute.split("]")[1];
+			if (attribute.length > 0){
+				oldColumObject.type = 3;
+				oldColumObject.attribute = attribute.split(".")[1];
+			}
+		}
+	} else {
+		oldColumObject.type = 1;
+		oldColumObject.name = oldColumn;
+	}
+
+	var newColumObject = {};
+	if (newColumn.indexOf("[") != -1){
+		newColumObject.name = newColumn.split("[")[0];
+		var IndexAndAttribute = newColumn.split("[")[1];
+		if (IndexAndAttribute.indexOf("]") != -1){
+			newColumObject.type = 2;
+			newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+			var attribute = IndexAndAttribute.split("]")[1];
+			if (attribute.length > 0){
+				newColumObject.type = 3;
+				newColumObject.attribute = attribute.split(".")[1];
+			}
+		}
+	} else {
+		newColumObject.type = 1;
+		newColumObject.name = newColumn;
+	}
+
+	for (var i = 0; i < dataset.objects.length; i++){
+		var dataObject = dataset.objects[i];
+		
+		//get value from old column name
+		var value;
+		if (oldColumObject.type == 1){
+			value = dataObject[oldColumObject.name];
+			if (typeof value === "undefined"){
+				value = dataObject.tableContent[oldColumObject.name];
+			}
+			if (!keepOld){
+				delete dataObject.tableContent[oldColumObject.name];
+				delete dataObject[oldColumObject.name];
+			}
+		} else if (oldColumObject.type == 2){
+			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+			if (!keepOld){
+				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+			}
+		} else if (oldColumObject.type == 3){
+			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+			if (!keepOld){
+				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+			}
+		} 
+
+		//create new column
+		if (newColumObject.type == 1){
+			dataObject[newColumObject.name] = value;
+			dataObject.tableContent[newColumObject.name] = value;
+		} else if (newColumObject.type == 2){
+			if (typeof dataObject[newColumObject.name] == "undefined"){
+				dataObject[newColumObject.name] = [];
+			}
+			dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
+		} else if (newColumObject.type == 3){
+			if (typeof dataObject[newColumObject.name] == "undefined"){
+				dataObject[newColumObject.name] = [];
+			}
+			if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
+				dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
+			}
+			dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
+		}
+		
+		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
+				dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+	}
 };

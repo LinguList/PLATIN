@@ -30,7 +30,6 @@ function OverlayloaderConfig(options) {
 			wms_overlays : [
 							//e.g. {name:'name', server:'url', layer:'layer'},
 			],
-			proxy : 'php/proxy.php?address='
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

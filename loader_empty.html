@@ -3,7 +3,7 @@
 
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>GeoTemCo</title>
+    <title>PLATIN</title>
 
  	<style type="text/css">
 		.legend > table, .legend > div {
@@ -18,9 +18,9 @@
 		}
 	</style>
 
- 	<script src="js/Util/Publisher.js"></script>
- 	<script src="js/Build/Loader/DynaJsLoader.js"></script>
-	<script src="js/Build/Loader/Loader.js"></script>
+	<link href="css/platin.css" rel="stylesheet" type="text/css">
+  	<script src="lib/jquery/jquery.min.js"></script>
+ 	<script src="platin-min.js"></script>
   </head>
 
   <body>
@@ -64,7 +64,6 @@
     <div id="tableContainerDiv" style="position:relative;"></div>
 
     <script>
-	Publisher.Subscribe( 'GeoTemCoReady', this, function(){
 		var datasets = [];
 		var mapDiv = document.getElementById("mapContainerDiv");
 		var map = new WidgetWrapper();
@@ -98,7 +97,6 @@
 		var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
 		
 		dataloaderWidget.loadFromURL();
-	});
     </script>
 
   </body>

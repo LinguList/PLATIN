@@ -40,7 +40,7 @@
  * @param {Openlayers.Projection} projection of the coordinates (optional)
  */
 
-function DataObject(name, description, locations, dates, weight, tableContent, projection) {
+DataObject = function(name, description, locations, dates, weight, tableContent, projection) {
 
 	this.name = $.trim(name);
 	this.description = $.trim(description);
@@ -86,6 +86,20 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 					if (typeof console !== "undefined")
 						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
@@ -120,6 +134,12 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				this.dates[i] = GeoTemConfig.getTimeData(this.dates[i]);
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)

@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the Placetable widget div
  * @param {JSON} options user specified configuration that overwrites options in PlacetableConfig.js
  */
-function PlacetableWidget(core, div, options) {
+PlacetableWidget = function(core, div, options) {
 
 	this.datasets;
 	this.core = core;

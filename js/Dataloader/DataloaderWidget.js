@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the Dataloader widget div
  * @param {JSON} options user specified configuration that overwrites options in DataloaderConfig.js
  */
-function DataloaderWidget(core, div, options) {
+DataloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -87,19 +87,43 @@ DataloaderWidget.prototype = {
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
-			if (typeof dataLoaderWidget.options.proxy != 'undefined')
-				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);									
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				var json = GeoTemConfig.getCsv(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				var json = GeoTemConfig.getJson(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(4));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("local")){
 				var csv = $.remember({name:encodeURIComponent(origURL)});
@@ -108,8 +132,114 @@ DataloaderWidget.prototype = {
 				var fileName = origURL.substring("GeoBrowser_dataset_".length);
 				var json = GeoTemConfig.convertCsv(csv);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(5));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
+		$.each($.url().param(),function(paramName, paramValue){
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			if (paramName.toLowerCase().startsWith("filter")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+				
+				if (typeof dataset === "undefined")
+					return;
+				
+				var filterValues = function(paramValue){
+					var filter = JSON.parse(paramValue);
+					var filteredObjects = [];
+					for(var i = 0; i < dataset.objects.length; i++){
+						var dataObject = dataset.objects[i];
+						if ($.inArray(dataObject.index,filter) != -1){
+							filteredObjects.push(dataObject);
+						}
+					}
+					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+					datasets.push(filteredDataset);
+				}
+				
+				if (paramValue instanceof Array){
+					for (var i=0; i < paramValue.length; i++){
+						filterValues(paramValue[i]);
+					}
+				} else {
+					filterValues(paramValue);
+				}
+
+			}
+		});
+		//load (optional!) attribute renames
+		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
+		//examples:
+		//	&rename1={"latitude":"lat1","longitude":"lon1"}
+		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("rename")){
+				var datasetID = parseInt(paramName.substr(5));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+
+				if (typeof dataset === "undefined")
+					return;
+				
+				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
+						timespanEndAttr){
+					if (typeof index === "undefined"){
+						index = 0;
+					}
+					
+					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,latAttr,"locations["+index+"].latitude");
+						GeoTemConfig.renameColumn(dataset,lonAttr,"locations["+index+"].longitude");
+					}
+					
+					if (typeof placeAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,placeAttr,"locations["+index+"].place");
+					}
+
+					if (typeof dateAttr !== "undefined"){
+						GeoTemConfig.renameColumn(dataset,dateAttr,"dates["+index+"]");
+					}
+
+					if ((typeof timespanBeginAttr !== "undefined") && 
+							(typeof timespanEndAttr !== "undefined")){
+						GeoTemConfig.renameColumn(dataset,timespanBeginAttr,"tableContent[TimeSpan:begin]");
+						GeoTemConfig.renameColumn(dataset,timespanEndAttr,"tableContent[TimeSpan:end]");
+					}
+				};
+				
+				var renames = JSON.parse(paramValue);
+
+				if (renames instanceof Array){
+					for (var i=0; i < renames.length; i++){
+						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd);
+					}
+				} else {
+					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
+							renames.timeSpanBegin,renames.timeSpanEnd);
+				}
 			}
 		});
 		//Load the (optional!) dataset colors
@@ -153,6 +283,18 @@ DataloaderWidget.prototype = {
 				}
 			}	
 		});
+		//delete undefined entries in the array
+		//(can happen if the sequence given in the URL is not complete
+		// e.g. kml0=..,kml2=..)
+		//this also reorders the array,	 starting with 0
+		var tempDatasets = [];
+		for(var index in datasets){
+			if (datasets[index] instanceof Dataset){
+				tempDatasets.push(datasets[index]);
+			}
+		}
+		datasets = tempDatasets;
+		
 		if (datasets.length > 0)
 			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}

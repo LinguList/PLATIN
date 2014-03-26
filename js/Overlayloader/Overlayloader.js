@@ -194,8 +194,8 @@ Overlayloader.prototype = {
 			var kmlURL = $(this.kmlURL).val();
 			if (kmlURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			
 			this.distributeKML(kmlURL);
 		},this));
@@ -221,8 +221,8 @@ Overlayloader.prototype = {
 			var kmzURL = $(this.kmzURL).val();
 			if (kmzURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			this.distributeKMZ(kmzURL);
 		},this));
