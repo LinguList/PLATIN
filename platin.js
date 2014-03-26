@@ -30035,6 +30035,7 @@ GeoTemConfig = {
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	allowColumnRenaming : true,
+	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -32442,7 +32443,7 @@ function MapConfig(options) {
 		mapSelectionTools : true, // show/hide map selector tools
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
-		proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
+		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
 		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
 
 	};
@@ -37301,8 +37302,8 @@ Dataloader.prototype = {
 					return;
 				var origURL = kmlURL;
 				var fileName = this.getFileName(kmlURL);
-				if (typeof this.options.proxy != 'undefined')
-					kmlURL = this.options.proxy + kmlURL;
+				if (typeof GeoTemConfig.proxy != 'undefined')
+					kmlURL = GeoTemConfig.proxy + kmlURL;
 				var kml = GeoTemConfig.getKml(kmlURL);
 				if ((typeof kml !== "undefined") && (kml != null)) {
 					var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -37337,8 +37338,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmlURL;
 			var fileName = this.getFileName(kmlURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
 			if ((typeof kml !== "undefined") && (kml != null)) {
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -37375,8 +37376,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmzURL;
 			var fileName = dataLoader.getFileName(kmzURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			GeoTemConfig.getKmz(kmzURL, function(kmlArray){
 		    	$(kmlArray).each(function(){
@@ -37413,8 +37414,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = csvURL;
 			var fileName = dataLoader.getFileName(csvURL);
-			if (typeof this.options.proxy != 'undefined')
-				csvURL = this.options.proxy + csvURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				csvURL = GeoTemConfig.proxy + csvURL;
 			GeoTemConfig.getCsv(csvURL, function(json){
 				if ((typeof json !== "undefined") && (json.length > 0)) {
 					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
@@ -37576,7 +37577,6 @@ Dataloader.prototype = {
 function DataloaderConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			staticKML : [
 			            // {header: "header label"},			            
 			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
@@ -37729,8 +37729,8 @@ DataloaderWidget.prototype = {
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
-			if (typeof dataLoaderWidget.options.proxy != 'undefined')
-				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
@@ -37970,7 +37970,6 @@ DataloaderWidget.prototype = {
 function FuzzyTimelineConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			//TODO: experiment with number of ticks, 150 seems to be ok for now
 			maxBars : 50,
 			maxDensityTicks : 150,
@@ -40321,8 +40320,8 @@ Overlayloader.prototype = {
 			var kmlURL = $(this.kmlURL).val();
 			if (kmlURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			
 			this.distributeKML(kmlURL);
 		},this));
@@ -40348,8 +40347,8 @@ Overlayloader.prototype = {
 			var kmzURL = $(this.kmzURL).val();
 			if (kmzURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			this.distributeKMZ(kmzURL);
 		},this));
@@ -40500,7 +40499,6 @@ function OverlayloaderConfig(options) {
 			wms_overlays : [
 							//e.g. {name:'name', server:'url', layer:'layer'},
 			],
-			proxy : 'php/proxy.php?address='
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
@@ -41469,7 +41467,6 @@ PieChartCategoryChooser.prototype = {
 function PieChartConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			restrictPieChartSize : 0.25, // restrict size to percantage of window size (false for no restriction)
 			localStoragePrefix : "GeoBrowser_PieChart_", // prefix for value name in LocalStorage
 			allowLocalStorage : true, //whether LocalStorage save and load should be allowed (and buttons shown) 
@@ -42311,7 +42308,6 @@ Storytelling.prototype = {
 function StorytellingConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			dariahStorage : false,
 			localStorage : true
 	};
