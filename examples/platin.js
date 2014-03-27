@@ -38835,6 +38835,12 @@ FuzzyTimelineRangeBars.prototype = {
 				}
 			});
 			
+			//delete bars with 0 values
+			for (var i = 0; i < tickCount; i++){
+				if (chartDataCounter[i][1]==0)
+					delete chartDataCounter[i];
+			}
+			
 			plots.push(chartDataCounter);
 			objectHashes.push(objectHash);
 		});
@@ -39051,14 +39057,17 @@ FuzzyTimelineRangeBars.prototype = {
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		
+		//get min and max values
 		for (var i = 0; i < rangeBar.datasetsPlot.length; i++){
 			for (var j = 0; j < rangeBar.datasetsPlot[i].length; j++){
-				var val = rangeBar.datasetsPlot[i][j][1];
-				
-				if (val < rangeBar.yValMin)
-					rangeBar.yValMin = val;
-				if (val > rangeBar.yValMax)
-					rangeBar.yValMax = val;
+				if (typeof rangeBar.datasetsPlot[i][j] !== "undefined"){
+					var val = rangeBar.datasetsPlot[i][j][1];
+					
+					if (val < rangeBar.yValMin)
+						rangeBar.yValMin = val;
+					if (val > rangeBar.yValMax)
+						rangeBar.yValMax = val;
+				}
 			}
 		}
 		
