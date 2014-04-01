@@ -50,6 +50,8 @@ FuzzyTimelineWidget = function(core, div, options) {
 	
 	this.handles = [];
 	this.zoomFactor = 1;
+	
+	this.scaleMode = "normal";
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -116,6 +118,37 @@ FuzzyTimelineWidget.prototype = {
 			}
 			fuzzyTimeline.viewMode = viewMode;
 		}
+	},
+	
+	scaleData : function(data){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.scaleMode == "normal"){
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "logarithm"){
+			for(var index in data){
+				if (data[index]!=0){
+					data[index] = Math.log(data[index]);
+				}	
+			}
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "percentage"){
+			var overallCnt = 0;
+			for(var index in data){
+				overallCnt += data[index];	
+			}
+			if (overallCnt != 0){
+				for(var index in data){
+					data[index] = data[index]/overallCnt;	
+				}
+			}
+			return data;
+		}
+	},
+	
+	changeScaleMode : function(scaleMode) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.scaleMode = scaleMode;
+		fuzzyTimeline.drawFuzzyTimeline();
 	},
 	
 	slidePositionChanged : function(spanWidth) {

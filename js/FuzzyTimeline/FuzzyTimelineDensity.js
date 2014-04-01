@@ -138,6 +138,9 @@ FuzzyTimelineDensity.prototype = {
 				}
 			});
 			
+			//scale according to selected type
+			chartDataCounter = density.parent.scaleData(chartDataCounter);
+			
 			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
 				plots.push(udChartData);
