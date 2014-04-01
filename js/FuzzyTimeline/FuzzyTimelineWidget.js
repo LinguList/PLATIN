@@ -120,6 +120,12 @@ FuzzyTimelineWidget.prototype = {
 	
 	slidePositionChanged : function(spanWidth) {
 		var fuzzyTimeline = this;
+		fuzzyTimeline.spanWidth = spanWidth;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
+	drawFuzzyTimeline : function(){
+		var fuzzyTimeline = this;
 		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
 			//redraw density plot
@@ -128,7 +134,7 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,fuzzyTimeline.spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}
