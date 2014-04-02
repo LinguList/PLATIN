@@ -139,11 +139,14 @@ FuzzyTimelineWidget.prototype = {
 		} else if (fuzzyTimeline.scaleMode == "percentage"){
 			var overallCnt = 0;
 			for(var index in data){
-				overallCnt += data[index];	
+				var val = data[index];
+				if (val > 0){
+					overallCnt += val;
+				}
 			}
 			if (overallCnt != 0){
 				for(var index in data){
-					data[index] = data[index]/overallCnt;	
+					data[index] = (data[index])/overallCnt;	
 				}
 			}
 			return data;
