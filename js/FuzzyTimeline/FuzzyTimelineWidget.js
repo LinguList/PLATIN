@@ -144,6 +144,8 @@ FuzzyTimelineWidget.prototype = {
 					overallCnt += val;
 				}
 			}
+			//make 1 = 100%
+			overallCnt = overallCnt/100;
 			if (overallCnt != 0){
 				for(var index in data){
 					data[index] = (data[index])/overallCnt;	
