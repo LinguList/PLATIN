@@ -56,6 +56,12 @@ lines are doubled by this clustering.
 Each DataObject can have an own color, if objects are clustered together, the cluster color 
 is calculated as the average of the RGB values.
 
+### Dataset color and shape changing (by user)
+
+(This feature is in beta-state.)
+
+Color and shape (on map) of the datasets can be changed on-the-fly from a dropdown menu in the table header.
+
 ### Story-Telling
 
 (This feature is unstable and under heavy development.)
