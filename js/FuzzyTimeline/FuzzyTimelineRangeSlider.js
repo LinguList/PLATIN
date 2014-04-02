@@ -146,10 +146,11 @@ FuzzyTimelineRangeSlider.prototype = {
 			moment.duration(5000, 'years'),
 			moment.duration(10000, 'years'),
 			];
-		
+		var overallSpan = rangeSlider.parent.overallMax-rangeSlider.parent.overallMin;
 		//only add spans that are not too small for the data
 		for (var i = 0; i < fixedSpans.length; i++){
-			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5))
+			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5)) &&
+					(fixedSpans[i].asMilliseconds() < overallSpan)
 					&&
 					(
 							rangeSlider.parent.options.showAllPossibleSpans ||
@@ -172,12 +173,22 @@ FuzzyTimelineRangeSlider.prototype = {
 				humanizedSpan = duration.minutes() + "min";
 			else if (duration < moment.duration(1,'day'))
 				humanizedSpan = duration.hours() + "h";
-			else if (duration < moment.duration(1,'month'))
-				humanizedSpan = duration.days() + " days";
-			else if (duration < moment.duration(1,'year'))
-				humanizedSpan = duration.months() + " months";
-			else 
-				humanizedSpan = duration.years() + " years";
+			else if (duration < moment.duration(1,'month')){
+				var days = duration.days();
+				humanizedSpan = days + " day";
+				if (days > 1)
+					humanizedSpan += "s";
+			} else if (duration < moment.duration(1,'year')){
+				var months = duration.months();
+				humanizedSpan = months + " month";
+				if (months > 1)
+					humanizedSpan += "s";
+			} else {
+				var years = duration.years();
+				humanizedSpan = years + " year";
+				if (years > 1)
+					humanizedSpan += "s";
+			}
 			$(rangeSlider.rangeDropdown).append("<option index='"+index+"'>"+humanizedSpan+"</option>");
 			index++;
 		});
