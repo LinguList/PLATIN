@@ -132,7 +132,7 @@ FuzzyTimelineWidget.prototype = {
 					if (val<0){
 						sign = -1;
 					}
-					data[index] = sign*Math.log(data[index]+1);
+					data[index] = sign*Math.log(Math.abs(data[index])+1);
 				}	
 			}
 			return data;
