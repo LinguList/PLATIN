@@ -50,6 +50,17 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.rangeDropdown = document.createElement("select");
 	controlsRow.append($("<td></td>").append(this.rangeDropdown));
 	
+	headerRow.append("<td>Scaling</td>");
+	this.scalingDropdown = document.createElement("select");
+	controlsRow.append($("<td></td>").append(this.scalingDropdown));
+	$(this.scalingDropdown).append("<option>normal</option>");
+	$(this.scalingDropdown).append("<option>logarithm</option>");
+	$(this.scalingDropdown).append("<option>percentage</option>");
+	$(this.scalingDropdown).change(function(eventObject){
+		var scaleMode = $(rangeSlider.scalingDropdown).find("option:selected").text();
+		rangeSlider.parent.changeScaleMode(scaleMode);
+	});
+
 	headerRow.append("<td>Animation</td>");
 	this.startAnimation = document.createElement("div");
 	$(this.startAnimation).addClass("smallButton playDisabled");
