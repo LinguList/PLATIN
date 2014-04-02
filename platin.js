@@ -30002,7 +30002,8 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Create new dataset from selected values",
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
-		"invertSelectionHelp" : "Invert the current selection"
+		"invertSelectionHelp" : "Invert the current selection",
+		"colorShapeDatasetHelp" : "change color or shape of dataset"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -30094,7 +30095,8 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen",
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
-		"invertSelectionHelp" : "Jetzige Selektion umkehren"
+		"invertSelectionHelp" : "Jetzige Selektion umkehren",
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
 	}
 }
 /*
@@ -30147,6 +30149,8 @@ GeoTemConfig = {
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	allowUserShapeAndColorChange: false, // if the user can change the shapes and color of datasets 
+										// this turns MapConfig.useGraphics auto-on, but uses circles as default
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	allowColumnRenaming : true,
 	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
@@ -32348,133 +32352,164 @@ function MapConfig(options) {
 				{
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
-					layer: 'namespace:layerName',
-					type:'XYZ'	 	
+					type:'XYZ',
+					attribution: "(c) Barrington Roman Empiry, <a href='http://pelagios.dme.ait.ac.at/maps/greco-roman/'>Pelagios</a>"
+				},
+				{
+					name: 'Maps-for-Free Relief Map',
+					url: 'http://maps-for-free.com/layer/relief/z${z}/row${y}/${z}_${x}-${y}.jpg',
+					type:'XYZ',
+					attribution: "(c) <a href='http://www.maps-for-free.com/html/about.html'>Maps for Free</a>"
 				},
 				{
 					name: 'Contemporary Map (2010)',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry2010'
+					layer: 'historic:cntry2010',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
 				},
 				{
 					name: 'Historical Map of 2006',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry2006'
+					layer: 'historic:cntry2006',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
 				},
 				{
 					name: 'Historical Map of 1994',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1994'
+					layer: 'historic:cntry1994',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1945',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1945'
+					layer: 'historic:cntry1945',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1938',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1938'
+					layer: 'historic:cntry1938',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1920',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1920'
+					layer: 'historic:cntry1920',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1914',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1914'
+					layer: 'historic:cntry1914',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1880',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1880'
+					layer: 'historic:cntry1880',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1815',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1815'
+					layer: 'historic:cntry1815',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1783',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1783'
+					layer: 'historic:cntry1783',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1715',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1715'
+					layer: 'historic:cntry1715',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1650',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1650'
+					layer: 'historic:cntry1650',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1530',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1530'
+					layer: 'historic:cntry1530',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1492',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1492'
+					layer: 'historic:cntry1492',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1279',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1279'
+					layer: 'historic:cntry1279',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1000',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1000'
+					layer: 'historic:cntry1000',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 800',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry800'
+					layer: 'historic:cntry800',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 600',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry600'
+					layer: 'historic:cntry600',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 400',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry400'
+					layer: 'historic:cntry400',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1bc'
+					layer: 'historic:cntry1bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 200 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry200bc'
+					layer: 'historic:cntry200bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 323 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry323bc'
+					layer: 'historic:cntry323bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 500 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry500bc'
+					layer: 'historic:cntry500bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1000 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry1000bc'
+					layer: 'historic:cntry1000bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 2000 BC',
 					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
-					layer: 'historic:cntry2000bc'
+					layer: 'historic:cntry2000bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 		],
 		legend : true, // if a legend at the bottom of the map should be shown or not
@@ -32564,15 +32599,35 @@ function MapConfig(options) {
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
 	}
+	
+	//if the user can change shape/color graphics have to be used
+	//but this will use circles as default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.options.useGraphics = true;
+	}
 
 };
 
 MapConfig.prototype.getGraphic = function(id){
-	var graphic = this.options.graphics[id % this.options.graphics.length];
+	var dataset = GeoTemConfig.datasets[id];
+
+	var graphic;
+	if (typeof dataset.graphic !== "undefined"){
+		graphic = dataset.graphic;
+	} else{
+		graphic = this.options.graphics[id % this.options.graphics.length];
+	}
+	
+	var color;
+	if (typeof dataset.color !== "undefined"){
+		color = dataset.color;
+	} else{
+		color = GeoTemConfig.getColor(id);
+	}
 	return {
 		shape: graphic.shape,
 		rotation: graphic.rotation,
-		color: GeoTemConfig.getColor(Math.floor(id/this.options.graphics.length))
+		color: color
 	};
 };
 /*
@@ -33124,6 +33179,8 @@ MapWidget.prototype = {
 		if (map.options.navigate) {
 			this.activeControl = "navigate";
 		}
+		//add attribution control
+		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
 		this.mds = new MapDataSource(this.openlayersMap, this.options);
 
 		if (map.options.olNavigation) {
@@ -33528,7 +33585,8 @@ MapWidget.prototype = {
 					                transitionEffect: "resize",
 					                buffer: 1,
 					                numZoomLevels: 12,
-					                transparent : true
+					                transparent : true,
+					                attribution: layers[i].attribution
 				                }, 
 								{
 									isBaseLayer : true
@@ -33544,6 +33602,7 @@ MapWidget.prototype = {
 								format : "image/png"
 							}, 
 							{
+				                attribution: layers[i].attribution,
 								isBaseLayer : true
 							}
 					);
@@ -36359,6 +36418,126 @@ TableWidget.prototype = {
 				$(tableTabTableRow).append($(document.createElement('td')).append(exportTabDiv));
 			}
 			
+			if (GeoTemConfig.allowUserShapeAndColorChange){
+				var dataset = GeoTemConfig.datasets[index];
+
+				var changeColorShapeSelect = $("<select></select>");
+				changeColorShapeSelect.attr("title", GeoTemConfig.getString("colorShapeDatasetHelp"));
+				changeColorShapeSelect.css("font-size","1.5em");
+				
+				var currentOptgroup = $("<optgroup label='Current'></optgroup>");
+				var currentOption = $("<option value='current'></option>");
+				var color = GeoTemConfig.getColor(index);
+				currentOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				if (dataset.graphic.shape=="circle"){
+					currentOption.append("●");
+				} else if (dataset.graphic.shape=="triangel"){
+					currentOption.append("▲");
+				} else if (dataset.graphic.shape=="square"){
+					if (dataset.graphic.rotation===0){
+						currentOption.append("■");
+					} else {
+						currentOption.append("◆");
+					}
+				}
+				currentOptgroup.append(currentOption);
+				changeColorShapeSelect.append(currentOptgroup);
+
+				var defaultOptgroup = $("<optgroup label='Default'></optgroup>");
+				var defaultOption = $("<option value='default'></option>");
+				var color = GeoTemConfig.colors[index];
+				defaultOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				defaultOption.append("●");
+				defaultOptgroup.append(defaultOption);
+				changeColorShapeSelect.append(defaultOptgroup);
+				
+				var shapeOptgroup = $("<optgroup label='Shapes'></optgroup>");
+				shapeOptgroup.append("<option>○</option>");
+				shapeOptgroup.append("<option>□</option>");
+				shapeOptgroup.append("<option>◇</option>");
+				shapeOptgroup.append("<option>△</option>");
+				changeColorShapeSelect.append(shapeOptgroup);
+				
+				var colorOptgroup = $("<optgroup label='Colors'></optgroup>");
+				colorOptgroup.append("<option style='color:red'>■</option>");
+				colorOptgroup.append("<option style='color:green'>■</option>");
+				colorOptgroup.append("<option style='color:blue'>■</option>");
+				colorOptgroup.append("<option style='color:yellow'>■</option>");
+				changeColorShapeSelect.append(colorOptgroup);
+				
+				changeColorShapeSelect.change($.proxy(function(e) {
+					var selected = $(changeColorShapeSelect).find("option:selected");
+
+					//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+					function shadeRGBColor(color, percent) {
+					    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+					    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+					}
+
+					var rgb = selected.css("color");
+					var shadedrgb = shadeRGBColor(rgb,0.7);
+					
+					rgb = rgb.replace("rgb(","").replace(")","");
+					rgb = rgb.split(",");
+					shadedrgb = shadedrgb.replace("rgb(","").replace(")","");
+					shadedrgb = shadedrgb.split(",");
+					var color = {};
+
+					color.r1 = parseInt(rgb[0]);
+					color.g1 = parseInt(rgb[1]);
+					color.b1 = parseInt(rgb[2]);
+					
+					color.r0 = parseInt(shadedrgb[0]);
+					color.g0 = parseInt(shadedrgb[1]);
+					color.b0 = parseInt(shadedrgb[2]);
+
+					var shapeText = selected.text();
+					var graphic;
+					if ((shapeText=="■") | (shapeText=="□")){
+						graphic = {
+								shape: "square",
+								rotation: 0
+						};
+					} else if ((shapeText=="●") | (shapeText=="○")){
+						graphic = {
+								shape: "circle",
+								rotation: 0
+						};
+					} else if ((shapeText=="◆") | (shapeText=="◇")){
+						graphic = {
+								shape: "square",
+								rotation: 45
+						};
+					} else if ((shapeText=="▲") | (shapeText=="△")){
+						graphic = {
+								shape: "triangle",
+								rotation: 0
+						};
+					}
+					
+					if (shapeOptgroup.has(selected).length>0){
+						//shape change
+						dataset.graphic = graphic;
+					} else if (colorOptgroup.has(selected).length>0){
+						//color changed
+						dataset.color = color;
+					} else {
+						//back to default
+						dataset.graphic = graphic;
+						dataset.color = color;
+					}
+					
+					//reload data
+					Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+					
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index}));
+				$(tableTabTableRow).append($(document.createElement('td')).append(changeColorShapeSelect));
+			}
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
@@ -38245,6 +38424,9 @@ FuzzyTimelineDensity.prototype = {
 				}
 			});
 			
+			//scale according to selected type
+			chartDataCounter = density.parent.scaleData(chartDataCounter);
+			
 			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
 				plots.push(udChartData);
@@ -38787,9 +38969,7 @@ FuzzyTimelineRangeBars.prototype = {
 			var objectHash = new Object();
 			
 			for (var i = 0; i < tickCount; i++){
-				chartDataCounter[i] = [];
-				chartDataCounter[i][0]=i;
-				chartDataCounter[i][1]=0;
+				chartDataCounter[i]=0;
 			}
 			//check if we got "real" datasets, or just array of objects
 			var datasetObjects = this;
@@ -38826,7 +39006,7 @@ FuzzyTimelineRangeBars.prototype = {
 							weight = this.weight;
 						}
 
-						chartDataCounter[i][1] += weight;
+						chartDataCounter[i] += weight;
 						//add this object to the hash
 						if (typeof objectHash[i] === "undefined")
 							objectHash[i] = [];
@@ -38835,13 +39015,24 @@ FuzzyTimelineRangeBars.prototype = {
 				}
 			});
 			
-			//delete bars with 0 values
+			//scale according to selected type
+			chartDataCounter = rangeBar.parent.scaleData(chartDataCounter);
+			
+			//transform data so it can be passed to the flot barchart
+			var plotData = [];
 			for (var i = 0; i < tickCount; i++){
-				if (chartDataCounter[i][1]==0)
-					delete chartDataCounter[i];
+				plotData[i] = [];
+				plotData[i][0] = i;
+				plotData[i][1] = chartDataCounter[i];
 			}
 			
-			plots.push(chartDataCounter);
+			//delete bars with 0 values
+			for (var i = 0; i < tickCount; i++){
+				if (plotData[i][1]==0)
+					delete plotData[i];
+			}
+			
+			plots.push(plotData);
 			objectHashes.push(objectHash);
 		});
 		
@@ -39488,6 +39679,17 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.rangeDropdown = document.createElement("select");
 	controlsRow.append($("<td></td>").append(this.rangeDropdown));
 	
+	headerRow.append("<td>Scaling</td>");
+	this.scalingDropdown = document.createElement("select");
+	controlsRow.append($("<td></td>").append(this.scalingDropdown));
+	$(this.scalingDropdown).append("<option>normal</option>");
+	$(this.scalingDropdown).append("<option>logarithm</option>");
+	$(this.scalingDropdown).append("<option>percentage</option>");
+	$(this.scalingDropdown).change(function(eventObject){
+		var scaleMode = $(rangeSlider.scalingDropdown).find("option:selected").text();
+		rangeSlider.parent.changeScaleMode(scaleMode);
+	});
+
 	headerRow.append("<td>Animation</td>");
 	this.startAnimation = document.createElement("div");
 	$(this.startAnimation).addClass("smallButton playDisabled");
@@ -39766,6 +39968,8 @@ FuzzyTimelineWidget = function(core, div, options) {
 	
 	this.handles = [];
 	this.zoomFactor = 1;
+	
+	this.scaleMode = "normal";
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -39834,7 +40038,54 @@ FuzzyTimelineWidget.prototype = {
 		}
 	},
 	
+	scaleData : function(data){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.scaleMode == "normal"){
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "logarithm"){
+			for(var index in data){
+				var val = data[index];
+				if (val!=0){
+					var sign = 1;
+					if (val<0){
+						sign = -1;
+					}
+					data[index] = sign*Math.log(Math.abs(data[index])+1);
+				}	
+			}
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "percentage"){
+			var overallCnt = 0;
+			for(var index in data){
+				var val = data[index];
+				if (val > 0){
+					overallCnt += val;
+				}
+			}
+			//make 1 = 100%
+			overallCnt = overallCnt/100;
+			if (overallCnt != 0){
+				for(var index in data){
+					data[index] = (data[index])/overallCnt;	
+				}
+			}
+			return data;
+		}
+	},
+	
+	changeScaleMode : function(scaleMode) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.scaleMode = scaleMode;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
 	slidePositionChanged : function(spanWidth) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.spanWidth = spanWidth;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
+	drawFuzzyTimeline : function(){
 		var fuzzyTimeline = this;
 		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
@@ -39844,7 +40095,7 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,fuzzyTimeline.spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}
@@ -43142,6 +43393,14 @@ Dataset = function(objects, label, url, type) {
 	this.type = type;
 	
 	this.color;
+	
+	//if the user can change shapes, every dataset needs a default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.graphic={
+				shape: "circle",
+				rotation: 0
+		}
+	}
 	
 	Publisher.Publish('datasetAfterCreation', this);
 }
