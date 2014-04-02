@@ -39,5 +39,13 @@ Dataset = function(objects, label, url, type) {
 	
 	this.color;
 	
+	//if the user can change shapes, every dataset needs a default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.graphic={
+				shape: "circle",
+				rotation: 0
+		}
+	}
+	
 	Publisher.Publish('datasetAfterCreation', this);
 }
