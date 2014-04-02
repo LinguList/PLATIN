@@ -119,7 +119,8 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Create new dataset from selected values",
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
-		"invertSelectionHelp" : "Invert the current selection"
+		"invertSelectionHelp" : "Invert the current selection",
+		"colorShapeDatasetHelp" : "change color or shape of dataset"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -211,6 +212,7 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen",
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
-		"invertSelectionHelp" : "Jetzige Selektion umkehren"
+		"invertSelectionHelp" : "Jetzige Selektion umkehren",
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
 	}
 }

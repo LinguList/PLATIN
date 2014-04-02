@@ -124,6 +124,126 @@ TableWidget.prototype = {
 				$(tableTabTableRow).append($(document.createElement('td')).append(exportTabDiv));
 			}
 			
+			if (GeoTemConfig.allowUserShapeAndColorChange){
+				var dataset = GeoTemConfig.datasets[index];
+
+				var changeColorShapeSelect = $("<select></select>");
+				changeColorShapeSelect.attr("title", GeoTemConfig.getString("colorShapeDatasetHelp"));
+				changeColorShapeSelect.css("font-size","1.5em");
+				
+				var currentOptgroup = $("<optgroup label='Current'></optgroup>");
+				var currentOption = $("<option value='current'></option>");
+				var color = GeoTemConfig.getColor(index);
+				currentOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				if (dataset.graphic.shape=="circle"){
+					currentOption.append("●");
+				} else if (dataset.graphic.shape=="triangel"){
+					currentOption.append("▲");
+				} else if (dataset.graphic.shape=="square"){
+					if (dataset.graphic.rotation===0){
+						currentOption.append("■");
+					} else {
+						currentOption.append("◆");
+					}
+				}
+				currentOptgroup.append(currentOption);
+				changeColorShapeSelect.append(currentOptgroup);
+
+				var defaultOptgroup = $("<optgroup label='Default'></optgroup>");
+				var defaultOption = $("<option value='default'></option>");
+				var color = GeoTemConfig.colors[index];
+				defaultOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				defaultOption.append("●");
+				defaultOptgroup.append(defaultOption);
+				changeColorShapeSelect.append(defaultOptgroup);
+				
+				var shapeOptgroup = $("<optgroup label='Shapes'></optgroup>");
+				shapeOptgroup.append("<option>○</option>");
+				shapeOptgroup.append("<option>□</option>");
+				shapeOptgroup.append("<option>◇</option>");
+				shapeOptgroup.append("<option>△</option>");
+				changeColorShapeSelect.append(shapeOptgroup);
+				
+				var colorOptgroup = $("<optgroup label='Colors'></optgroup>");
+				colorOptgroup.append("<option style='color:red'>■</option>");
+				colorOptgroup.append("<option style='color:green'>■</option>");
+				colorOptgroup.append("<option style='color:blue'>■</option>");
+				colorOptgroup.append("<option style='color:yellow'>■</option>");
+				changeColorShapeSelect.append(colorOptgroup);
+				
+				changeColorShapeSelect.change($.proxy(function(e) {
+					var selected = $(changeColorShapeSelect).find("option:selected");
+
+					//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+					function shadeRGBColor(color, percent) {
+					    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+					    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+					}
+
+					var rgb = selected.css("color");
+					var shadedrgb = shadeRGBColor(rgb,0.7);
+					
+					rgb = rgb.replace("rgb(","").replace(")","");
+					rgb = rgb.split(",");
+					shadedrgb = shadedrgb.replace("rgb(","").replace(")","");
+					shadedrgb = shadedrgb.split(",");
+					var color = {};
+
+					color.r1 = parseInt(rgb[0]);
+					color.g1 = parseInt(rgb[1]);
+					color.b1 = parseInt(rgb[2]);
+					
+					color.r0 = parseInt(shadedrgb[0]);
+					color.g0 = parseInt(shadedrgb[1]);
+					color.b0 = parseInt(shadedrgb[2]);
+
+					var shapeText = selected.text();
+					var graphic;
+					if ((shapeText=="■") | (shapeText=="□")){
+						graphic = {
+								shape: "square",
+								rotation: 0
+						};
+					} else if ((shapeText=="●") | (shapeText=="○")){
+						graphic = {
+								shape: "circle",
+								rotation: 0
+						};
+					} else if ((shapeText=="◆") | (shapeText=="◇")){
+						graphic = {
+								shape: "square",
+								rotation: 45
+						};
+					} else if ((shapeText=="▲") | (shapeText=="△")){
+						graphic = {
+								shape: "triangle",
+								rotation: 0
+						};
+					}
+					
+					if (shapeOptgroup.has(selected).length>0){
+						//shape change
+						dataset.graphic = graphic;
+					} else if (colorOptgroup.has(selected).length>0){
+						//color changed
+						dataset.color = color;
+					} else {
+						//back to default
+						dataset.graphic = graphic;
+						dataset.color = color;
+					}
+					
+					//reload data
+					Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+					
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index}));
+				$(tableTabTableRow).append($(document.createElement('td')).append(changeColorShapeSelect));
+			}
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
