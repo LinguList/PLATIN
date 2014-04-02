@@ -48,6 +48,8 @@ GeoTemConfig = {
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	allowUserShapeAndColorChange: true, // if the user can change the shapes and color of datasets 
+										// this turns MapConfig.useGraphics auto-on, but uses circles as default
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	allowColumnRenaming : true,
 	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)

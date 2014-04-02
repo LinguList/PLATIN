@@ -285,14 +285,34 @@ function MapConfig(options) {
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
 	}
+	
+	//if the user can change shape/color graphics have to be used
+	//but this will use circles as default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.options.useGraphics = true;
+	}
 
 };
 
 MapConfig.prototype.getGraphic = function(id){
-	var graphic = this.options.graphics[id % this.options.graphics.length];
+	var dataset = GeoTemConfig.datasets[id];
+
+	var graphic;
+	if (typeof dataset.graphic !== "undefined"){
+		graphic = dataset.graphic;
+	} else{
+		graphic = this.options.graphics[id % this.options.graphics.length];
+	}
+	
+	var color;
+	if (typeof dataset.color !== "undefined"){
+		color = dataset.color;
+	} else{
+		color = GeoTemConfig.getColor(id);
+	}
 	return {
 		shape: graphic.shape,
 		rotation: graphic.rotation,
-		color: GeoTemConfig.getColor(Math.floor(id/this.options.graphics.length))
+		color: color
 	};
 };
