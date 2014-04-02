@@ -126,8 +126,13 @@ FuzzyTimelineWidget.prototype = {
 			return data;
 		} else if (fuzzyTimeline.scaleMode == "logarithm"){
 			for(var index in data){
-				if (data[index]!=0){
-					data[index] = Math.log(data[index]);
+				var val = data[index];
+				if (val!=0){
+					var sign = 1;
+					if (val<0){
+						sign = -1;
+					}
+					data[index] = sign*Math.log(data[index]+1);
 				}	
 			}
 			return data;
