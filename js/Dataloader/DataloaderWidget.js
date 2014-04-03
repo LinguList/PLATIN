@@ -163,7 +163,7 @@ DataloaderWidget.prototype = {
 					return;
 				
 				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
-						timespanEndAttr){
+						timespanEndAttr,indexAttr){
 					var renameArray = [];
 					
 					if (typeof index === "undefined"){
@@ -206,6 +206,13 @@ DataloaderWidget.prototype = {
 							newColumn:"tableContent[TimeSpan:end]"
 						});
 					}
+
+					if (typeof indexAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:indexAttr,
+							newColumn:"index"
+						});
+					}
 					
 					GeoTemConfig.renameColumns(dataset,renameArray);
 				};
@@ -215,11 +222,11 @@ DataloaderWidget.prototype = {
 				if (renames instanceof Array){
 					for (var i=0; i < renames.length; i++){
 						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
-							renames[i].timeSpanBegin,renames[i].timeSpanEnd);
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd,renames[i].index);
 					}
 				} else {
 					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
-							renames.timeSpanBegin,renames.timeSpanEnd);
+							renames.timeSpanBegin,renames.timeSpanEnd,renames.index);
 				}
 			}
 		});
