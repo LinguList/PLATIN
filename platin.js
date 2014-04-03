@@ -30139,7 +30139,7 @@ $.fn.cleanWhitespace = function() {
 };
 
 GeoTemConfig = {
-
+	debug : false, //show debug output (esp. regarding corrupt datasets)
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered
 	mouseWheelZoom : true, // enable/disable zoom with mouse wheel on map & timeplot
@@ -30692,7 +30692,7 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 		isValidDate = false;
 	
 	if (!isValidDate){
-		if (typeof console !== "undefined")
+		if ((GeoTemConfig.debug)&&(typeof console !== "undefined"))
 			console.error(xmlTime + " is no valid time format");
 		return null;
 	}
@@ -30764,9 +30764,6 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			}
 			var weight = parseInt(item.weight) || 1;
-			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-			var projection = new OpenLayers.Projection("EPSG:4326");
-
 			//add all "other" attributes to table data
 			//this is a hack to allow "invalid" JSONs
 			var specialAttributes = ["id", "name", "description", "lon", "lat", "place", "time", 
@@ -30777,7 +30774,7 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			}
 			
-			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
+			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
 		} catch(e) {
@@ -30969,9 +30966,7 @@ GeoTemConfig.loadKml = function(kml) {
 				}
 			}
 		}
-		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-		var projection = new OpenLayers.Projection("EPSG:4326");
-		var object = new DataObject(name, description, location, time, 1, tableContent, projection);
+		var object = new DataObject(name, description, location, time, 1, tableContent);
 		object.setIndex(index);
 		index++;
 		mapObjects.push(object);
@@ -31203,7 +31198,7 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
 			delete this.tableContent["color0"];
 			delete this.tableContent["color1"];
 		} else {
-			if (typeof console !== undefined)
+			if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 				console.error("Object '" + this.name + "' has invalid color information");
 		}
 	});
@@ -31217,93 +31212,107 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
  * @param {Boolean} keepOld keep old column (copy mode)
  * @return an array of data objects
  */
-GeoTemConfig.renameColumn = function(dataset, oldColumn, newColumn, keepOld){
-	if (typeof keepOld === "undefined"){
-		keepOld = true;
+GeoTemConfig.renameColumns = function(dataset, renames){
+	if (renames.length===0){
+		return;
 	}
-	var oldColumObject = {};
-	if (oldColumn.indexOf("[") != -1){
-		oldColumObject.columnName = oldColumn.split("[")[0];
-		var IndexAndAttribute = oldColumn.split("[")[1];
-		if (IndexAndAttribute.indexOf("]") != -1){
-			oldColumObject.type = 2;
-			oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
-			var attribute = IndexAndAttribute.split("]")[1];
-			if (attribute.length > 0){
-				oldColumObject.type = 3;
-				oldColumObject.attribute = attribute.split(".")[1];
+	for (var renCnt = 0; renCnt < renames.length; renCnt++){
+		var oldColumn = renames[renCnt].oldColumn;
+		var newColumn = renames[renCnt].newColumn;
+
+		var keepOld = renames[renCnt].keepOld;
+		if (typeof keepOld === "undefined"){
+			keepOld = true;
+		}
+		var oldColumObject = {};
+		if (oldColumn.indexOf("[") != -1){
+			oldColumObject.columnName = oldColumn.split("[")[0];
+			var IndexAndAttribute = oldColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				oldColumObject.type = 2;
+				oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					oldColumObject.type = 3;
+					oldColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			oldColumObject.type = 1;
+			oldColumObject.name = oldColumn;
+		}
+
+		var newColumObject = {};
+		if (newColumn.indexOf("[") != -1){
+			newColumObject.name = newColumn.split("[")[0];
+			var IndexAndAttribute = newColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				newColumObject.type = 2;
+				newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					newColumObject.type = 3;
+					newColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			newColumObject.type = 1;
+			newColumObject.name = newColumn;
+		}
+
+		for (var i = 0; i < dataset.objects.length; i++){
+			var dataObject = dataset.objects[i];
+			
+			//get value from old column name
+			var value;
+			if (oldColumObject.type == 1){
+				value = dataObject[oldColumObject.name];
+				if (typeof value === "undefined"){
+					value = dataObject.tableContent[oldColumObject.name];
+				}
+				if (!keepOld){
+					delete dataObject.tableContent[oldColumObject.name];
+					delete dataObject[oldColumObject.name];
+				}
+			} else if (oldColumObject.type == 2){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				}
+			} else if (oldColumObject.type == 3){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				}
+			} 
+
+			//create new column
+			if (newColumObject.type == 1){
+				dataObject[newColumObject.name] = value;
+				dataObject.tableContent[newColumObject.name] = value;
+			} else if (newColumObject.type == 2){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
+			} else if (newColumObject.type == 3){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
+					dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
 			}
 		}
-	} else {
-		oldColumObject.type = 1;
-		oldColumObject.name = oldColumn;
 	}
 
-	var newColumObject = {};
-	if (newColumn.indexOf("[") != -1){
-		newColumObject.name = newColumn.split("[")[0];
-		var IndexAndAttribute = newColumn.split("[")[1];
-		if (IndexAndAttribute.indexOf("]") != -1){
-			newColumObject.type = 2;
-			newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
-			var attribute = IndexAndAttribute.split("]")[1];
-			if (attribute.length > 0){
-				newColumObject.type = 3;
-				newColumObject.attribute = attribute.split(".")[1];
-			}
-		}
-	} else {
-		newColumObject.type = 1;
-		newColumObject.name = newColumn;
-	}
-
+	//actually create new dataObjects
 	for (var i = 0; i < dataset.objects.length; i++){
 		var dataObject = dataset.objects[i];
-		
-		//get value from old column name
-		var value;
-		if (oldColumObject.type == 1){
-			value = dataObject[oldColumObject.name];
-			if (typeof value === "undefined"){
-				value = dataObject.tableContent[oldColumObject.name];
-			}
-			if (!keepOld){
-				delete dataObject.tableContent[oldColumObject.name];
-				delete dataObject[oldColumObject.name];
-			}
-		} else if (oldColumObject.type == 2){
-			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
-			if (!keepOld){
-				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
-			}
-		} else if (oldColumObject.type == 3){
-			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
-			if (!keepOld){
-				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
-			}
-		} 
 
-		//create new column
-		if (newColumObject.type == 1){
-			dataObject[newColumObject.name] = value;
-			dataObject.tableContent[newColumObject.name] = value;
-		} else if (newColumObject.type == 2){
-			if (typeof dataObject[newColumObject.name] == "undefined"){
-				dataObject[newColumObject.name] = [];
-			}
-			dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
-		} else if (newColumObject.type == 3){
-			if (typeof dataObject[newColumObject.name] == "undefined"){
-				dataObject[newColumObject.name] = [];
-			}
-			if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
-				dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
-			}
-			dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
-		}
-		
 		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
-				dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+			dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
 	}
 };
 /*
@@ -38149,28 +38158,50 @@ DataloaderWidget.prototype = {
 				
 				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
 						timespanEndAttr){
+					var renameArray = [];
+					
 					if (typeof index === "undefined"){
 						index = 0;
 					}
 					
 					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
-						GeoTemConfig.renameColumn(dataset,latAttr,"locations["+index+"].latitude");
-						GeoTemConfig.renameColumn(dataset,lonAttr,"locations["+index+"].longitude");
+						renameArray.push({
+							oldColumn:latAttr,
+							newColumn:"locations["+index+"].latitude"
+						});
+						renameArray.push({
+							oldColumn:lonAttr,
+							newColumn:"locations["+index+"].longitude"
+						});
 					}
 					
 					if (typeof placeAttr !== "undefined"){
-						GeoTemConfig.renameColumn(dataset,placeAttr,"locations["+index+"].place");
+						renameArray.push({
+							oldColumn:placeAttr,
+							newColumn:"locations["+index+"].place"
+						});
 					}
 
 					if (typeof dateAttr !== "undefined"){
-						GeoTemConfig.renameColumn(dataset,dateAttr,"dates["+index+"]");
+						renameArray.push({
+							oldColumn:dateAttr,
+							newColumn:"dates["+index+"]"
+						});
 					}
 
 					if ((typeof timespanBeginAttr !== "undefined") && 
 							(typeof timespanEndAttr !== "undefined")){
-						GeoTemConfig.renameColumn(dataset,timespanBeginAttr,"tableContent[TimeSpan:begin]");
-						GeoTemConfig.renameColumn(dataset,timespanEndAttr,"tableContent[TimeSpan:end]");
+						renameArray.push({
+							oldColumn:timespanBeginAttr,
+							newColumn:"tableContent[TimeSpan:begin]"
+						});
+						renameArray.push({
+							oldColumn:timespanEndAttr,
+							newColumn:"tableContent[TimeSpan:end]"
+						});
 					}
+					
+					GeoTemConfig.renameColumns(dataset,renameArray);
 				};
 				
 				var renames = JSON.parse(paramValue);
@@ -43071,8 +43102,14 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	});
 	
 	//Check if locations are valid
-	if (projection instanceof OpenLayers.Projection){	
-		var tempLocations = [];
+	if (!(projection instanceof OpenLayers.Projection)){
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		projection = new OpenLayers.Projection("EPSG:4326");
+	}
+	this.projection = projection;
+
+	var tempLocations = [];
+	if (typeof this.locations !== "undefined"){
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			this.latitude = parseFloat(this.latitude);
@@ -43086,8 +43123,9 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== "undefined")
-						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+					if ((GeoTemConfig.debug)&&(typeof console !== undefined)){
+							console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");						
+					}
 				}					
 				
 				//solve lat=-90 bug
@@ -43140,7 +43178,16 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 		//test if we already have date "objects" or if we should parse the dates
 		for (var i = 0; i < this.dates.length; i++){
 			if (typeof this.dates[i] === "string"){
-				this.dates[i] = GeoTemConfig.getTimeData(this.dates[i]);
+				var date = GeoTemConfig.getTimeData(this.dates[i]);
+				//check whether we got valid dates
+				if ((typeof date !== "undefined")&&(date != null)){
+					this.dates[i] = date; 
+				} else {
+					//at least one date is invalid, so this dataObject has
+					//no valid date information and is therefor not "temporal"
+					this.isTemporal = false;
+					break;
+				}
 			}
 		}
 	}
@@ -43199,7 +43246,7 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 			//check whether dates are correctly sorted
 			if (this.TimeSpanBegin>this.TimeSpanEnd){
 				//dates are in the wrong order
-				if (typeof console !== "undefined")
+				if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 				
 			} else {
