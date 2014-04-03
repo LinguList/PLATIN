@@ -1111,92 +1111,106 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
  * @param {Boolean} keepOld keep old column (copy mode)
  * @return an array of data objects
  */
-GeoTemConfig.renameColumn = function(dataset, oldColumn, newColumn, keepOld){
-	if (typeof keepOld === "undefined"){
-		keepOld = true;
+GeoTemConfig.renameColumns = function(dataset, renames){
+	if (renames.length===0){
+		return;
 	}
-	var oldColumObject = {};
-	if (oldColumn.indexOf("[") != -1){
-		oldColumObject.columnName = oldColumn.split("[")[0];
-		var IndexAndAttribute = oldColumn.split("[")[1];
-		if (IndexAndAttribute.indexOf("]") != -1){
-			oldColumObject.type = 2;
-			oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
-			var attribute = IndexAndAttribute.split("]")[1];
-			if (attribute.length > 0){
-				oldColumObject.type = 3;
-				oldColumObject.attribute = attribute.split(".")[1];
+	for (var renCnt = 0; renCnt < renames.length; renCnt++){
+		var oldColumn = renames[renCnt].oldColumn;
+		var newColumn = renames[renCnt].newColumn;
+
+		var keepOld = renames[renCnt].keepOld;
+		if (typeof keepOld === "undefined"){
+			keepOld = true;
+		}
+		var oldColumObject = {};
+		if (oldColumn.indexOf("[") != -1){
+			oldColumObject.columnName = oldColumn.split("[")[0];
+			var IndexAndAttribute = oldColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				oldColumObject.type = 2;
+				oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					oldColumObject.type = 3;
+					oldColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			oldColumObject.type = 1;
+			oldColumObject.name = oldColumn;
+		}
+
+		var newColumObject = {};
+		if (newColumn.indexOf("[") != -1){
+			newColumObject.name = newColumn.split("[")[0];
+			var IndexAndAttribute = newColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				newColumObject.type = 2;
+				newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					newColumObject.type = 3;
+					newColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			newColumObject.type = 1;
+			newColumObject.name = newColumn;
+		}
+
+		for (var i = 0; i < dataset.objects.length; i++){
+			var dataObject = dataset.objects[i];
+			
+			//get value from old column name
+			var value;
+			if (oldColumObject.type == 1){
+				value = dataObject[oldColumObject.name];
+				if (typeof value === "undefined"){
+					value = dataObject.tableContent[oldColumObject.name];
+				}
+				if (!keepOld){
+					delete dataObject.tableContent[oldColumObject.name];
+					delete dataObject[oldColumObject.name];
+				}
+			} else if (oldColumObject.type == 2){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				}
+			} else if (oldColumObject.type == 3){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				}
+			} 
+
+			//create new column
+			if (newColumObject.type == 1){
+				dataObject[newColumObject.name] = value;
+				dataObject.tableContent[newColumObject.name] = value;
+			} else if (newColumObject.type == 2){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
+			} else if (newColumObject.type == 3){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
+					dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
 			}
 		}
-	} else {
-		oldColumObject.type = 1;
-		oldColumObject.name = oldColumn;
 	}
 
-	var newColumObject = {};
-	if (newColumn.indexOf("[") != -1){
-		newColumObject.name = newColumn.split("[")[0];
-		var IndexAndAttribute = newColumn.split("[")[1];
-		if (IndexAndAttribute.indexOf("]") != -1){
-			newColumObject.type = 2;
-			newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
-			var attribute = IndexAndAttribute.split("]")[1];
-			if (attribute.length > 0){
-				newColumObject.type = 3;
-				newColumObject.attribute = attribute.split(".")[1];
-			}
-		}
-	} else {
-		newColumObject.type = 1;
-		newColumObject.name = newColumn;
-	}
-
+	//actually create new dataObjects
 	for (var i = 0; i < dataset.objects.length; i++){
 		var dataObject = dataset.objects[i];
-		
-		//get value from old column name
-		var value;
-		if (oldColumObject.type == 1){
-			value = dataObject[oldColumObject.name];
-			if (typeof value === "undefined"){
-				value = dataObject.tableContent[oldColumObject.name];
-			}
-			if (!keepOld){
-				delete dataObject.tableContent[oldColumObject.name];
-				delete dataObject[oldColumObject.name];
-			}
-		} else if (oldColumObject.type == 2){
-			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
-			if (!keepOld){
-				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
-			}
-		} else if (oldColumObject.type == 3){
-			value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
-			if (!keepOld){
-				delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
-			}
-		} 
 
-		//create new column
-		if (newColumObject.type == 1){
-			dataObject[newColumObject.name] = value;
-			dataObject.tableContent[newColumObject.name] = value;
-		} else if (newColumObject.type == 2){
-			if (typeof dataObject[newColumObject.name] == "undefined"){
-				dataObject[newColumObject.name] = [];
-			}
-			dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
-		} else if (newColumObject.type == 3){
-			if (typeof dataObject[newColumObject.name] == "undefined"){
-				dataObject[newColumObject.name] = [];
-			}
-			if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
-				dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
-			}
-			dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
-		}
-		
 		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
-				dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+			dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
 	}
 };
