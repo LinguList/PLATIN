@@ -191,17 +191,19 @@ TableWidget.prototype = {
 					}
 
 					var color = selected.data("color");
-
-					if (	(typeof color.r0 === "undefined") ||
-							(typeof color.g0 === "undefined") ||
-							(typeof color.b0 === "undefined") ){
-						var shadedrgb = shadeRGBColor("rgb("+color.r1+","+color.g1+","+color.b1+")",0.7);
-						shadedrgb = shadedrgb.replace("rgb(","").replace(")","");
-						shadedrgb = shadedrgb.split(",");
-						
-						color.r0 = parseInt(shadedrgb[0]);
-						color.g0 = parseInt(shadedrgb[1]);
-						color.b0 = parseInt(shadedrgb[2]);
+					
+					if (typeof color !== "undefined"){
+						if (	(typeof color.r0 === "undefined") ||
+								(typeof color.g0 === "undefined") ||
+								(typeof color.b0 === "undefined") ){
+							var shadedrgb = shadeRGBColor("rgb("+color.r1+","+color.g1+","+color.b1+")",0.7);
+							shadedrgb = shadedrgb.replace("rgb(","").replace(")","");
+							shadedrgb = shadedrgb.split(",");
+							
+							color.r0 = parseInt(shadedrgb[0]);
+							color.g0 = parseInt(shadedrgb[1]);
+							color.b0 = parseInt(shadedrgb[2]);
+						}
 					}
 
 					var shapeText = selected.text();
