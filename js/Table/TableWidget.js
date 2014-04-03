@@ -172,7 +172,7 @@ TableWidget.prototype = {
 				changeColorShapeSelect.append(colorOptgroup);
 				
 				changeColorShapeSelect.change($.proxy(function(e) {
-					var selected = $(changeColorShapeSelect).find("option:selected");
+					var selected = changeColorShapeSelect.find("option:selected");
 
 					//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
 					function shadeRGBColor(color, percent) {
