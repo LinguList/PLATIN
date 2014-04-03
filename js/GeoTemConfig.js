@@ -663,9 +663,6 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			}
 			var weight = parseInt(item.weight) || 1;
-			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-			var projection = new OpenLayers.Projection("EPSG:4326");
-
 			//add all "other" attributes to table data
 			//this is a hack to allow "invalid" JSONs
 			var specialAttributes = ["id", "name", "description", "lon", "lat", "place", "time", 
@@ -676,7 +673,7 @@ GeoTemConfig.loadJson = function(JSON) {
 				}
 			}
 			
-			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
+			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
 		} catch(e) {
@@ -868,9 +865,7 @@ GeoTemConfig.loadKml = function(kml) {
 				}
 			}
 		}
-		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-		var projection = new OpenLayers.Projection("EPSG:4326");
-		var object = new DataObject(name, description, location, time, 1, tableContent, projection);
+		var object = new DataObject(name, description, location, time, 1, tableContent);
 		object.setIndex(index);
 		index++;
 		mapObjects.push(object);

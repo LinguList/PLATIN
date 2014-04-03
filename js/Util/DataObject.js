@@ -68,8 +68,14 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	});
 	
 	//Check if locations are valid
-	if (projection instanceof OpenLayers.Projection){	
-		var tempLocations = [];
+	if (!(projection instanceof OpenLayers.Projection)){
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		projection = new OpenLayers.Projection("EPSG:4326");
+	}
+	this.projection = projection;
+
+	var tempLocations = [];
+	if (typeof this.locations !== "undefined"){
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			this.latitude = parseFloat(this.latitude);
