@@ -144,7 +144,16 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 		//test if we already have date "objects" or if we should parse the dates
 		for (var i = 0; i < this.dates.length; i++){
 			if (typeof this.dates[i] === "string"){
-				this.dates[i] = GeoTemConfig.getTimeData(this.dates[i]);
+				var date = GeoTemConfig.getTimeData(this.dates[i]);
+				//check whether we got valid dates
+				if ((typeof date !== "undefined")&&(date != null)){
+					this.dates[i] = date; 
+				} else {
+					//at least one date is invalid, so this dataObject has
+					//no valid date information and is therefor not "temporal"
+					this.isTemporal = false;
+					break;
+				}
 			}
 		}
 	}
