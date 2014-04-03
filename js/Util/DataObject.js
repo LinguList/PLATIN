@@ -89,8 +89,9 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== "undefined")
-						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+					if ((GeoTemConfig.debug)&&(typeof console !== undefined)){
+							console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");						
+					}
 				}					
 				
 				//solve lat=-90 bug
@@ -202,7 +203,7 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 			//check whether dates are correctly sorted
 			if (this.TimeSpanBegin>this.TimeSpanEnd){
 				//dates are in the wrong order
-				if (typeof console !== "undefined")
+				if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 				
 			} else {

@@ -38,7 +38,7 @@ $.fn.cleanWhitespace = function() {
 };
 
 GeoTemConfig = {
-
+	debug : false, //show debug output (esp. regarding corrupt datasets)
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered
 	mouseWheelZoom : true, // enable/disable zoom with mouse wheel on map & timeplot
@@ -591,7 +591,7 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 		isValidDate = false;
 	
 	if (!isValidDate){
-		if (typeof console !== "undefined")
+		if ((GeoTemConfig.debug)&&(typeof console !== "undefined"))
 			console.error(xmlTime + " is no valid time format");
 		return null;
 	}
@@ -1097,7 +1097,7 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
 			delete this.tableContent["color0"];
 			delete this.tableContent["color1"];
 		} else {
-			if (typeof console !== undefined)
+			if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 				console.error("Object '" + this.name + "' has invalid color information");
 		}
 	});
