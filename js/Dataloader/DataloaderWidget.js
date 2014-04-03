@@ -142,47 +142,6 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
-		//load (optional!) filters
-		//those will create a new(!) dataset, that only contains the filtered IDs
-		$.each($.url().param(),function(paramName, paramValue){
-			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			if (paramName.toLowerCase().startsWith("filter")){
-				var datasetID = parseInt(paramName.substr(6));
-				var dataset;
-				if (isNaN(datasetID)){
-					var dataset;
-					for (datasetID in datasets){
-						break;
-					}
-				}
-				dataset = datasets[datasetID];
-				
-				if (typeof dataset === "undefined")
-					return;
-				
-				var filterValues = function(paramValue){
-					var filter = JSON.parse(paramValue);
-					var filteredObjects = [];
-					for(var i = 0; i < dataset.objects.length; i++){
-						var dataObject = dataset.objects[i];
-						if ($.inArray(dataObject.index,filter) != -1){
-							filteredObjects.push(dataObject);
-						}
-					}
-					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
-					datasets.push(filteredDataset);
-				}
-				
-				if (paramValue instanceof Array){
-					for (var i=0; i < paramValue.length; i++){
-						filterValues(paramValue[i]);
-					}
-				} else {
-					filterValues(paramValue);
-				}
-
-			}
-		});
 		//load (optional!) attribute renames
 		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
 		//examples:
@@ -262,6 +221,47 @@ DataloaderWidget.prototype = {
 					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
 							renames.timeSpanBegin,renames.timeSpanEnd);
 				}
+			}
+		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
+		$.each($.url().param(),function(paramName, paramValue){
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			if (paramName.toLowerCase().startsWith("filter")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+				
+				if (typeof dataset === "undefined")
+					return;
+				
+				var filterValues = function(paramValue){
+					var filter = JSON.parse(paramValue);
+					var filteredObjects = [];
+					for(var i = 0; i < dataset.objects.length; i++){
+						var dataObject = dataset.objects[i];
+						if ($.inArray(dataObject.index,filter) != -1){
+							filteredObjects.push(dataObject);
+						}
+					}
+					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+					datasets.push(filteredDataset);
+				}
+				
+				if (paramValue instanceof Array){
+					for (var i=0; i < paramValue.length; i++){
+						filterValues(paramValue[i]);
+					}
+				} else {
+					filterValues(paramValue);
+				}
+
 			}
 		});
 		//Load the (optional!) dataset colors
