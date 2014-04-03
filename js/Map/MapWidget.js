@@ -163,6 +163,8 @@ MapWidget.prototype = {
 		if (map.options.navigate) {
 			this.activeControl = "navigate";
 		}
+		//add attribution control
+		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
 		this.mds = new MapDataSource(this.openlayersMap, this.options);
 
 		if (map.options.olNavigation) {
@@ -567,7 +569,8 @@ MapWidget.prototype = {
 					                transitionEffect: "resize",
 					                buffer: 1,
 					                numZoomLevels: 12,
-					                transparent : true
+					                transparent : true,
+					                attribution: layers[i].attribution
 				                }, 
 								{
 									isBaseLayer : true
@@ -583,6 +586,7 @@ MapWidget.prototype = {
 								format : "image/png"
 							}, 
 							{
+				                attribution: layers[i].attribution,
 								isBaseLayer : true
 							}
 					);

@@ -72,9 +72,7 @@ FuzzyTimelineRangeBars.prototype = {
 			var objectHash = new Object();
 			
 			for (var i = 0; i < tickCount; i++){
-				chartDataCounter[i] = [];
-				chartDataCounter[i][0]=i;
-				chartDataCounter[i][1]=0;
+				chartDataCounter[i]=0;
 			}
 			//check if we got "real" datasets, or just array of objects
 			var datasetObjects = this;
@@ -111,7 +109,7 @@ FuzzyTimelineRangeBars.prototype = {
 							weight = this.weight;
 						}
 
-						chartDataCounter[i][1] += weight;
+						chartDataCounter[i] += weight;
 						//add this object to the hash
 						if (typeof objectHash[i] === "undefined")
 							objectHash[i] = [];
@@ -120,7 +118,24 @@ FuzzyTimelineRangeBars.prototype = {
 				}
 			});
 			
-			plots.push(chartDataCounter);
+			//scale according to selected type
+			chartDataCounter = rangeBar.parent.scaleData(chartDataCounter);
+			
+			//transform data so it can be passed to the flot barchart
+			var plotData = [];
+			for (var i = 0; i < tickCount; i++){
+				plotData[i] = [];
+				plotData[i][0] = i;
+				plotData[i][1] = chartDataCounter[i];
+			}
+			
+			//delete bars with 0 values
+			for (var i = 0; i < tickCount; i++){
+				if (plotData[i][1]==0)
+					delete plotData[i];
+			}
+			
+			plots.push(plotData);
 			objectHashes.push(objectHash);
 		});
 		
@@ -184,7 +199,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        yaxis: {
 		        	min : rangeBar.yValMin,
-		        	max : rangeBar.yValMax
+		        	max : rangeBar.yValMax*1.05
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
@@ -336,14 +351,17 @@ FuzzyTimelineRangeBars.prototype = {
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		
+		//get min and max values
 		for (var i = 0; i < rangeBar.datasetsPlot.length; i++){
 			for (var j = 0; j < rangeBar.datasetsPlot[i].length; j++){
-				var val = rangeBar.datasetsPlot[i][j][1];
-				
-				if (val < rangeBar.yValMin)
-					rangeBar.yValMin = val;
-				if (val > rangeBar.yValMax)
-					rangeBar.yValMax = val;
+				if (typeof rangeBar.datasetsPlot[i][j] !== "undefined"){
+					var val = rangeBar.datasetsPlot[i][j][1];
+					
+					if (val < rangeBar.yValMin)
+						rangeBar.yValMin = val;
+					if (val > rangeBar.yValMax)
+						rangeBar.yValMax = val;
+				}
 			}
 		}
 		

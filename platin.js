@@ -24621,7 +24621,7 @@ Dual licenced under the MIT license or GPLv3. See LICENSE.markdown.
  * http://www.uselesscode.org/javascript/csv/
  */
 var CSV=(function(){var f=/^\d+$/,g=/^\d*\.\d+$|^\d+\.\d*$/,i=/^\s|\s$|,|"|\n/,b=(function(){if(String.prototype.trim){return function(j){return j.trim()}}else{return function(j){return j.replace(/^\s*/,"").replace(/\s*$/,"")}}}());function h(j){return Object.prototype.toString.apply(j)==="[object Number]"}function a(j){return Object.prototype.toString.apply(j)==="[object String]"}function d(j){if(j.charAt(j.length-1)!=="\n"){return j}else{return j.substring(0,j.length-1)}}function e(k){var p,m="",o,n,l;for(n=0;n<k.length;n+=1){o=k[n];for(l=0;l<o.length;l+=1){p=o[l];if(a(p)){p=p.replace(/"/g,'""');if(i.test(p)||f.test(p)||g.test(p)){p='"'+p+'"'}else{if(p===""){p='""'}}}else{if(h(p)){p=p.toString(10)}else{if(p===null){p=""}else{p=p.toString()}}}m+=l<o.length-1?p+",":p}m+="\n"}return m}function c(t,p){t=d(t);var q="",l=false,m=false,o="",r=[],j=[],k,n;n=function(s){if(m!==true){if(s===""){s=null}else{if(p===true){s=b(s)}}if(f.test(s)){s=parseInt(s,10)}else{if(g.test(s)){s=parseFloat(s,10)}}}return s};for(k=0;k<t.length;k+=1){q=t.charAt(k);if(l===false&&(q===","||q==="\n")){o=n(o);r.push(o);if(q==="\n"){j.push(r);r=[]}o="";m=false}else{if(q!=='"'){o+=q}else{if(!l){l=true;m=true}else{if(t.charAt(k+1)==='"'){o+='"';k+=1}else{l=false}}}}}o=n(o);r.push(o);j.push(r);return j}if(typeof exports==="object"){exports.arrayToCsv=e;exports.csvToArray=c}return{arrayToCsv:e,csvToArray:c}}());
-/* Javascript plotting library for jQuery, version 0.8.2.
+/* Javascript plotting library for jQuery, version 0.8.3-alpha.
 
 Copyright (c) 2007-2013 IOLA and Ole Laursen.
 Licensed under the MIT license.
@@ -26329,8 +26329,8 @@ Licensed under the MIT license.
             axis.tickDecimals = Math.max(0, maxDec != null ? maxDec : dec);
             axis.tickSize = opts.tickSize || size;
 
-            // Time mode was moved to a plug-in in 0.8, but since so many people use this
-            // we'll add an especially friendly make sure they remembered to include it.
+            // Time mode was moved to a plug-in in 0.8, and since so many people use it
+            // we'll add an especially friendly reminder to make sure they included it.
 
             if (opts.mode == "time" && !axis.tickGenerator) {
                 throw new Error("Time mode requires the flot.time plugin.");
@@ -26586,26 +26586,34 @@ Licensed under the MIT license.
                     yrange.from = Math.max(yrange.from, yrange.axis.min);
                     yrange.to = Math.min(yrange.to, yrange.axis.max);
 
-                    if (xrange.from == xrange.to && yrange.from == yrange.to)
+                    var xequal = xrange.from === xrange.to,
+                        yequal = yrange.from === yrange.to;
+
+                    if (xequal && yequal) {
                         continue;
+                    }
 
                     // then draw
-                    xrange.from = xrange.axis.p2c(xrange.from);
-                    xrange.to = xrange.axis.p2c(xrange.to);
-                    yrange.from = yrange.axis.p2c(yrange.from);
-                    yrange.to = yrange.axis.p2c(yrange.to);
+                    xrange.from = Math.floor(xrange.axis.p2c(xrange.from));
+                    xrange.to = Math.floor(xrange.axis.p2c(xrange.to));
+                    yrange.from = Math.floor(yrange.axis.p2c(yrange.from));
+                    yrange.to = Math.floor(yrange.axis.p2c(yrange.to));
 
-                    if (xrange.from == xrange.to || yrange.from == yrange.to) {
-                        // draw line
+                    if (xequal || yequal) {
+                        var lineWidth = m.lineWidth || options.grid.markingsLineWidth,
+                            subPixel = lineWidth % 2 ? 0.5 : 0;
                         ctx.beginPath();
                         ctx.strokeStyle = m.color || options.grid.markingsColor;
-                        ctx.lineWidth = m.lineWidth || options.grid.markingsLineWidth;
-                        ctx.moveTo(xrange.from, yrange.from);
-                        ctx.lineTo(xrange.to, yrange.to);
+                        ctx.lineWidth = lineWidth;
+                        if (xequal) {
+                            ctx.moveTo(xrange.to + subPixel, yrange.from);
+                            ctx.lineTo(xrange.to + subPixel, yrange.to);
+                        } else {
+                            ctx.moveTo(xrange.from, yrange.to + subPixel);
+                            ctx.lineTo(xrange.to, yrange.to + subPixel);                            
+                        }
                         ctx.stroke();
-                    }
-                    else {
-                        // fill area
+                    } else {
                         ctx.fillStyle = m.color || options.grid.markingsColor;
                         ctx.fillRect(xrange.from, yrange.to,
                                      xrange.to - xrange.from,
@@ -27740,7 +27748,7 @@ Licensed under the MIT license.
         return plot;
     };
 
-    $.plot.version = "0.8.2";
+    $.plot.version = "0.8.3-alpha";
 
     $.plot.plugins = [];
 
@@ -27984,13 +27992,16 @@ More detail and specific examples can be found in the included HTML file.
 			for (var i = 0; i < data.length; ++i) {
 				var value = data[i].data[0][1];
 				if (numCombined < 2 || value / total > options.series.pie.combine.threshold) {
-					newdata.push({
-						data: [[1, value]],
-						color: data[i].color,
-						label: data[i].label,
-						angle: value * Math.PI * 2 / total,
-						percent: value / (total / 100)
-					});
+					newdata.push(
+						$.extend(data[i], {     /* extend to allow keeping all other original data values
+						                           and using them e.g. in labelFormatter. */
+							data: [[1, value]],
+							color: data[i].color,
+							label: data[i].label,
+							angle: value * Math.PI * 2 / total,
+							percent: value / (total / 100)
+						})
+					);
 				}
 			}
 
@@ -29424,19 +29435,48 @@ API.txt for details.
 	// on the function, so we need to re-expose it here.
 
 	$.plot.formatDate = formatDate;
+	$.plot.dateGenerator = dateGenerator;
 
 })(jQuery);
 /*
  * jquery.flot.tooltip
  * 
  * description: easy-to-use tooltips for Flot charts
- * version: 0.6.5
+ * version: 0.6.7
  * author: Krzysztof Urbas @krzysu [myviews.pl]
  * website: https://github.com/krzysu/flot.tooltip
  * 
- * build on 2014-01-23
+ * build on 2014-03-26
  * released under MIT License, 2012
 */ 
+// IE8 polyfill for Array.indexOf
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement, fromIndex) {
+        if ( this === undefined || this === null ) {
+            throw new TypeError( '"this" is null or not defined' );
+        }
+        var length = this.length >>> 0; // Hack to convert object.length to a UInt32
+        fromIndex = +fromIndex || 0;
+        if (Math.abs(fromIndex) === Infinity) {
+            fromIndex = 0;
+        }
+        if (fromIndex < 0) {
+            fromIndex += length;
+            if (fromIndex < 0) {
+                fromIndex = 0;
+            }
+        }
+
+        for (;fromIndex < length; fromIndex++) {
+            if (this[fromIndex] === searchElement) {
+                return fromIndex;
+            }
+        }
+
+        return -1;
+    };
+}
+
 (function ($) {
 
     // plugin options, default values
@@ -29446,6 +29486,8 @@ API.txt for details.
             content: "%s | X: %x | Y: %y",
             // allowed templates are:
             // %s -> series label,
+            // %lx -> x axis label (requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels),
+            // %ly -> y axis label (requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels),
             // %x -> X value,
             // %y -> Y value,
             // %x.2 -> precision of X value,
@@ -29479,6 +29521,16 @@ API.txt for details.
 
         var that = this;
 
+        // detect other flot plugins
+        var plotPluginsLength = $.plot.plugins.length;
+        this.plotPlugins = [];
+
+        if (plotPluginsLength) {
+            for (var p = 0; p < plotPluginsLength; p++) {
+                this.plotPlugins.push($.plot.plugins[p].name);
+            }
+        }
+
         plot.hooks.bindEvents.push(function (plot, eventHolder) {
 
             // get plot options
@@ -29496,13 +29548,13 @@ API.txt for details.
             // bind event
             $( plot.getPlaceholder() ).bind("plothover", plothover);
 
-			$(eventHolder).bind('mousemove', mouseMove);
+            $(eventHolder).bind('mousemove', mouseMove);
         });
 
-		plot.hooks.shutdown.push(function (plot, eventHolder){
-			$(plot.getPlaceholder()).unbind("plothover", plothover);
-			$(eventHolder).unbind("mousemove", mouseMove);
-		});
+        plot.hooks.shutdown.push(function (plot, eventHolder){
+            $(plot.getPlaceholder()).unbind("plothover", plothover);
+            $(eventHolder).unbind("mousemove", mouseMove);
+        });
 
         function mouseMove(e){
             var pos = {};
@@ -29511,8 +29563,8 @@ API.txt for details.
             that.updateTooltipPosition(pos);
         }
 
-		function plothover(event, pos, item) {
-			var $tip = that.getDomElement();
+        function plothover(event, pos, item) {
+            var $tip = that.getDomElement();
             if (item) {
                 var tipText;
 
@@ -29555,7 +29607,7 @@ API.txt for details.
             if(this.tooltipOptions.defaultTheme) {
                 $tip.css({
                     'background': '#fff',
-                    'z-index': '100',
+                    'z-index': '1040',
                     'padding': '0.4em 0.6em',
                     'border-radius': '0.5em',
                     'font-size': '0.8em',
@@ -29593,6 +29645,8 @@ API.txt for details.
 
         var percentPattern = /%p\.{0,1}(\d{0,})/;
         var seriesPattern = /%s/;
+        var xLabelPattern = /%lx/; // requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels, will be ignored if plugin isn't loaded
+        var yLabelPattern = /%ly/; // requires flot-axislabels plugin https://github.com/markrcote/flot-axislabels, will be ignored if plugin isn't loaded
         var xPattern = /%x\.{0,1}(\d{0,})/;
         var yPattern = /%y\.{0,1}(\d{0,})/;
         var xPatternWithoutPrecision = "%x";
@@ -29633,6 +29687,24 @@ API.txt for details.
             content = content.replace(seriesPattern, "");
         }
 
+        // x axis label match
+        if( this.hasAxisLabel('xaxis', item) ) {
+            content = content.replace(xLabelPattern, item.series.xaxis.options.axisLabel);
+        }
+        else {
+            //remove %lx if axis label is undefined or axislabels plugin not present
+            content = content.replace(xLabelPattern, "");
+        }
+
+        // y axis label match
+        if( this.hasAxisLabel('yaxis', item) ) {
+            content = content.replace(yLabelPattern, item.series.yaxis.options.axisLabel);
+        }
+        else {
+            //remove %ly if axis label is undefined or axislabels plugin not present
+            content = content.replace(yLabelPattern, "");
+        }
+
         // time mode axes with custom dateFormat
         if(this.isTimeMode('xaxis', item) && this.isXDateFormat(item)) {
             content = content.replace(xPattern, this.timestampToDate(x, this.tooltipOptions.xDateFormat));
@@ -29652,9 +29724,35 @@ API.txt for details.
 
         // change x from number to given label, if given
         if(typeof item.series.xaxis.ticks !== 'undefined') {
-            if(item.series.xaxis.ticks.length > item.dataIndex && !this.isTimeMode('xaxis', item))
-                content = content.replace(xPattern, item.series.xaxis.ticks[item.dataIndex].label);
+
+            var ticks;
+            if(this.hasRotatedXAxisTicks(item)) {
+                // xaxis.ticks will be an empty array if tickRotor is being used, but the values are available in rotatedTicks
+                ticks = 'rotatedTicks';
+            }
+            else {
+                ticks = 'ticks';
+            }
+
+            // see https://github.com/krzysu/flot.tooltip/issues/65
+            var tickIndex = item.dataIndex + item.seriesIndex;
+
+            if(item.series.xaxis[ticks].length > tickIndex && !this.isTimeMode('xaxis', item))
+                content = content.replace(xPattern, item.series.xaxis[ticks][tickIndex].label);
         }
+
+        // change y from number to given label, if given
+        if(typeof item.series.yaxis.ticks !== 'undefined') {
+            for (var index in item.series.yaxis.ticks) {
+                if (item.series.yaxis.ticks.hasOwnProperty(index)) {
+                    var value = (this.isCategoriesMode('yaxis', item)) ? item.series.yaxis.ticks[index].label : item.series.yaxis.ticks[index].v;
+                    if (value === y) {
+                        content = content.replace(yPattern, item.series.yaxis.ticks[index].label);
+                    }
+                }
+            }
+        }
+
         // if no value customization, use tickFormatter by default
         if(typeof item.series.xaxis.tickFormatter !== 'undefined') {
             //escape dollar
@@ -29681,6 +29779,10 @@ API.txt for details.
         return (typeof this.tooltipOptions.yDateFormat !== 'undefined' && this.tooltipOptions.yDateFormat !== null);
     };
 
+    FlotTooltip.prototype.isCategoriesMode = function(axisName, item) {
+        return (typeof item.series[axisName].options.mode !== 'undefined' && item.series[axisName].options.mode === 'categories');
+    };
+
     //
     FlotTooltip.prototype.timestampToDate = function(tmst, dateFormat) {
         var theDate = new Date(tmst*1);
@@ -29704,6 +29806,18 @@ API.txt for details.
         return content;
     };
 
+    // other plugins detection below
+
+    // check if flot-axislabels plugin (https://github.com/markrcote/flot-axislabels) is used and that an axis label is given
+    FlotTooltip.prototype.hasAxisLabel = function(axisName, item) {
+        return (this.plotPlugins.indexOf('axisLabels') !== -1 && typeof item.series[axisName].options.axisLabel !== 'undefined' && item.series[axisName].options.axisLabel.length > 0);
+    };
+
+    // check whether flot-tickRotor, a plugin which allows rotation of X-axis ticks, is being used
+    FlotTooltip.prototype.hasRotatedXAxisTicks = function(item) {
+        return ($.grep($.plot.plugins, function(p){ return p.name === "tickRotor"; }).length === 1 && typeof item.series.xaxis.rotatedTicks !== 'undefined');
+    };
+
     //
     var init = function(plot) {
       new FlotTooltip(plot);
@@ -29714,7 +29828,7 @@ API.txt for details.
         init: init,
         options: defaultOptions,
         name: 'tooltip',
-        version: '0.6.1'
+        version: '0.6.7'
     });
 
 })(jQuery);
@@ -29888,7 +30002,8 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Create new dataset from selected values",
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
-		"invertSelectionHelp" : "Invert the current selection"
+		"invertSelectionHelp" : "Invert the current selection",
+		"colorShapeDatasetHelp" : "change color or shape of dataset"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -29980,7 +30095,8 @@ var Tooltips = {
 		"createNewFromSelectedHelp" : "Erstelle neuen Datensatz aus den selektierten Eintr&auml;gen",
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
-		"invertSelectionHelp" : "Jetzige Selektion umkehren"
+		"invertSelectionHelp" : "Jetzige Selektion umkehren",
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
 	}
 }
 /*
@@ -30023,7 +30139,7 @@ $.fn.cleanWhitespace = function() {
 };
 
 GeoTemConfig = {
-
+	debug : false, //show debug output (esp. regarding corrupt datasets)
 	incompleteData : true, // show/hide data with either temporal or spatial metadata
 	inverseFilter : true, // if inverse filtering is offered
 	mouseWheelZoom : true, // enable/disable zoom with mouse wheel on map & timeplot
@@ -30033,7 +30149,11 @@ GeoTemConfig = {
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
+	allowUserShapeAndColorChange: false, // if the user can change the shapes and color of datasets 
+										// this turns MapConfig.useGraphics auto-on, but uses circles as default
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
+	allowColumnRenaming : true,
+	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -30572,7 +30692,7 @@ GeoTemConfig.getTimeData = function(xmlTime) {
 		isValidDate = false;
 	
 	if (!isValidDate){
-		if (typeof console !== "undefined")
+		if ((GeoTemConfig.debug)&&(typeof console !== "undefined"))
 			console.error(xmlTime + " is no valid time format");
 		return null;
 	}
@@ -30643,10 +30763,18 @@ GeoTemConfig.loadJson = function(JSON) {
 					dates.push(time);
 				}
 			}
-			var weight = item.weight || 1;
-			//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-			var projection = new OpenLayers.Projection("EPSG:4326");
-			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent, projection);
+			var weight = parseInt(item.weight) || 1;
+			//add all "other" attributes to table data
+			//this is a hack to allow "invalid" JSONs
+			var specialAttributes = ["id", "name", "description", "lon", "lat", "place", "time", 
+			                        "tableContent", "location", "time"];
+			for (var attribute in item){
+				if ($.inArray(attribute, specialAttributes) == -1){
+					tableContent[attribute] = item[attribute];
+				}
+			}
+			
+			var mapTimeObject = new DataObject(name, description, locations, dates, weight, tableContent);
 			mapTimeObject.setIndex(index);
 			mapTimeObjects.push(mapTimeObject);
 		} catch(e) {
@@ -30838,9 +30966,7 @@ GeoTemConfig.loadKml = function(kml) {
 				}
 			}
 		}
-		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
-		var projection = new OpenLayers.Projection("EPSG:4326");
-		var object = new DataObject(name, description, location, time, 1, tableContent, projection);
+		var object = new DataObject(name, description, location, time, 1, tableContent);
 		object.setIndex(index);
 		index++;
 		mapObjects.push(object);
@@ -31072,10 +31198,122 @@ GeoTemConfig.loadDataObjectColoring = function(dataObjects) {
 			delete this.tableContent["color0"];
 			delete this.tableContent["color1"];
 		} else {
-			if (typeof console !== undefined)
+			if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 				console.error("Object '" + this.name + "' has invalid color information");
 		}
 	});
+};
+
+/**
+ * renames (or copies, see below) a column of each DataObject in a Dataset
+ * @param {Dataset} dataset the dataset where the rename should take place
+ * @param {String} oldColumn name of column that will be renamed
+ * @param {String} newColumn new name of column
+ * @param {Boolean} keepOld keep old column (copy mode)
+ * @return an array of data objects
+ */
+GeoTemConfig.renameColumns = function(dataset, renames){
+	if (renames.length===0){
+		return;
+	}
+	for (var renCnt = 0; renCnt < renames.length; renCnt++){
+		var oldColumn = renames[renCnt].oldColumn;
+		var newColumn = renames[renCnt].newColumn;
+
+		var keepOld = renames[renCnt].keepOld;
+		if (typeof keepOld === "undefined"){
+			keepOld = true;
+		}
+		var oldColumObject = {};
+		if (oldColumn.indexOf("[") != -1){
+			oldColumObject.columnName = oldColumn.split("[")[0];
+			var IndexAndAttribute = oldColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				oldColumObject.type = 2;
+				oldColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					oldColumObject.type = 3;
+					oldColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			oldColumObject.type = 1;
+			oldColumObject.name = oldColumn;
+		}
+
+		var newColumObject = {};
+		if (newColumn.indexOf("[") != -1){
+			newColumObject.name = newColumn.split("[")[0];
+			var IndexAndAttribute = newColumn.split("[")[1];
+			if (IndexAndAttribute.indexOf("]") != -1){
+				newColumObject.type = 2;
+				newColumObject.arrayIndex = IndexAndAttribute.split("]")[0];
+				var attribute = IndexAndAttribute.split("]")[1];
+				if (attribute.length > 0){
+					newColumObject.type = 3;
+					newColumObject.attribute = attribute.split(".")[1];
+				}
+			}
+		} else {
+			newColumObject.type = 1;
+			newColumObject.name = newColumn;
+		}
+
+		for (var i = 0; i < dataset.objects.length; i++){
+			var dataObject = dataset.objects[i];
+			
+			//get value from old column name
+			var value;
+			if (oldColumObject.type == 1){
+				value = dataObject[oldColumObject.name];
+				if (typeof value === "undefined"){
+					value = dataObject.tableContent[oldColumObject.name];
+				}
+				if (!keepOld){
+					delete dataObject.tableContent[oldColumObject.name];
+					delete dataObject[oldColumObject.name];
+				}
+			} else if (oldColumObject.type == 2){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex];
+				}
+			} else if (oldColumObject.type == 3){
+				value = dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				if (!keepOld){
+					delete dataObject[oldColumObject.name][oldColumObject.arrayIndex][oldColumObject.attribute];
+				}
+			} 
+
+			//create new column
+			if (newColumObject.type == 1){
+				dataObject[newColumObject.name] = value;
+				dataObject.tableContent[newColumObject.name] = value;
+			} else if (newColumObject.type == 2){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex] = value;
+			} else if (newColumObject.type == 3){
+				if (typeof dataObject[newColumObject.name] == "undefined"){
+					dataObject[newColumObject.name] = [];
+				}
+				if (typeof dataObject[newColumObject.name][newColumObject.arrayIndex] == "undefined"){
+					dataObject[newColumObject.name][newColumObject.arrayIndex] = {};
+				}
+				dataObject[newColumObject.name][newColumObject.arrayIndex][newColumObject.attribute] = value; 
+			}
+		}
+	}
+
+	//actually create new dataObjects
+	for (var i = 0; i < dataset.objects.length; i++){
+		var dataObject = dataset.objects[i];
+
+		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
+			dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+	}
 };
 /*
 * MapControl.js
@@ -32123,123 +32361,164 @@ function MapConfig(options) {
 				{
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
-					layer: 'namespace:layerName',
-					type:'XYZ'	 	
+					type:'XYZ',
+					attribution: "(c) Barrington Roman Empiry, <a href='http://pelagios.dme.ait.ac.at/maps/greco-roman/'>Pelagios</a>"
 				},
 				{
-					name: 'Contemporary Map (1994)',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1994'
+					name: 'Maps-for-Free Relief Map',
+					url: 'http://maps-for-free.com/layer/relief/z${z}/row${y}/${z}_${x}-${y}.jpg',
+					type:'XYZ',
+					attribution: "(c) <a href='http://www.maps-for-free.com/html/about.html'>Maps for Free</a>"
+				},
+				{
+					name: 'Contemporary Map (2010)',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry2010',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
+				},
+				{
+					name: 'Historical Map of 2006',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry2006',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
+				},
+				{
+					name: 'Historical Map of 1994',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1994',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1945',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1945'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1945',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1938',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1938'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1938',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1920',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1920'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1920',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1914',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1914'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1914',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1880',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1880'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1880',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1815',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1815'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1815',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1783',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1783'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1783',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1715',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1715'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1715',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1650',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1650'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1650',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1530',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1530'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1530',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1492',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1492'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1492',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1279',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1279'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1279',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1000',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1000'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1000',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 800',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry800'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry800',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 600',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry600'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry600',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 400',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry400'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry400',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 200 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry200bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry200bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 323 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry323bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry323bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 500 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry500bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry500bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 1000 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry1000bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry1000bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 				{
 					name: 'Historical Map of 2000 BC',
-					url: 'http://dev2.dariah.eu/geoserver/wms',
-					layer: 'historic:cntry2000bc'
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'historic:cntry2000bc',
+					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
 		],
 		legend : true, // if a legend at the bottom of the map should be shown or not
@@ -32322,22 +32601,42 @@ function MapConfig(options) {
 		mapSelectionTools : true, // show/hide map selector tools
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
-		proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
+		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
 		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
 
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
 	}
+	
+	//if the user can change shape/color graphics have to be used
+	//but this will use circles as default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.options.useGraphics = true;
+	}
 
 };
 
 MapConfig.prototype.getGraphic = function(id){
-	var graphic = this.options.graphics[id % this.options.graphics.length];
+	var dataset = GeoTemConfig.datasets[id];
+
+	var graphic;
+	if (typeof dataset.graphic !== "undefined"){
+		graphic = dataset.graphic;
+	} else{
+		graphic = this.options.graphics[id % this.options.graphics.length];
+	}
+	
+	var color;
+	if (typeof dataset.color !== "undefined"){
+		color = dataset.color;
+	} else{
+		color = GeoTemConfig.getColor(id);
+	}
 	return {
 		shape: graphic.shape,
 		rotation: graphic.rotation,
-		color: GeoTemConfig.getColor(Math.floor(id/this.options.graphics.length))
+		color: color
 	};
 };
 /*
@@ -32889,6 +33188,8 @@ MapWidget.prototype = {
 		if (map.options.navigate) {
 			this.activeControl = "navigate";
 		}
+		//add attribution control
+		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
 		this.mds = new MapDataSource(this.openlayersMap, this.options);
 
 		if (map.options.olNavigation) {
@@ -33293,7 +33594,8 @@ MapWidget.prototype = {
 					                transitionEffect: "resize",
 					                buffer: 1,
 					                numZoomLevels: 12,
-					                transparent : true
+					                transparent : true,
+					                attribution: layers[i].attribution
 				                }, 
 								{
 									isBaseLayer : true
@@ -33309,6 +33611,7 @@ MapWidget.prototype = {
 								format : "image/png"
 							}, 
 							{
+				                attribution: layers[i].attribution,
 								isBaseLayer : true
 							}
 					);
@@ -36124,6 +36427,135 @@ TableWidget.prototype = {
 				$(tableTabTableRow).append($(document.createElement('td')).append(exportTabDiv));
 			}
 			
+			if (GeoTemConfig.allowUserShapeAndColorChange){
+				var dataset = GeoTemConfig.datasets[index];
+
+				var changeColorShapeSelect = $("<select></select>");
+				changeColorShapeSelect.attr("title", GeoTemConfig.getString("colorShapeDatasetHelp"));
+				changeColorShapeSelect.css("font-size","1.5em");
+				
+				var currentOptgroup = $("<optgroup label='Current'></optgroup>");
+				var currentOption = $("<option value='current'></option>");
+				var color = GeoTemConfig.getColor(index);
+				currentOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				currentOption.data("color",{r1:color.r1,g1:color.g1,b1:color.b1,r0:color.r0,g0:color.g0,b0:color.b0});
+				if (dataset.graphic.shape=="circle"){
+					currentOption.append("●");
+				} else if (dataset.graphic.shape=="triangel"){
+					currentOption.append("▲");
+				} else if (dataset.graphic.shape=="square"){
+					if (dataset.graphic.rotation===0){
+						currentOption.append("■");
+					} else {
+						currentOption.append("◆");
+					}
+				}
+				currentOptgroup.append(currentOption);
+				changeColorShapeSelect.append(currentOptgroup);
+
+				var defaultOptgroup = $("<optgroup label='Default'></optgroup>");
+				var defaultOption = $("<option value='default'></option>");
+				var color = GeoTemConfig.colors[index];
+				defaultOption.css("color","rgb("+color.r1+","+color.g1+","+color.b1+")");
+				defaultOption.data("color",{r1:color.r1,g1:color.g1,b1:color.b1,r0:color.r0,g0:color.g0,b0:color.b0});
+				defaultOption.append("●");
+				defaultOptgroup.append(defaultOption);
+				changeColorShapeSelect.append(defaultOptgroup);
+				
+				var shapeOptgroup = $("<optgroup label='Shapes'></optgroup>");
+				shapeOptgroup.append("<option>○</option>");
+				shapeOptgroup.append("<option>□</option>");
+				shapeOptgroup.append("<option>◇</option>");
+				shapeOptgroup.append("<option>△</option>");
+				changeColorShapeSelect.append(shapeOptgroup);
+				
+				var colorOptgroup = $("<optgroup label='Colors'></optgroup>");
+				var red = $("<option style='color:red'>■</option>");
+				red.data("color",{r1:255,g1:0,b1:0});
+				colorOptgroup.append(red);
+				var green = $("<option style='color:green'>■</option>");
+				green.data("color",{r1:0,g1:255,b1:0});
+				colorOptgroup.append(green);
+				var blue = $("<option style='color:blue'>■</option>");
+				blue.data("color",{r1:0,g1:0,b1:255});
+				colorOptgroup.append(blue);
+				var yellow = $("<option style='color:yellow'>■</option>");
+				yellow.data("color",{r1:255,g1:255,b1:0});
+				colorOptgroup.append(yellow);
+				changeColorShapeSelect.append(colorOptgroup);
+				
+				changeColorShapeSelect.change($.proxy(function(e) {
+					var selected = changeColorShapeSelect.find("option:selected");
+
+					//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+					function shadeRGBColor(color, percent) {
+					    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+					    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+					}
+
+					var color = selected.data("color");
+					
+					if (typeof color !== "undefined"){
+						if (	(typeof color.r0 === "undefined") ||
+								(typeof color.g0 === "undefined") ||
+								(typeof color.b0 === "undefined") ){
+							var shadedrgb = shadeRGBColor("rgb("+color.r1+","+color.g1+","+color.b1+")",0.7);
+							shadedrgb = shadedrgb.replace("rgb(","").replace(")","");
+							shadedrgb = shadedrgb.split(",");
+							
+							color.r0 = parseInt(shadedrgb[0]);
+							color.g0 = parseInt(shadedrgb[1]);
+							color.b0 = parseInt(shadedrgb[2]);
+						}
+					}
+
+					var shapeText = selected.text();
+					var graphic;
+					if ((shapeText=="■") || (shapeText=="□")){
+						graphic = {
+								shape: "square",
+								rotation: 0
+						};
+					} else if ((shapeText=="●") || (shapeText=="○")){
+						graphic = {
+								shape: "circle",
+								rotation: 0
+						};
+					} else if ((shapeText=="◆") || (shapeText=="◇")){
+						graphic = {
+								shape: "square",
+								rotation: 45
+						};
+					} else if ((shapeText=="▲") || (shapeText=="△")){
+						graphic = {
+								shape: "triangle",
+								rotation: 0
+						};
+					}
+					
+					if (shapeOptgroup.has(selected).length>0){
+						//shape change
+						dataset.graphic = graphic;
+					} else if (colorOptgroup.has(selected).length>0){
+						//color changed
+						dataset.color = color;
+					} else {
+						//back to default
+						dataset.graphic = graphic;
+						dataset.color = color;
+					}
+					
+					//reload data
+					Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+					
+					//don't let the event propagate to the DIV				
+					e.stopPropagation();
+					//discard link click
+					return(false);
+				},{index:index}));
+				$(tableTabTableRow).append($(document.createElement('td')).append(changeColorShapeSelect));
+			}
+			
 			return tableTab;
 		}
 		tableWidget.addTab = addTab;
@@ -37181,8 +37613,8 @@ Dataloader.prototype = {
 					return;
 				var origURL = kmlURL;
 				var fileName = this.getFileName(kmlURL);
-				if (typeof this.options.proxy != 'undefined')
-					kmlURL = this.options.proxy + kmlURL;
+				if (typeof GeoTemConfig.proxy != 'undefined')
+					kmlURL = GeoTemConfig.proxy + kmlURL;
 				var kml = GeoTemConfig.getKml(kmlURL);
 				if ((typeof kml !== "undefined") && (kml != null)) {
 					var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -37217,8 +37649,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmlURL;
 			var fileName = this.getFileName(kmlURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
 			if ((typeof kml !== "undefined") && (kml != null)) {
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -37255,8 +37687,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmzURL;
 			var fileName = dataLoader.getFileName(kmzURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			GeoTemConfig.getKmz(kmzURL, function(kmlArray){
 		    	$(kmlArray).each(function(){
@@ -37293,8 +37725,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = csvURL;
 			var fileName = dataLoader.getFileName(csvURL);
-			if (typeof this.options.proxy != 'undefined')
-				csvURL = this.options.proxy + csvURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				csvURL = GeoTemConfig.proxy + csvURL;
 			GeoTemConfig.getCsv(csvURL, function(json){
 				if ((typeof json !== "undefined") && (json.length > 0)) {
 					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
@@ -37456,7 +37888,6 @@ Dataloader.prototype = {
 function DataloaderConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			staticKML : [
 			            // {header: "header label"},			            
 			            // {label: "Johann Wolfgang von Goethe", url:"http://.../goethe.kml" },
@@ -37609,19 +38040,43 @@ DataloaderWidget.prototype = {
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
-			if (typeof dataLoaderWidget.options.proxy != 'undefined')
-				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);									
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("csv")){
 				var json = GeoTemConfig.getCsv(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				var json = GeoTemConfig.getJson(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(4));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 			else if (paramName.toLowerCase().startsWith("local")){
 				var csv = $.remember({name:encodeURIComponent(origURL)});
@@ -37630,8 +38085,136 @@ DataloaderWidget.prototype = {
 				var fileName = origURL.substring("GeoBrowser_dataset_".length);
 				var json = GeoTemConfig.convertCsv(csv);
 				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
-				if (dataSet != null)
-					datasets.push(dataSet);			
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(5));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
+		$.each($.url().param(),function(paramName, paramValue){
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			if (paramName.toLowerCase().startsWith("filter")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+				
+				if (typeof dataset === "undefined")
+					return;
+				
+				var filterValues = function(paramValue){
+					var filter = JSON.parse(paramValue);
+					var filteredObjects = [];
+					for(var i = 0; i < dataset.objects.length; i++){
+						var dataObject = dataset.objects[i];
+						if ($.inArray(dataObject.index,filter) != -1){
+							filteredObjects.push(dataObject);
+						}
+					}
+					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+					datasets.push(filteredDataset);
+				}
+				
+				if (paramValue instanceof Array){
+					for (var i=0; i < paramValue.length; i++){
+						filterValues(paramValue[i]);
+					}
+				} else {
+					filterValues(paramValue);
+				}
+
+			}
+		});
+		//load (optional!) attribute renames
+		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
+		//examples:
+		//	&rename1={"latitude":"lat1","longitude":"lon1"}
+		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("rename")){
+				var datasetID = parseInt(paramName.substr(5));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+
+				if (typeof dataset === "undefined")
+					return;
+				
+				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
+						timespanEndAttr){
+					var renameArray = [];
+					
+					if (typeof index === "undefined"){
+						index = 0;
+					}
+					
+					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
+						renameArray.push({
+							oldColumn:latAttr,
+							newColumn:"locations["+index+"].latitude"
+						});
+						renameArray.push({
+							oldColumn:lonAttr,
+							newColumn:"locations["+index+"].longitude"
+						});
+					}
+					
+					if (typeof placeAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:placeAttr,
+							newColumn:"locations["+index+"].place"
+						});
+					}
+
+					if (typeof dateAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:dateAttr,
+							newColumn:"dates["+index+"]"
+						});
+					}
+
+					if ((typeof timespanBeginAttr !== "undefined") && 
+							(typeof timespanEndAttr !== "undefined")){
+						renameArray.push({
+							oldColumn:timespanBeginAttr,
+							newColumn:"tableContent[TimeSpan:begin]"
+						});
+						renameArray.push({
+							oldColumn:timespanEndAttr,
+							newColumn:"tableContent[TimeSpan:end]"
+						});
+					}
+					
+					GeoTemConfig.renameColumns(dataset,renameArray);
+				};
+				
+				var renames = JSON.parse(paramValue);
+
+				if (renames instanceof Array){
+					for (var i=0; i < renames.length; i++){
+						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd);
+					}
+				} else {
+					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
+							renames.timeSpanBegin,renames.timeSpanEnd);
+				}
 			}
 		});
 		//Load the (optional!) dataset colors
@@ -37675,6 +38258,18 @@ DataloaderWidget.prototype = {
 				}
 			}	
 		});
+		//delete undefined entries in the array
+		//(can happen if the sequence given in the URL is not complete
+		// e.g. kml0=..,kml2=..)
+		//this also reorders the array,	 starting with 0
+		var tempDatasets = [];
+		for(var index in datasets){
+			if (datasets[index] instanceof Dataset){
+				tempDatasets.push(datasets[index]);
+			}
+		}
+		datasets = tempDatasets;
+		
 		if (datasets.length > 0)
 			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}
@@ -37708,7 +38303,6 @@ DataloaderWidget.prototype = {
 function FuzzyTimelineConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			//TODO: experiment with number of ticks, 150 seems to be ok for now
 			maxBars : 50,
 			maxDensityTicks : 150,
@@ -37859,8 +38453,6 @@ FuzzyTimelineDensity.prototype = {
 								weight = this.weight * ticks.lastTickPercentage;
 							else
 								weight = this.weight;
-							
-							weight = this.weight;
 						}
 						
 						chartDataCounter[i] += weight;
@@ -37871,6 +38463,9 @@ FuzzyTimelineDensity.prototype = {
 					}
 				}
 			});
+			
+			//scale according to selected type
+			chartDataCounter = density.parent.scaleData(chartDataCounter);
 			
 			var udChartData = density.createPlot(chartDataCounter);
 			if (udChartData.length > 0)
@@ -37912,10 +38507,60 @@ FuzzyTimelineDensity.prototype = {
 			axisFormatString = "%Y/%m";
 			tooltipFormatString = "YYYY/MM";
 		}
+
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+		function shadeRGBColor(color, percent) {
+		    var f=color.split(","),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=parseInt(f[0].slice(4)),G=parseInt(f[1]),B=parseInt(f[2]);
+		    return "rgb("+(Math.round((t-R)*p)+R)+","+(Math.round((t-G)*p)+G)+","+(Math.round((t-B)*p)+B)+")";
+		}
 		
+		//credits: Tupak Goliam @ http://stackoverflow.com/a/3821786
+        var drawLines = function(plot, ctx) {
+            var data = plot.getData();
+            var axes = plot.getAxes();
+            var offset = plot.getPlotOffset();
+            for (var i = 0; i < data.length; i++) {
+                var series = data[i];
+                var lineWidth = 1;
+                
+                for (var j = 0; j < series.data.length-1; j++) {
+                    var d = (series.data[j]);
+                    var d2 = (series.data[j+1]);
+                    
+                    var x = offset.left + axes.xaxis.p2c(d[0]);
+                    var y = offset.top + axes.yaxis.p2c(d[1]);
+                    
+                    var x2 = offset.left + axes.xaxis.p2c(d2[0]);
+                    var y2 = offset.top + axes.yaxis.p2c(d2[1]);
+
+                    //hide lines that "connect" 0 and 0
+                    //essentially blanking out the 0 values 
+                    if ((d[1]==0)&&(d2[1]==0)){
+                        continue;
+                    }
+                    
+                    ctx.strokeStyle=series.color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.beginPath();
+                    ctx.moveTo(x,y);
+                    ctx.lineTo(x2,y2);
+
+                    //add shadow (esp. to make background lines more visible)
+                    ctx.shadowColor = shadeRGBColor(series.color,-0.3);
+                    ctx.shadowBlur=1;
+                    ctx.shadowOffsetX = 1; 
+                    ctx.shadowOffsetY = 1;
+                    
+                    ctx.stroke();
+                }    
+            }
+        }; 	
+
 		var options = {
 				series:{
-	                lines:{show: true}
+					//width:0 because line is drawn in own routine above
+					//but everything else (data points, shadow) should be drawn
+	                lines:{show: true, lineWidth: 0, shadowSize: 0},
 	            },
 				grid: {
 		            hoverable: true,
@@ -37948,8 +38593,11 @@ FuzzyTimelineDensity.prototype = {
 				},
 		        yaxis: {
 		        	min : density.yValMin,
-		        	max : density.yValMax
+		        	max : density.yValMax*1.05
 		        },
+                hooks: { 
+                    draw  : drawLines
+                },
 			};
 		if (!density.parent.options.showYAxis)
 			options.yaxis.show=false;
@@ -38361,9 +39009,7 @@ FuzzyTimelineRangeBars.prototype = {
 			var objectHash = new Object();
 			
 			for (var i = 0; i < tickCount; i++){
-				chartDataCounter[i] = [];
-				chartDataCounter[i][0]=i;
-				chartDataCounter[i][1]=0;
+				chartDataCounter[i]=0;
 			}
 			//check if we got "real" datasets, or just array of objects
 			var datasetObjects = this;
@@ -38400,7 +39046,7 @@ FuzzyTimelineRangeBars.prototype = {
 							weight = this.weight;
 						}
 
-						chartDataCounter[i][1] += weight;
+						chartDataCounter[i] += weight;
 						//add this object to the hash
 						if (typeof objectHash[i] === "undefined")
 							objectHash[i] = [];
@@ -38409,7 +39055,24 @@ FuzzyTimelineRangeBars.prototype = {
 				}
 			});
 			
-			plots.push(chartDataCounter);
+			//scale according to selected type
+			chartDataCounter = rangeBar.parent.scaleData(chartDataCounter);
+			
+			//transform data so it can be passed to the flot barchart
+			var plotData = [];
+			for (var i = 0; i < tickCount; i++){
+				plotData[i] = [];
+				plotData[i][0] = i;
+				plotData[i][1] = chartDataCounter[i];
+			}
+			
+			//delete bars with 0 values
+			for (var i = 0; i < tickCount; i++){
+				if (plotData[i][1]==0)
+					delete plotData[i];
+			}
+			
+			plots.push(plotData);
 			objectHashes.push(objectHash);
 		});
 		
@@ -38473,7 +39136,7 @@ FuzzyTimelineRangeBars.prototype = {
 		        },
 		        yaxis: {
 		        	min : rangeBar.yValMin,
-		        	max : rangeBar.yValMax
+		        	max : rangeBar.yValMax*1.05
 		        },
 		        tooltip: true,
 		        tooltipOpts: {
@@ -38625,14 +39288,17 @@ FuzzyTimelineRangeBars.prototype = {
 		//redraw selected plot to fit (possible) new scale
 		rangeBar.selectionChanged(rangeBar.selected);
 		
+		//get min and max values
 		for (var i = 0; i < rangeBar.datasetsPlot.length; i++){
 			for (var j = 0; j < rangeBar.datasetsPlot[i].length; j++){
-				var val = rangeBar.datasetsPlot[i][j][1];
-				
-				if (val < rangeBar.yValMin)
-					rangeBar.yValMin = val;
-				if (val > rangeBar.yValMax)
-					rangeBar.yValMax = val;
+				if (typeof rangeBar.datasetsPlot[i][j] !== "undefined"){
+					var val = rangeBar.datasetsPlot[i][j][1];
+					
+					if (val < rangeBar.yValMin)
+						rangeBar.yValMin = val;
+					if (val > rangeBar.yValMax)
+						rangeBar.yValMax = val;
+				}
 			}
 		}
 		
@@ -39053,6 +39719,17 @@ function FuzzyTimelineRangeSlider(parent) {
 	this.rangeDropdown = document.createElement("select");
 	controlsRow.append($("<td></td>").append(this.rangeDropdown));
 	
+	headerRow.append("<td>Scaling</td>");
+	this.scalingDropdown = document.createElement("select");
+	controlsRow.append($("<td></td>").append(this.scalingDropdown));
+	$(this.scalingDropdown).append("<option>normal</option>");
+	$(this.scalingDropdown).append("<option>logarithm</option>");
+	$(this.scalingDropdown).append("<option>percentage</option>");
+	$(this.scalingDropdown).change(function(eventObject){
+		var scaleMode = $(rangeSlider.scalingDropdown).find("option:selected").text();
+		rangeSlider.parent.changeScaleMode(scaleMode);
+	});
+
 	headerRow.append("<td>Animation</td>");
 	this.startAnimation = document.createElement("div");
 	$(this.startAnimation).addClass("smallButton playDisabled");
@@ -39138,10 +39815,11 @@ FuzzyTimelineRangeSlider.prototype = {
 			moment.duration(5000, 'years'),
 			moment.duration(10000, 'years'),
 			];
-		
+		var overallSpan = rangeSlider.parent.overallMax-rangeSlider.parent.overallMin;
 		//only add spans that are not too small for the data
 		for (var i = 0; i < fixedSpans.length; i++){
-			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5))
+			if (	(fixedSpans[i].asMilliseconds() > (smallestSpan.asMilliseconds() * 0.5)) &&
+					(fixedSpans[i].asMilliseconds() < overallSpan)
 					&&
 					(
 							rangeSlider.parent.options.showAllPossibleSpans ||
@@ -39164,12 +39842,22 @@ FuzzyTimelineRangeSlider.prototype = {
 				humanizedSpan = duration.minutes() + "min";
 			else if (duration < moment.duration(1,'day'))
 				humanizedSpan = duration.hours() + "h";
-			else if (duration < moment.duration(1,'month'))
-				humanizedSpan = duration.days() + " days";
-			else if (duration < moment.duration(1,'year'))
-				humanizedSpan = duration.months() + " months";
-			else 
-				humanizedSpan = duration.years() + " years";
+			else if (duration < moment.duration(1,'month')){
+				var days = duration.days();
+				humanizedSpan = days + " day";
+				if (days > 1)
+					humanizedSpan += "s";
+			} else if (duration < moment.duration(1,'year')){
+				var months = duration.months();
+				humanizedSpan = months + " month";
+				if (months > 1)
+					humanizedSpan += "s";
+			} else {
+				var years = duration.years();
+				humanizedSpan = years + " year";
+				if (years > 1)
+					humanizedSpan += "s";
+			}
 			$(rangeSlider.rangeDropdown).append("<option index='"+index+"'>"+humanizedSpan+"</option>");
 			index++;
 		});
@@ -39320,6 +40008,8 @@ FuzzyTimelineWidget = function(core, div, options) {
 	
 	this.handles = [];
 	this.zoomFactor = 1;
+	
+	this.scaleMode = "normal";
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -39388,7 +40078,54 @@ FuzzyTimelineWidget.prototype = {
 		}
 	},
 	
+	scaleData : function(data){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.scaleMode == "normal"){
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "logarithm"){
+			for(var index in data){
+				var val = data[index];
+				if (val!=0){
+					var sign = 1;
+					if (val<0){
+						sign = -1;
+					}
+					data[index] = sign*Math.log(Math.abs(data[index])+1);
+				}	
+			}
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "percentage"){
+			var overallCnt = 0;
+			for(var index in data){
+				var val = data[index];
+				if (val > 0){
+					overallCnt += val;
+				}
+			}
+			//make 1 = 100%
+			overallCnt = overallCnt/100;
+			if (overallCnt != 0){
+				for(var index in data){
+					data[index] = (data[index])/overallCnt;	
+				}
+			}
+			return data;
+		}
+	},
+	
+	changeScaleMode : function(scaleMode) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.scaleMode = scaleMode;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
 	slidePositionChanged : function(spanWidth) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.spanWidth = spanWidth;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
+	drawFuzzyTimeline : function(){
 		var fuzzyTimeline = this;
 		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
@@ -39398,7 +40135,7 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,fuzzyTimeline.spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}
@@ -40059,8 +40796,8 @@ Overlayloader.prototype = {
 			var kmlURL = $(this.kmlURL).val();
 			if (kmlURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			
 			this.distributeKML(kmlURL);
 		},this));
@@ -40086,8 +40823,8 @@ Overlayloader.prototype = {
 			var kmzURL = $(this.kmzURL).val();
 			if (kmzURL.length == 0)
 				return;
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			this.distributeKMZ(kmzURL);
 		},this));
@@ -40238,7 +40975,6 @@ function OverlayloaderConfig(options) {
 			wms_overlays : [
 							//e.g. {name:'name', server:'url', layer:'layer'},
 			],
-			proxy : 'php/proxy.php?address='
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);
@@ -41207,7 +41943,6 @@ PieChartCategoryChooser.prototype = {
 function PieChartConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			restrictPieChartSize : 0.25, // restrict size to percantage of window size (false for no restriction)
 			localStoragePrefix : "GeoBrowser_PieChart_", // prefix for value name in LocalStorage
 			allowLocalStorage : true, //whether LocalStorage save and load should be allowed (and buttons shown) 
@@ -42049,7 +42784,6 @@ Storytelling.prototype = {
 function StorytellingConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			dariahStorage : false,
 			localStorage : true
 	};
@@ -42368,8 +43102,14 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	});
 	
 	//Check if locations are valid
-	if (projection instanceof OpenLayers.Projection){	
-		var tempLocations = [];
+	if (!(projection instanceof OpenLayers.Projection)){
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		projection = new OpenLayers.Projection("EPSG:4326");
+	}
+	this.projection = projection;
+
+	var tempLocations = [];
+	if (typeof this.locations !== "undefined"){
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			this.latitude = parseFloat(this.latitude);
@@ -42383,9 +43123,24 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== "undefined")
-						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+					if ((GeoTemConfig.debug)&&(typeof console !== undefined)){
+							console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");						
+					}
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
@@ -42420,6 +43175,21 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				var date = GeoTemConfig.getTimeData(this.dates[i]);
+				//check whether we got valid dates
+				if ((typeof date !== "undefined")&&(date != null)){
+					this.dates[i] = date; 
+				} else {
+					//at least one date is invalid, so this dataObject has
+					//no valid date information and is therefor not "temporal"
+					this.isTemporal = false;
+					break;
+				}
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)
@@ -42476,7 +43246,7 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 			//check whether dates are correctly sorted
 			if (this.TimeSpanBegin>this.TimeSpanEnd){
 				//dates are in the wrong order
-				if (typeof console !== "undefined")
+				if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 				
 			} else {
@@ -42679,6 +43449,14 @@ Dataset = function(objects, label, url, type) {
 	this.type = type;
 	
 	this.color;
+	
+	//if the user can change shapes, every dataset needs a default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.graphic={
+				shape: "circle",
+				rotation: 0
+		}
+	}
 	
 	Publisher.Publish('datasetAfterCreation', this);
 }

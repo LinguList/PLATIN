@@ -50,6 +50,8 @@ FuzzyTimelineWidget = function(core, div, options) {
 	
 	this.handles = [];
 	this.zoomFactor = 1;
+	
+	this.scaleMode = "normal";
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -118,7 +120,54 @@ FuzzyTimelineWidget.prototype = {
 		}
 	},
 	
+	scaleData : function(data){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.scaleMode == "normal"){
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "logarithm"){
+			for(var index in data){
+				var val = data[index];
+				if (val!=0){
+					var sign = 1;
+					if (val<0){
+						sign = -1;
+					}
+					data[index] = sign*Math.log(Math.abs(data[index])+1);
+				}	
+			}
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "percentage"){
+			var overallCnt = 0;
+			for(var index in data){
+				var val = data[index];
+				if (val > 0){
+					overallCnt += val;
+				}
+			}
+			//make 1 = 100%
+			overallCnt = overallCnt/100;
+			if (overallCnt != 0){
+				for(var index in data){
+					data[index] = (data[index])/overallCnt;	
+				}
+			}
+			return data;
+		}
+	},
+	
+	changeScaleMode : function(scaleMode) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.scaleMode = scaleMode;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
 	slidePositionChanged : function(spanWidth) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.spanWidth = spanWidth;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
+	drawFuzzyTimeline : function(){
 		var fuzzyTimeline = this;
 		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
@@ -128,7 +177,7 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,fuzzyTimeline.spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}

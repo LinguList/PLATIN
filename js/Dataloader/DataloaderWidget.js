@@ -87,8 +87,8 @@ DataloaderWidget.prototype = {
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
 			var origURL = paramValue;
-			if (typeof dataLoaderWidget.options.proxy != 'undefined')
-				paramValue = dataLoaderWidget.options.proxy + paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
 			if (paramName.toLowerCase().startsWith("kml")){
 				var kmlDoc = GeoTemConfig.getKml(paramValue);
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
@@ -205,28 +205,50 @@ DataloaderWidget.prototype = {
 				
 				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
 						timespanEndAttr){
+					var renameArray = [];
+					
 					if (typeof index === "undefined"){
 						index = 0;
 					}
 					
 					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
-						GeoTemConfig.renameColumn(dataset,latAttr,"locations["+index+"].latitude");
-						GeoTemConfig.renameColumn(dataset,lonAttr,"locations["+index+"].longitude");
+						renameArray.push({
+							oldColumn:latAttr,
+							newColumn:"locations["+index+"].latitude"
+						});
+						renameArray.push({
+							oldColumn:lonAttr,
+							newColumn:"locations["+index+"].longitude"
+						});
 					}
 					
 					if (typeof placeAttr !== "undefined"){
-						GeoTemConfig.renameColumn(dataset,placeAttr,"locations["+index+"].place");
+						renameArray.push({
+							oldColumn:placeAttr,
+							newColumn:"locations["+index+"].place"
+						});
 					}
 
 					if (typeof dateAttr !== "undefined"){
-						GeoTemConfig.renameColumn(dataset,dateAttr,"dates["+index+"]");
+						renameArray.push({
+							oldColumn:dateAttr,
+							newColumn:"dates["+index+"]"
+						});
 					}
 
 					if ((typeof timespanBeginAttr !== "undefined") && 
 							(typeof timespanEndAttr !== "undefined")){
-						GeoTemConfig.renameColumn(dataset,timespanBeginAttr,"tableContent[TimeSpan:begin]");
-						GeoTemConfig.renameColumn(dataset,timespanEndAttr,"tableContent[TimeSpan:end]");
+						renameArray.push({
+							oldColumn:timespanBeginAttr,
+							newColumn:"tableContent[TimeSpan:begin]"
+						});
+						renameArray.push({
+							oldColumn:timespanEndAttr,
+							newColumn:"tableContent[TimeSpan:end]"
+						});
 					}
+					
+					GeoTemConfig.renameColumns(dataset,renameArray);
 				};
 				
 				var renames = JSON.parse(paramValue);

@@ -68,8 +68,14 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	});
 	
 	//Check if locations are valid
-	if (projection instanceof OpenLayers.Projection){	
-		var tempLocations = [];
+	if (!(projection instanceof OpenLayers.Projection)){
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		projection = new OpenLayers.Projection("EPSG:4326");
+	}
+	this.projection = projection;
+
+	var tempLocations = [];
+	if (typeof this.locations !== "undefined"){
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			this.latitude = parseFloat(this.latitude);
@@ -83,9 +89,24 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== "undefined")
-						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+					if ((GeoTemConfig.debug)&&(typeof console !== undefined)){
+							console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");						
+					}
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
@@ -120,6 +141,21 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				var date = GeoTemConfig.getTimeData(this.dates[i]);
+				//check whether we got valid dates
+				if ((typeof date !== "undefined")&&(date != null)){
+					this.dates[i] = date; 
+				} else {
+					//at least one date is invalid, so this dataObject has
+					//no valid date information and is therefor not "temporal"
+					this.isTemporal = false;
+					break;
+				}
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)
@@ -176,7 +212,7 @@ DataObject = function(name, description, locations, dates, weight, tableContent,
 			//check whether dates are correctly sorted
 			if (this.TimeSpanBegin>this.TimeSpanEnd){
 				//dates are in the wrong order
-				if (typeof console !== "undefined")
+				if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 				
 			} else {

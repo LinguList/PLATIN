@@ -27,7 +27,6 @@
 function StorytellingConfig(options) {
 
 	this.options = {
-			proxy : 'php/proxy.php?address=',
 			dariahStorage : false,
 			localStorage : true
 	};
