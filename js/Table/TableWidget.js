@@ -199,22 +199,22 @@ TableWidget.prototype = {
 
 					var shapeText = selected.text();
 					var graphic;
-					if ((shapeText=="■") | (shapeText=="□")){
+					if ((shapeText=="■") || (shapeText=="□")){
 						graphic = {
 								shape: "square",
 								rotation: 0
 						};
-					} else if ((shapeText=="●") | (shapeText=="○")){
+					} else if ((shapeText=="●") || (shapeText=="○")){
 						graphic = {
 								shape: "circle",
 								rotation: 0
 						};
-					} else if ((shapeText=="◆") | (shapeText=="◇")){
+					} else if ((shapeText=="◆") || (shapeText=="◇")){
 						graphic = {
 								shape: "square",
 								rotation: 45
 						};
-					} else if ((shapeText=="▲") | (shapeText=="△")){
+					} else if ((shapeText=="▲") || (shapeText=="△")){
 						graphic = {
 								shape: "triangle",
 								rotation: 0
