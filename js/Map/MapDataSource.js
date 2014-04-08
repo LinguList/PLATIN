@@ -27,14 +27,15 @@
  * @release date: 2012-07-27
  * @version date: 2012-07-27
  *
- * @param {OpenLayers.Map} olMap openlayers map object of the map widget
+ * @param {MapWidget} parent Widget
  * @param {JSON} options map configuration
  */
-function MapDataSource(olMap, options) {
+function MapDataSource(parent, options) {
 
-	this.olMap = olMap;
+    this.parent = parent;
+	this.olMap = parent.openlayersMap;
 	this.circleSets = [];
-	this.binning = new Binning(olMap, options);
+	this.binning = new Binning(this.olMap, options);
 
 };
 

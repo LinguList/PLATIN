@@ -155,7 +155,7 @@ MapWidget.prototype = {
 		}
 		//add attribution control
 		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
-		this.mds = new MapDataSource(this.openlayersMap, this.options);
+		this.mds = new MapDataSource(this, this.options);
 
         //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
         this.openlayersMap.events.register("zoomend", map, function(){
