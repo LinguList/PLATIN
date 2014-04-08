@@ -85,7 +85,7 @@ function MapZoomSlider(parent, orientation) {
 		this.slider.setMaximum(max);
 	}
 	//	this.setMaxAndLevels(1000,parent.openlayersMap.getNumZoomLevels());
-	//	this.setValue(parent.openlayersMap.getZoom());
+	//	this.setValue(parent.getZoom());
 
 	this.setLanguage = function() {
 		zoomIn.title = GeoTemConfig.getString('zoomIn');

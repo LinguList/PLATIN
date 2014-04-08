@@ -61,7 +61,7 @@ MapDataSource.prototype = {
 	},
 
 	getObjectsByZoom : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		if (this.circleSets.length < zoom) {
 			return null;
 		}
@@ -83,7 +83,7 @@ MapDataSource.prototype = {
 	},
 
 	clearOverlay : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		var circles = this.circleSets[zoom];
 		for (var i in circles ) {
 			for (var j in circles[i] ) {
@@ -93,7 +93,7 @@ MapDataSource.prototype = {
 	},
 
 	setOverlay : function(mapObjects) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		for (var j in mapObjects ) {
 			for (var k in mapObjects[j] ) {
 				var o = mapObjects[j][k];
@@ -113,7 +113,7 @@ MapDataSource.prototype = {
 	},
 
 	getCircle : function(index, id) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		return this.hashMapping[zoom][index][id];
 	}
 };

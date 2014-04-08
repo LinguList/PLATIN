@@ -129,7 +129,7 @@ MapWidget.prototype = {
 			this.map.setCenter(newCenter, this.map.zoom + 1);
 			map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 		}
 		this.navigation.wheelUp = function(evt) {
@@ -161,7 +161,7 @@ MapWidget.prototype = {
         this.openlayersMap.events.register("zoomend", map, function(){
             map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 			map.core.triggerHighlight([]);
         });
@@ -539,7 +539,7 @@ MapWidget.prototype = {
 
 		if (this.zoomSlider) {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
-			this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			this.zoomSlider.setValue(this.getZoom());
 		}
 		
 		Publisher.Subscribe('mapChanged', this, function(mapName) {
@@ -808,10 +808,10 @@ MapWidget.prototype = {
 				var gapY1 = 0.1 * (maxLat - minLat );
 				var gapY2 = (this.gui.headerHeight / this.gui.mapWindow.offsetHeight + 0.1 ) * (maxLat - minLat );
 				this.openlayersMap.zoomToExtent(new OpenLayers.Bounds(minLon - gapX, minLat - gapY1, maxLon + gapX, maxLat + gapY2));
-				this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+				this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 			}
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		var displayPoints = this.mds.getObjectsByZoom();
@@ -831,7 +831,7 @@ MapWidget.prototype = {
 				this.objectLayer.addFeatures([p.olFeature]);
 			}
 		}
-		var zoomLevel = this.openlayersMap.getZoom();
+		var zoomLevel = this.getZoom();
 		/*
 		 for (var i = 0; i < this.bins[zoomLevel].length; i++) {
 		 var p = this.bins[zoomLevel][i];
@@ -1308,13 +1308,13 @@ MapWidget.prototype = {
 	 * @param {int} delta the change of zoom levels
 	 */
 	zoom : function(delta) {
-		var zoom = this.openlayersMap.getZoom() + delta;
+		var zoom = this.getZoom() + delta;
 		if (this.openlayersMap.baseLayer instanceof OpenLayers.Layer.WMS) {
 			this.openlayersMap.zoomTo(zoom);
 		} else {
 			this.openlayersMap.zoomTo(Math.round(zoom));
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		return true;
@@ -1357,7 +1357,7 @@ MapWidget.prototype = {
 				this.countrySelectionControl.disable();
 			}
 		}
-		this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+		this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 		this.openlayersMap.setBaseLayer(this.baseLayers[index]);
 		if (this.baseLayers[index].name == 'Open Street Map') {
 			this.gui.osmLink.style.visibility = 'visible';
@@ -1433,7 +1433,21 @@ MapWidget.prototype = {
 	},
 
 	getZoom : function() {
-		return this.openlayersMap.getZoom();
+    	//calculate zoom from active resolution
+        var resolution = this.openlayersMap.getResolution();
+        var zoom = this.resolutions.indexOf(resolution);
+        if (zoom == -1){
+            //fractional zoom
+            for (zoom = 0; zoom < this.resolutions.length; zoom++){
+                if (resolution>=this.resolutions[zoom]){
+                    break;
+                }
+            }
+            if (zoom == this.resolutions.length){
+                zoom--;
+            }
+        }
+        return(zoom);
 	},
 
 	setMarker : function(lon, lat) {
@@ -1482,7 +1496,7 @@ MapWidget.prototype = {
 				if (xDist / resolution < x_s && yDist / resolution < y_s) {
 					this.openlayersMap.zoomTo(zoomLevels - i - 1);
 					if (this.zoomSlider) {
-						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+						this.zoomSlider.setValue(this.getZoom());
 					}
 					this.drawObjectLayer(false);
 					break;
@@ -1492,7 +1506,7 @@ MapWidget.prototype = {
 			//if there are no points on the map, zoom to max 
 			this.openlayersMap.zoomTo(0);
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 			this.drawObjectLayer(false);
 		}
@@ -1503,7 +1517,7 @@ MapWidget.prototype = {
 	},
 
 	getLevelOfDetail : function() {
-		var zoom = Math.floor(this.openlayersMap.getZoom());
+		var zoom = Math.floor(this.getZoom());
 		if (zoom <= 1) {
 			return 0;
 		} else if (zoom <= 3) {
