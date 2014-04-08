@@ -36,6 +36,12 @@ function MapConfig(options) {
 		mapIndex : 0, // index = position in location array; for multiple locations the 2nd map refers to index 1
 		alternativeMap :  [
 				{
+					name: 'China 1997 test',
+					url: 'http://localhost:8080/geoserver/test/wms',
+					layer: 'test:colored1997',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
+				},                
+				{
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
 					type:'XYZ',

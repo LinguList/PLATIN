@@ -576,15 +576,22 @@ MapWidget.prototype = {
 								}
 			            );
 				} else {
+				    var options = {
+						projection : "EPSG:4326",
+						layers : layers[i].layer,
+						transparent : "true",
+						format : "image/png"
+					};
+					
+					if (typeof layers[i].sld !== "undefined"){
+					    options.sld_body = layers[i].sld;
+					}
+
 					layer = new OpenLayers.Layer.WMS(
-							layers[i].name, layers[i].url, 
+							layers[i].name, layers[i].url,
+							options,
 							{
-								projection : "EPSG:4326",
-								layers : layers[i].layer,
-								transparent : "true",
-								format : "image/png"
-							}, 
-							{
+							    tileOptions: {maxGetUrlLength: 2048},
 				                attribution: layers[i].attribution,
 								isBaseLayer : true
 							}
@@ -1107,6 +1114,91 @@ MapWidget.prototype = {
 			}
 		}
 		this.displayConnections();
+		this.colorMap(mapObjects);
+	},
+	
+	colorMap : function(mapObjects){
+	    
+	    if ((typeof mapObjects==="undefined")||(mapObjects.length==0)){
+	       return;
+	    }
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+        function shadeColor2(color, percent) {   
+            var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
+            return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
+        }
+		
+		var color = "#0000FF";
+	    
+	    var map = this;
+	    var baseLayer = map.openlayersMap.baseLayer;
+	    
+        sld = '<StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/sld http://schemas.opengis.net/sld/1.1.0/StyledLayerDescriptor.xsd" xmlns:se="http://www.opengis.net/se">'+
+'  <NamedLayer>'+
+'    <se:Name>test:colored1997</se:Name>'+
+'    <UserStyle>'+
+'      <se:Name>colored1997</se:Name>'+
+'      <se:FeatureTypeStyle>'+
+'        <se:Rule>'+
+'          <se:Name>110000</se:Name>'+
+'          <se:Description>'+
+'            <se:Title>110000</se:Title>'+
+'          </se:Description>'+
+'          <se:PolygonSymbolizer>'+
+'            <se:Fill>'+
+'              <se:SvgParameter name="fill">'+shadeColor2(color,1)+'</se:SvgParameter>'+
+'            </se:Fill>'+
+'            <se:Stroke>'+
+'              <se:SvgParameter name="stroke">#000000</se:SvgParameter>'+
+'              <se:SvgParameter name="stroke-width">0.26</se:SvgParameter>'+
+'            </se:Stroke>'+
+'          </se:PolygonSymbolizer>'+
+'        </se:Rule>';
+
+        var max = 137;
+        var shapeCount = {};
+        for (var i = 0; i < mapObjects[0].length; i++){
+            var object = mapObjects[0][i];
+            var shape = object.tableContent["Level 1 code"];
+            if (typeof shapeCount[shape]==="undefined"){
+                shapeCount[shape] = 1;
+            } else {
+                shapeCount[shape] += 1;
+            }
+        }
+
+        for (var shape in shapeCount){
+            var count = shapeCount[shape];
+            sld += '        <se:Rule>'+
+'          <se:Name>110000</se:Name>'+
+'          <se:Description>'+
+'            <se:Title>110000</se:Title>'+
+'          </se:Description>'+
+'          <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">'+
+'            <ogc:PropertyIsEqualTo>'+
+'              <ogc:PropertyName>GBCODE90</ogc:PropertyName>'+
+'              <ogc:Literal>'+shape+'</ogc:Literal>'+
+'            </ogc:PropertyIsEqualTo>'+
+'          </ogc:Filter>'+
+'          <se:PolygonSymbolizer>'+
+'            <se:Fill>'+
+'              <se:SvgParameter name="fill">'+shadeColor2(color,(max-count)/max)+'</se:SvgParameter>'+
+'            </se:Fill>'+
+'            <se:Stroke>'+
+'              <se:SvgParameter name="stroke">#000000</se:SvgParameter>'+
+'              <se:SvgParameter name="stroke-width">0.26</se:SvgParameter>'+
+'            </se:Stroke>'+
+'          </se:PolygonSymbolizer>'+
+'        </se:Rule>';
+            
+        }
+
+        sld += '      </se:FeatureTypeStyle>'+
+'    </UserStyle>'+
+'  </NamedLayer>'+
+'</StyledLayerDescriptor>';	    
+
+        baseLayer.mergeNewParams({sld_body : sld });	    
 	},
 
 	selectionChanged : function(selection) {
