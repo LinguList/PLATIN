@@ -134,19 +134,9 @@ MapWidget.prototype = {
 		}
 		this.navigation.wheelUp = function(evt) {
 			this.wheelChange(evt, 1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 		this.navigation.wheelDown = function(evt) {
 			this.wheelChange(evt, -1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 
 		this.resolutions = [78271.516953125, 39135.7584765625, 19567.87923828125, 9783.939619140625, 4891.9698095703125, 2445.9849047851562, 1222.9924523925781, 611.4962261962891, 305.74811309814453, 152.87405654907226, 76.43702827453613, 38.218514137268066, 19.109257068634033, 9.554628534317017, 4.777314267158508, 2.388657133579254, 1.194328566789627, 0.5971642833948135, 0.29858214169740677];
@@ -166,6 +156,15 @@ MapWidget.prototype = {
 		//add attribution control
 		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
 		this.mds = new MapDataSource(this.openlayersMap, this.options);
+
+        //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
+        this.openlayersMap.events.register("zoomend", map, function(){
+            map.drawObjectLayer(false);
+			if (map.zoomSlider) {
+				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+			}
+			map.core.triggerHighlight([]);
+        });
 
 		if (map.options.olNavigation) {
 			var zoomPanel = new OpenLayers.Control.PanZoom();
@@ -1318,7 +1317,6 @@ MapWidget.prototype = {
 				this.zoomSlider.setValue(this.openlayersMap.getZoom());
 			}
 		}
-		this.drawObjectLayer(false);
 		return true;
 	},
 
