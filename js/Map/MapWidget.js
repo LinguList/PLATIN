@@ -547,6 +547,47 @@ MapWidget.prototype = {
 			this.client.gui.setMap();
 		});
 
+		$.ajax({
+			url: GeoTemConfig.proxy+"http://geoserver.mpiwg-berlin.mpg.de/geoserver/China_Monograph_Project/wfs",
+			dataType: "xml",
+			contentType: "text/html; charset=UTF-8",
+			data:{
+				"service":"wfs",
+				"srsName":"epsg:4326",
+				"version":"2.0.0",
+				"request":"GetFeature",
+				"typeName":"China_Monograph_Project:v5_1997_prov_pgn_utf",
+				//"featureID":"v5_1997_prov_pgn_utf.1",
+			}
+		}).done(function(result) {
+			
+			var wfsMembers = $(result).find("wfs\\:member,member");
+
+			var xmlSerializer = new XMLSerializer();
+			
+			var gmlOptions = {
+					'internalProjection': new OpenLayers.Projection("EPSG:900913"),
+					'externalProjection': new OpenLayers.Projection("EPSG:4326"),
+			};
+			var format = new OpenLayers.Format.GML.v3(gmlOptions);
+			
+			GeoTemConfig.shapeColorTestLayer = new OpenLayers.Layer.Vector("Simple Geometry");
+			map.openlayersMap.addLayer(GeoTemConfig.shapeColorTestLayer);
+			GeoTemConfig.shapeColorTest = {};
+			
+            $(wfsMembers).each(function(){
+				var theGeom_String = xmlSerializer.serializeToString( this );
+				theGeom_String=theGeom_String.replace('<wfs:member xmlns:wfs="http://www.opengis.net/wfs/2.0">','<gml:featureMember xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/gmlsfProfile/1.0.0/gmlsf.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">');
+				theGeom_String=theGeom_String.replace("</wfs:member>","</gml:featureMember>");
+				theGeom_String=theGeom_String.replace('xmlns:gml="http://www.opengis.net/gml/3.2"','');
+
+				var features = format.read(theGeom_String);
+								
+				GeoTemConfig.shapeColorTest[features[0].data["GBCODE90"]] = features;
+				GeoTemConfig.shapeColorTestLayer.addFeatures(features);
+			});
+		}).fail(function(result) {
+		});
 	},
 
 	shift : function(shiftX, shiftY) {
@@ -1118,87 +1159,66 @@ MapWidget.prototype = {
 	},
 	
 	colorMap : function(mapObjects){
-	    
-	    if ((typeof mapObjects==="undefined")||(mapObjects.length==0)){
-	       return;
-	    }
+		
+        if (typeof GeoTemConfig.shapeColorTestLayer === "undefined"){
+        	return;
+        }
+		
+		var map = this;
+		
 		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
         function shadeColor2(color, percent) {   
             var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
             return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
         }
-		
-		var color = "#0000FF";
-	    
-	    var map = this;
-	    var baseLayer = map.openlayersMap.baseLayer;
-	    
-        sld = '<StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/sld http://schemas.opengis.net/sld/1.1.0/StyledLayerDescriptor.xsd" xmlns:se="http://www.opengis.net/se">'+
-'  <NamedLayer>'+
-'    <se:Name>test:colored1997</se:Name>'+
-'    <UserStyle>'+
-'      <se:Name>colored1997</se:Name>'+
-'      <se:FeatureTypeStyle>'+
-'        <se:Rule>'+
-'          <se:Name>110000</se:Name>'+
-'          <se:Description>'+
-'            <se:Title>110000</se:Title>'+
-'          </se:Description>'+
-'          <se:PolygonSymbolizer>'+
-'            <se:Fill>'+
-'              <se:SvgParameter name="fill">'+shadeColor2(color,1)+'</se:SvgParameter>'+
-'            </se:Fill>'+
-'            <se:Stroke>'+
-'              <se:SvgParameter name="stroke">#000000</se:SvgParameter>'+
-'              <se:SvgParameter name="stroke-width">0.26</se:SvgParameter>'+
-'            </se:Stroke>'+
-'          </se:PolygonSymbolizer>'+
-'        </se:Rule>';
+
+        var color = "#0000FF";
+        var unselectColor = shadeColor2(color,1);
+        var layer_style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
+        layer_style.fillOpacity = 0.7;
+        layer_style.graphicOpacity = 1;
+        layer_style.strokeColor = color;
+
+        //reset all
+        var style = OpenLayers.Util.extend({}, layer_style);
+        style.fillColor = unselectColor;
+        for (var shapeName in GeoTemConfig.shapeColorTest){
+        	var shape = GeoTemConfig.shapeColorTest[shapeName];
+        	for (var x in shape){
+        		shape[x].style = style;
+        	}
+        }
+        
+        if ((typeof mapObjects==="undefined")||(mapObjects.length==0)){
+        	GeoTemConfig.shapeColorTestLayer.redraw();
+        	return;
+	    }
 
         var max = 137;
         var shapeCount = {};
         for (var i = 0; i < mapObjects[0].length; i++){
             var object = mapObjects[0][i];
-            var shape = object.tableContent["Level 1 code"];
-            if (typeof shapeCount[shape]==="undefined"){
-                shapeCount[shape] = 1;
+            var shapeName = object.tableContent["Level 1 code"];
+            if (typeof shapeCount[shapeName]==="undefined"){
+                shapeCount[shapeName] = 1;
             } else {
-                shapeCount[shape] += 1;
+                shapeCount[shapeName] += 1;
             }
         }
 
-        for (var shape in shapeCount){
-            var count = shapeCount[shape];
-            sld += '        <se:Rule>'+
-'          <se:Name>110000</se:Name>'+
-'          <se:Description>'+
-'            <se:Title>110000</se:Title>'+
-'          </se:Description>'+
-'          <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">'+
-'            <ogc:PropertyIsEqualTo>'+
-'              <ogc:PropertyName>GBCODE90</ogc:PropertyName>'+
-'              <ogc:Literal>'+shape+'</ogc:Literal>'+
-'            </ogc:PropertyIsEqualTo>'+
-'          </ogc:Filter>'+
-'          <se:PolygonSymbolizer>'+
-'            <se:Fill>'+
-'              <se:SvgParameter name="fill">'+shadeColor2(color,(max-count)/max)+'</se:SvgParameter>'+
-'            </se:Fill>'+
-'            <se:Stroke>'+
-'              <se:SvgParameter name="stroke">#000000</se:SvgParameter>'+
-'              <se:SvgParameter name="stroke-width">0.26</se:SvgParameter>'+
-'            </se:Stroke>'+
-'          </se:PolygonSymbolizer>'+
-'        </se:Rule>';
+        for (var shapeName in shapeCount){
+            var count = shapeCount[shapeName];
+            var fillColor = shadeColor2(color,(max-count)/max);
+            var style = OpenLayers.Util.extend({}, layer_style);
+            style.fillColor = fillColor;
             
+        	var shape = GeoTemConfig.shapeColorTest[shapeName];
+        	for (var x in shape){
+        		shape[x].style = style;
+        	}
         }
-
-        sld += '      </se:FeatureTypeStyle>'+
-'    </UserStyle>'+
-'  </NamedLayer>'+
-'</StyledLayerDescriptor>';	    
-
-        baseLayer.mergeNewParams({sld_body : sld });	    
+        
+        GeoTemConfig.shapeColorTestLayer.redraw();
 	},
 
 	selectionChanged : function(selection) {

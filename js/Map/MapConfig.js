@@ -37,8 +37,8 @@ function MapConfig(options) {
 		alternativeMap :  [
 				{
 					name: 'China 1997 test',
-					url: 'http://localhost:8080/geoserver/test/wms',
-					layer: 'test:colored1997',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/China_Monograph_Project/wms',
+					layer: 'China_Monograph_Project:v5_1997_prov_pgn_utf',
 					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
 				},                
 				{
@@ -284,7 +284,7 @@ function MapConfig(options) {
 		mapSelectionTools : true, // show/hide map selector tools
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
-		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
+		proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
 		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
 
 	};
