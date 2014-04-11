@@ -582,6 +582,15 @@ MapWidget.prototype = {
 				theGeom_String=theGeom_String.replace('xmlns:gml="http://www.opengis.net/gml/3.2"','');
 
 				var features = format.read(theGeom_String);
+				for (var featureID in features){
+					var feature = features[featureID];
+					//reduce vertices of shape to speed up coloring
+					//as a redraw will be performed on each select/hightlight
+					var originalLinearRing = feature.geometry.components[0].components[0];
+					//this could/should be a function of zoom level
+					var simplifiedLinearRing = originalLinearRing.simplify(1000);
+					feature.geometry.components[0].components[0] = simplifiedLinearRing;
+				}
 								
 				GeoTemConfig.shapeColorTest[features[0].data["GBCODE90"]] = features;
 				GeoTemConfig.shapeColorTestLayer.addFeatures(features);
