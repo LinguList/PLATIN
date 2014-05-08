@@ -33217,24 +33217,14 @@ MapWidget.prototype = {
 			this.map.setCenter(newCenter, this.map.zoom + 1);
 			map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 		}
 		this.navigation.wheelUp = function(evt) {
 			this.wheelChange(evt, 1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 		this.navigation.wheelDown = function(evt) {
 			this.wheelChange(evt, -1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 
 		this.resolutions = [78271.516953125, 39135.7584765625, 19567.87923828125, 9783.939619140625, 4891.9698095703125, 2445.9849047851562, 1222.9924523925781, 611.4962261962891, 305.74811309814453, 152.87405654907226, 76.43702827453613, 38.218514137268066, 19.109257068634033, 9.554628534317017, 4.777314267158508, 2.388657133579254, 1.194328566789627, 0.5971642833948135, 0.29858214169740677];
@@ -33253,7 +33243,16 @@ MapWidget.prototype = {
 		}
 		//add attribution control
 		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
-		this.mds = new MapDataSource(this.openlayersMap, this.options);
+		this.mds = new MapDataSource(this, this.options);
+
+        //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
+        this.openlayersMap.events.register("zoomend", map, function(){
+            map.drawObjectLayer(false);
+			if (map.zoomSlider) {
+				map.zoomSlider.setValue(map.getZoom());
+			}
+			map.core.triggerHighlight([]);
+        });
 
 		if (map.options.olNavigation) {
 			var zoomPanel = new OpenLayers.Control.PanZoom();
@@ -33628,7 +33627,7 @@ MapWidget.prototype = {
 
 		if (this.zoomSlider) {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
-			this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			this.zoomSlider.setValue(this.getZoom());
 		}
 		
 		Publisher.Subscribe('mapChanged', this, function(mapName) {
@@ -33897,10 +33896,10 @@ MapWidget.prototype = {
 				var gapY1 = 0.1 * (maxLat - minLat );
 				var gapY2 = (this.gui.headerHeight / this.gui.mapWindow.offsetHeight + 0.1 ) * (maxLat - minLat );
 				this.openlayersMap.zoomToExtent(new OpenLayers.Bounds(minLon - gapX, minLat - gapY1, maxLon + gapX, maxLat + gapY2));
-				this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+				this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 			}
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		var displayPoints = this.mds.getObjectsByZoom();
@@ -33920,7 +33919,7 @@ MapWidget.prototype = {
 				this.objectLayer.addFeatures([p.olFeature]);
 			}
 		}
-		var zoomLevel = this.openlayersMap.getZoom();
+		var zoomLevel = this.getZoom();
 		/*
 		 for (var i = 0; i < this.bins[zoomLevel].length; i++) {
 		 var p = this.bins[zoomLevel][i];
@@ -34397,16 +34396,15 @@ MapWidget.prototype = {
 	 * @param {int} delta the change of zoom levels
 	 */
 	zoom : function(delta) {
-		var zoom = this.openlayersMap.getZoom() + delta;
+		var zoom = this.getZoom() + delta;
 		if (this.openlayersMap.baseLayer instanceof OpenLayers.Layer.WMS) {
 			this.openlayersMap.zoomTo(zoom);
 		} else {
 			this.openlayersMap.zoomTo(Math.round(zoom));
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
-		this.drawObjectLayer(false);
 		return true;
 	},
 
@@ -34447,7 +34445,7 @@ MapWidget.prototype = {
 				this.countrySelectionControl.disable();
 			}
 		}
-		this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+		this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 		this.openlayersMap.setBaseLayer(this.baseLayers[index]);
 		if (this.baseLayers[index].name == 'Open Street Map') {
 			this.gui.osmLink.style.visibility = 'visible';
@@ -34523,7 +34521,21 @@ MapWidget.prototype = {
 	},
 
 	getZoom : function() {
-		return this.openlayersMap.getZoom();
+    	//calculate zoom from active resolution
+        var resolution = this.openlayersMap.getResolution();
+        var zoom = this.resolutions.indexOf(resolution);
+        if (zoom == -1){
+            //fractional zoom
+            for (zoom = 0; zoom < this.resolutions.length; zoom++){
+                if (resolution>=this.resolutions[zoom]){
+                    break;
+                }
+            }
+            if (zoom == this.resolutions.length){
+                zoom--;
+            }
+        }
+        return(zoom);
 	},
 
 	setMarker : function(lon, lat) {
@@ -34572,7 +34584,7 @@ MapWidget.prototype = {
 				if (xDist / resolution < x_s && yDist / resolution < y_s) {
 					this.openlayersMap.zoomTo(zoomLevels - i - 1);
 					if (this.zoomSlider) {
-						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+						this.zoomSlider.setValue(this.getZoom());
 					}
 					this.drawObjectLayer(false);
 					break;
@@ -34582,7 +34594,7 @@ MapWidget.prototype = {
 			//if there are no points on the map, zoom to max 
 			this.openlayersMap.zoomTo(0);
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 			this.drawObjectLayer(false);
 		}
@@ -34593,7 +34605,7 @@ MapWidget.prototype = {
 	},
 
 	getLevelOfDetail : function() {
-		var zoom = Math.floor(this.openlayersMap.getZoom());
+		var zoom = Math.floor(this.getZoom());
 		if (zoom <= 1) {
 			return 0;
 		} else if (zoom <= 3) {
@@ -43103,6 +43115,453 @@ StorytellingWidget.prototype = {
 	},
 };
 /*
+* LineOverlay.js
+*
+* Copyright (c) 2013, Sebastian Kruse. All rights reserved.
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 3 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+* MA 02110-1301  USA
+*/
+
+/**
+ * @class LineOverlay
+ * Implementation for an overlay showing lines between points 
+ * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {HTML object} parent div to append the LineOverlay
+ */
+function LineOverlay(parent) {
+
+	this.lineOverlay = this;
+	
+	this.parent = parent;
+	this.options = parent.options;
+	this.attachedMapWidgets = parent.attachedMapWidgets;
+
+	this.overlays = [];
+
+	this.initialize();
+}
+
+LineOverlay.prototype = {
+
+	initialize : function() {
+	}
+};
+/*
+* LineOverlayConfig.js
+*
+* Copyright (c) 2013, Sebastian Kruse. All rights reserved.
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 3 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+* MA 02110-1301  USA
+*/
+
+/**
+ * @class LineOverlayConfig
+ * LineOverlay Configuration File
+ * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ */
+function LineOverlayConfig(options) {
+	this.options = {
+			showArrows : true,
+			showLines : "both", //which directions will be shown: "both", "inbound", "outbound"
+			onlyShowSelectedOrHighlighted : false, //only show lines in case of selection/highlight 
+	}
+
+	if ( typeof options != 'undefined') {
+		$.extend(this.options, options);
+	}
+
+};
+/*
+* LineOverlayWidget.js
+*
+* Copyright (c) 2013, Sebastian Kruse. All rights reserved.
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 3 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+* MA 02110-1301  USA
+*/
+
+//calculate angle between line and x-axis
+//credits: geometricnet (http://geometricnet.sourceforge.net/examples/directions.html)
+bearing = function(x1,y1,x2,y2) {
+	b_x = 0;
+	b_y = 1;
+	a_x = x2 - x1;
+	a_y = y2 - y1;
+	angle_rad = Math.acos((a_x*b_x+a_y*b_y)/Math.sqrt(a_x*a_x+a_y*a_y)) ;
+	angle = 360/(2*Math.PI)*angle_rad;
+	if (a_x < 0) {
+	    return 360 - angle;
+	} else {
+	    return angle;
+	}
+};
+
+/**
+ * @class LineOverlayWidget
+ * Implementation for the widget interactions of an overlay showing lines between points
+ * @author Sebastian Kruse (skruse@mpiwg-berlin.mpg.de)
+ *
+ * @param {WidgetWrapper} core wrapper for interaction to other widgets
+ * @param {JSON} options user specified configuration that overwrites options in OverlayloaderConfig.js
+ */
+LineOverlayWidget = function (core, options) {
+
+	this.core = core;
+	this.core.setWidget(this);
+
+	this.options = (new LineOverlayConfig(options)).options;
+	
+	this.attachedMapWidgets = new Array();
+	
+	this.lineOverlay = new LineOverlay(this);
+	this.lines = [];
+	this.multiLineFeature;
+	
+	this.selected = [];
+}
+
+/**
+ * @param {Number} dataSet number of dataSet in dataSet array
+ * @param {Number} objectID number of DataObject in objects array
+ */
+
+function Line(objectStart, objectEnd ) {
+	this.objectStart = objectStart;
+	this.objectEnd = objectEnd;
+}
+
+LineOverlayWidget.prototype = {
+
+	initWidget : function() {
+		var lineOverlayWidget = this;
+		this.drawLines();
+	},
+
+	highlightChanged : function(objects) {
+		if( !GeoTemConfig.highlightEvents ){
+			return;
+		}
+		this.drawLines(GeoTemConfig.mergeObjects(objects,this.selected));
+	},
+
+	selectionChanged : function(selection) {
+		if( !GeoTemConfig.selectionEvents ){
+			return;
+		}
+		if (selection.valid())
+			this.selected = selection.objects;
+		else
+			this.selected = [];
+
+		this.drawLines(this.selected);
+	},
+
+	triggerHighlight : function(item) {
+	},
+
+	tableSelection : function() {
+	},
+
+	deselection : function() {
+	},
+
+	filtering : function() {
+	},
+
+	inverseFiltering : function() {
+	},
+
+	triggerRefining : function() {
+	},
+
+	reset : function() {
+	},
+	
+	//identical to the function in PieChartWidget
+	//here cause widgets may be used independed of each other
+	getElementData : function(dataObject, watchedColumn, selectionFunction) {
+		var columnData;
+		if (watchedColumn.indexOf("[") === -1){
+			columnData = dataObject[watchedColumn];
+			if (typeof columnData === "undefined"){
+				columnData = dataObject.tableContent[watchedColumn];
+			};
+		} else {
+			try {
+				var columnName = watchedColumn.split("[")[0];
+				var IndexAndAttribute = watchedColumn.split("[")[1];
+				if (IndexAndAttribute.indexOf("]") != -1){
+					var arrayIndex = IndexAndAttribute.split("]")[0];
+					var attribute = IndexAndAttribute.split("]")[1];
+					
+					if (typeof attribute === "undefined")
+						columnData = dataObject[columnName][arrayIndex];
+					else{
+						attribute = attribute.split(".")[1];
+						columnData = dataObject[columnName][arrayIndex][attribute];
+					}
+				}
+			} catch(e) {
+				if (typeof console !== undefined)
+					console.error(e);
+				
+				delete columnData;
+			}
+		}
+		
+		if ( (typeof columnData !== "undefined") && (typeof selectionFunction !== "undefined") )
+			columnData = selectionFunction(columnData);
+		
+		return(columnData);
+	},
+	
+	matchColumns : function(dataSet1, columnName1, dataSet2, columnName2) {
+		var lineOverlayWidget = this;
+		lineOverlayWidget.lines;
+		$(GeoTemConfig.datasets[dataSet1].objects).each(function(){
+			var object1 = this;
+			var data1 = lineOverlayWidget.getElementData(object1, columnName1);
+			//split because there could be multiple comma separated values 
+			data1 = data1.split(",");
+			
+			$(GeoTemConfig.datasets[dataSet2].objects).each(function(){
+				var object2 = this;
+				//avoid reflexive and double entries
+				if ((columnName1 === columnName2)&&(dataSet1 === dataSet2)&&(object1.index<=object2.index))
+					return;
+				var data2 = lineOverlayWidget.getElementData(object2, columnName2);
+				//split because there could be multiple comma separated values 
+				data2 = data2.split(",");
+				
+				//check if at least one pair matches
+				for(var i = 0; i < data1.length; i++ ){
+					var firstVal = data1[i];
+					if (data2.indexOf(firstVal) !== -1){
+						lineOverlayWidget.lines.push(new Line(object1, object2));
+						break;
+					}
+				}				
+			});
+		});
+	},
+	
+	getXYofObject : function(cs,dataObject){
+		//iterata over datasets
+		var x,y;
+		var found = false;
+		$(cs).each(function(){
+			//iterate over circles
+			$(this).each(function(){
+				var circle = this;
+				//iterata over objects in this circle;
+				var index = $.inArray(dataObject,circle.elements); 
+				if (index !== -1){
+					x = circle.feature.geometry.x;
+					y = circle.feature.geometry.y;
+					found = true;
+					return false;
+				}
+			});
+			//break loop
+			if (found === true)
+				return false;
+		});
+		
+		return ({x:x,y:y});
+	},
+	
+	/**
+	 * @param {DataObjects[][]} objects set of objects to limit to
+	 */
+	drawLines : function(objects) {
+		var flatObjects = [];
+		if (	(typeof objects !== "undefined") &&
+				(objects instanceof Array) &&
+				(objects.length > 0) ) {
+			$(objects).each(function(){
+				$.merge(flatObjects, this);				
+			});
+		}
+		var lineOverlayWidget = this;
+		
+		$(lineOverlayWidget.attachedMapWidgets).each(function(){
+			var mapWidget = this.mapWidget;
+			var lineLayer = this.lineLayer;
+
+			var map = mapWidget.openlayersMap;
+			var cs = mapWidget.mds.getObjectsByZoom();
+			
+			mapWidget.openlayersMap.setLayerIndex(lineLayer, 99);
+
+			lineLayer.removeAllFeatures();
+
+			var lineElements = [];
+			
+			var checkIfLineInPreset = function(){return false;};
+			if (lineOverlayWidget.options.showLines === "inbound"){
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return ($.inArray(objectEnd, flatObjects) === -1);
+				};
+			} else if (lineOverlayWidget.options.showLines === "outbound"){
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return ($.inArray(objectStart, flatObjects) === -1);
+				};
+			} else /*if (lineOverlayWidget.options.showLines === "both")*/{
+				checkIfLineInPreset = function(objectStart,objectEnd,flatObjects){
+					return (	($.inArray(objectStart, flatObjects) === -1) &&
+								($.inArray(objectEnd, flatObjects) === -1) );
+				};
+			}
+			
+			$(lineOverlayWidget.lines).each(function(){
+				var line = this;
+				
+				if ((lineOverlayWidget.options.onlyShowSelectedOrHighlighted === true) || (flatObjects.length > 0)){
+					//if objects are limited, check whether start or end are within 
+					if (checkIfLineInPreset(line.objectStart, line.objectEnd, flatObjects))
+						return;
+				}
+				//get XY-val of start Object
+				var xyStart = lineOverlayWidget.getXYofObject(cs, line.objectStart);
+				//continue if no valid XY-coords where found
+				if ( (typeof xyStart.x === "undefined") && (typeof xyStart.y === "undefined") )
+					return;
+				var xyEnd = lineOverlayWidget.getXYofObject(cs, line.objectEnd);
+				//continue if no valid XY-coords where found
+				if ( (typeof xyEnd.x === "undefined") && (typeof xyEnd.y === "undefined") )
+					return;
+
+				//do not draw 0-length lines (from same circle)
+				if ( (xyStart.x === xyEnd.x) && (xyStart.y === xyEnd.y) )
+					return;
+
+				var points = new Array(
+						   new OpenLayers.Geometry.Point(xyStart.x, xyStart.y),
+						   new OpenLayers.Geometry.Point(xyEnd.x, xyEnd.y)
+						);
+
+				var line = new OpenLayers.Geometry.LineString(points);
+
+				//Only draw each line once. Unfortunately this check is faster
+				//than drawing multiple lines.
+				var found = false;
+				$(lineElements).each(function(){
+					var checkLine = this.line;
+					if ((	(checkLine.components[0].x === line.components[0].x) &&
+							(checkLine.components[0].y === line.components[0].y) &&
+							(checkLine.components[1].x === line.components[1].x) &&
+							(checkLine.components[1].y === line.components[1].y) ) ||
+						// if lines are "directional" (arrows) the opposite one isn't the same anymore!
+						(	(lineOverlayWidget.options.showArrows === false) &&
+							(checkLine.components[0].x === line.components[1].x) &&
+							(checkLine.components[0].y === line.components[1].y) &&
+							(checkLine.components[1].x === line.components[0].x) &&
+							(checkLine.components[1].y === line.components[0].y) ) ){
+						found = true;
+						//increase width of this line
+						this.width++;
+						//and don't draw it again
+						return false;
+					}
+				});
+				
+				if (found === true)
+					return;
+
+				lineElements.push({line:line,width:1});
+			});
+
+			$(lineElements).each(function(){ 
+				var line = this.line;
+				var width = this.width;
+				
+				if (lineOverlayWidget.options.showArrows === true){
+					var xyStart = line.components[0];
+					var xyEnd = line.components[1];
+				    var arrowFeature = new OpenLayers.Feature.Vector(
+						new OpenLayers.Geometry.Point(xyEnd.x-((xyEnd.x-xyStart.x)*0.03), xyEnd.y-((xyEnd.y-xyStart.y)*0.03)), 
+						{
+							type: "triangle",
+							angle: bearing(xyStart.x,xyStart.y,xyEnd.x,xyEnd.y),
+							width: width+1
+						}
+					);
+					lineLayer.addFeatures(arrowFeature);
+				}
+
+				var lineFeature = new OpenLayers.Feature.Vector(line,{width:width});
+				lineLayer.addFeatures(lineFeature);
+			});
+		});
+	},
+	
+	attachMapWidget : function(mapWidget) {
+	    var styles = new OpenLayers.StyleMap({
+	        "default": {
+	            graphicName: "${type}",
+	            rotation: "${angle}",
+	            pointRadius: "${width}",
+	            strokeColor: '#0000ff', 
+	            strokeOpacity: 0.5,
+	            strokeWidth: "${width}",
+	            fillOpacity: 1
+	        }
+	    });
+	    
+		var lineOverlayWidget = this;
+		var lineLayer = new OpenLayers.Layer.Vector("Line Layer", {
+	        styleMap: styles,
+	        isBaseLayer:false
+	    });
+		mapWidget.openlayersMap.addLayer(lineLayer);
+		mapWidget.openlayersMap.setLayerIndex(lineLayer, 99);
+		this.attachedMapWidgets.push({mapWidget:mapWidget,lineLayer:lineLayer});
+		//register zoom event
+		mapWidget.openlayersMap.events.register("zoomend", lineOverlayWidget, function(){
+			this.drawLines(this.selected);
+		});
+	}
+};
+/*
 * DataObject.js
 *
 * Copyright (c) 2012, Stefan Jänicke. All rights reserved.
@@ -44751,14 +45210,15 @@ Binning.prototype = {
  * @release date: 2012-07-27
  * @version date: 2012-07-27
  *
- * @param {OpenLayers.Map} olMap openlayers map object of the map widget
+ * @param {MapWidget} parent Widget
  * @param {JSON} options map configuration
  */
-function MapDataSource(olMap, options) {
+function MapDataSource(parent, options) {
 
-	this.olMap = olMap;
+    this.parent = parent;
+	this.olMap = parent.openlayersMap;
 	this.circleSets = [];
-	this.binning = new Binning(olMap, options);
+	this.binning = new Binning(this.olMap, options);
 
 };
 
@@ -44784,7 +45244,7 @@ MapDataSource.prototype = {
 	},
 
 	getObjectsByZoom : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		if (this.circleSets.length < zoom) {
 			return null;
 		}
@@ -44806,7 +45266,7 @@ MapDataSource.prototype = {
 	},
 
 	clearOverlay : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		var circles = this.circleSets[zoom];
 		for (var i in circles ) {
 			for (var j in circles[i] ) {
@@ -44816,7 +45276,7 @@ MapDataSource.prototype = {
 	},
 
 	setOverlay : function(mapObjects) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		for (var j in mapObjects ) {
 			for (var k in mapObjects[j] ) {
 				var o = mapObjects[j][k];
@@ -44836,7 +45296,7 @@ MapDataSource.prototype = {
 	},
 
 	getCircle : function(index, id) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		return this.hashMapping[zoom][index][id];
 	}
 };
@@ -45996,7 +46456,7 @@ function MapZoomSlider(parent, orientation) {
 		this.slider.setMaximum(max);
 	}
 	//	this.setMaxAndLevels(1000,parent.openlayersMap.getNumZoomLevels());
-	//	this.setValue(parent.openlayersMap.getZoom());
+	//	this.setValue(parent.getZoom());
 
 	this.setLanguage = function() {
 		zoomIn.title = GeoTemConfig.getString('zoomIn');
