@@ -43,7 +43,7 @@ bearing = function(x1,y1,x2,y2) {
  * @param {WidgetWrapper} core wrapper for interaction to other widgets
  * @param {JSON} options user specified configuration that overwrites options in OverlayloaderConfig.js
  */
-function LineOverlayWidget(core, options) {
+LineOverlayWidget = function (core, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
