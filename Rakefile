@@ -1,65 +1,38 @@
 # Rakefile - create single combined nd compressed javascript file
 
 COMPRESS="java -jar lib/yuicompressor-2.4.2.jar"
-COMPRESSED_OUTPUT_FILE='geotemco-min.js'
-OUTPUT_FILE='geotemco.js'
-CSS_FILE='css/geotemco.css'
+COMPRESSED_OUTPUT_FILE='platin-min.js'
+OUTPUT_FILE='platin.js'
+CSS_FILE='css/platin.css'
 
 task :default => :all
 
-task :all => [COMPRESSED_OUTPUT_FILE, OUTPUT_FILE, CSS_FILE]
+task :all => [:clean, COMPRESSED_OUTPUT_FILE, OUTPUT_FILE, CSS_FILE, :copyJqueryUIImageDirectory]
 
 # javascript sources
-Files = %w(lib/jquery/jquery.min.js
-js/Build/Minifier/basic.js
+Files = %w(js/Build/Minifier/basic.js
 lib/excanvas/excanvas.js
-js/Build/Minifier/simile-ajax-basic.js
-lib/simile/ajax/scripts/platform.js
-lib/simile/ajax/scripts/debug.js
-lib/simile/ajax/scripts/xmlhttp.js
-lib/simile/ajax/scripts/json.js
-lib/simile/ajax/scripts/dom.js
-lib/simile/ajax/scripts/graphics.js
-lib/simile/ajax/scripts/date-time.js
-lib/simile/ajax/scripts/string.js
-lib/simile/ajax/scripts/html.js
-lib/simile/ajax/scripts/data-structure.js
-lib/simile/ajax/scripts/units.js
-lib/simile/ajax/scripts/ajax.js
-lib/simile/ajax/scripts/history.js
-lib/simile/ajax/scripts/window-manager.js
-js/Build/Minifier/timeline-basic.js
-lib/simile/timeline/timeline-api.js
-lib/simile/timeline/scripts/timeline.js
-lib/simile/timeline/scripts/band.js
-lib/simile/timeline/scripts/themes.js
-lib/simile/timeline/scripts/ethers.js
-lib/simile/timeline/scripts/ether-painters.js
-lib/simile/timeline/scripts/event-utils.js
-lib/simile/timeline/scripts/labellers.js
-lib/simile/timeline/scripts/sources.js
-lib/simile/timeline/scripts/original-painter.js
-lib/simile/timeline/scripts/detailed-painter.js
-lib/simile/timeline/scripts/overview-painter.js
-lib/simile/timeline/scripts/compact-painter.js
-lib/simile/timeline/scripts/decorators.js
-lib/simile/timeline/scripts/units.js
-lib/simile/timeline/scripts/l10n/en/timeline.js
-lib/simile/timeline/scripts/l10n/en/labellers.js
-js/Build/Minifier/timeplot-basic.js
-lib/simile/timeplot/timeplot-api.js
-lib/simile/timeplot/scripts/timeplot.js
-lib/simile/timeplot/scripts/plot.js
-lib/simile/timeplot/scripts/sources.js
-lib/simile/timeplot/scripts/geometry.js
-lib/simile/timeplot/scripts/color.js
-lib/simile/timeplot/scripts/math.js
-lib/simile/timeplot/scripts/processor.js
 lib/slider/js/range.js
 lib/slider/js/slider.js
 lib/slider/js/timer.js
-js/Time/SimileTimeplotModify.js
 lib/openlayers/OpenLayers.js
+lib/jquery/jquery-deparam.min.js
+lib/jquery/jquery.remember.js
+lib/jquery/purl.min.js
+lib/jquery-ui/jquery-ui-1.10.3.custom.js
+lib/jszip/jszip.js
+lib/jszip/jszip-deflate.js
+lib/jszip/jszip-inflate.js
+lib/jszip/jszip-load.js
+lib/momentjs/moment.js
+lib/ucsv/ucsv-1.1.0-min.js
+lib/flot/jquery.flot.js
+lib/flot/jquery.flot.pie.js
+lib/flot/jquery.flot.resize.js
+lib/flot/jquery.flot.selection.js
+lib/flot/jquery.flot.time.js
+lib/flot/jquery.flot.tooltip.js
+lib/SimileRemnants.js
 js/Util/Tooltips.js
 js/GeoTemConfig.js
 js/Map/MapControl.js
@@ -77,6 +50,31 @@ js/Table/TableConfig.js
 js/Table/TableGui.js
 js/Table/TableWidget.js
 js/Table/Table.js
+js/Dataloader/Dataloader.js
+js/Dataloader/DataloaderConfig.js
+js/Dataloader/DataloaderGui.js
+js/Dataloader/DataloaderWidget.js
+js/FuzzyTimeline/FuzzyTimelineConfig.js
+js/FuzzyTimeline/FuzzyTimelineDensity.js
+js/FuzzyTimeline/FuzzyTimelineGui.js
+js/FuzzyTimeline/FuzzyTimelineRangeBars.js
+js/FuzzyTimeline/FuzzyTimelineRangePiechart.js
+js/FuzzyTimeline/FuzzyTimelineRangeSlider.js
+js/FuzzyTimeline/FuzzyTimelineWidget.js
+js/Overlayloader/Overlayloader.js
+js/Overlayloader/OverlayloaderConfig.js
+js/Overlayloader/OverlayloaderGui.js
+js/Overlayloader/OverlayloaderWidget.js
+js/PieChart/PieChart.js
+js/PieChart/PieChartCategoryChooser.js
+js/PieChart/PieChartConfig.js
+js/PieChart/PieChartGui.js
+js/PieChart/PieChartHashFunctions.js
+js/PieChart/PieChartWidget.js
+js/Storytelling/Storytelling.js
+js/Storytelling/StorytellingConfig.js
+js/Storytelling/StorytellingGui.js
+js/Storytelling/StorytellingWidget.js
 js/Util/DataObject.js
 js/Util/Dataset.js
 js/Time/TimeDataSource.js
@@ -92,16 +90,12 @@ js/Util/WidgetWrapper.js
 js/Build/Minifier/final.js)
 
 # css sources
-Cssfiles = %w(lib/simile/ajax/styles/graphics.css
-lib/simile/timeline/styles/timeline.css
-lib/simile/timeline/styles/ethers.css
-lib/simile/timeline/styles/events.css
-lib/simile/timeplot/styles/timeplot.css
-css/style.css
-lib/openlayers/theme/default/style.css)
+Cssfiles = %w(lib/openlayers/theme/default/style.css
+lib/jquery-ui/jquery-ui-1.10.3.custom.css
+css/style.css)
 
 def cat_files(outputfile, basename)
-  File.open(outputfile, 'w') do |x|
+  File.open(outputfile, 'a') do |x|
     Files.each do |f|
       x.puts(File.open(f).read.gsub('REPLACEME-REPLACEME', basename))
     end
@@ -119,13 +113,49 @@ end
 # Just one big JS file, no compression.
 file OUTPUT_FILE => Files do
   basename = File.basename(OUTPUT_FILE, ".js")
+  
+  File.open(OUTPUT_FILE, 'w') do |x|
+    x.puts("(function($){\n\nvar jQuery = $;");
+  end
+  
   cat_files(OUTPUT_FILE, basename)
+
+  File.open(OUTPUT_FILE, 'a') do |x|
+    x.puts("})(jQuery);");
+  end
+end
+
+task :copyJqueryUIImageDirectory do
+	@source = "./lib/jquery-ui/images"
+	@target = "./css/images"
+	@includePattern = "/**/*"
+    FileUtils.rm_rf(@target)  #remove target directory (if exists)  
+    FileUtils.mkdir_p(@target) #create the target directory  
+    files = FileList.new().include("#{@source}#{@includePattern}");   
+    files.each do |file|          
+        #create target location file string (replace source with target in path)  
+        targetLocation = file.sub(@source, @target)       
+        #ensure directory exists  
+        FileUtils.mkdir_p(File.dirname(targetLocation));  
+        #copy the file  
+        FileUtils.cp_r(file, targetLocation)  
+    end   
 end
 
 # Compress it.
 file COMPRESSED_OUTPUT_FILE => Files do
   basename = File.basename(COMPRESSED_OUTPUT_FILE, ".js")
+  
+  File.open(OUTPUT_FILE, 'w') do |x|
+    x.puts("(function($){\n\nvar jQuery = $;");
+  end
+  
   cat_files(OUTPUT_FILE, basename)
+
+  File.open(OUTPUT_FILE, 'a') do |x|
+    x.puts("})(jQuery);");
+  end
+  
   system "#{COMPRESS} #{OUTPUT_FILE} >> #{COMPRESSED_OUTPUT_FILE}"
 end
 

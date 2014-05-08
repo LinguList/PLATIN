@@ -30,7 +30,7 @@
  * @param {Array} objects data item arrays from different datasets
  * @param {String} label label for the datasets
  */
-function Dataset(objects, label, url, type) {
+Dataset = function(objects, label, url, type) {
 
 	this.objects = objects;
 	this.label = label;
@@ -38,6 +38,14 @@ function Dataset(objects, label, url, type) {
 	this.type = type;
 	
 	this.color;
+	
+	//if the user can change shapes, every dataset needs a default shape
+	if (GeoTemConfig.allowUserShapeAndColorChange){
+		this.graphic={
+				shape: "circle",
+				rotation: 0
+		}
+	}
 	
 	Publisher.Publish('datasetAfterCreation', this);
 }

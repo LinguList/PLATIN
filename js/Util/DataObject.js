@@ -40,7 +40,7 @@
  * @param {Openlayers.Projection} projection of the coordinates (optional)
  */
 
-function DataObject(name, description, locations, dates, weight, tableContent, projection) {
+DataObject = function(name, description, locations, dates, weight, tableContent, projection) {
 
 	this.name = $.trim(name);
 	this.description = $.trim(description);
@@ -68,8 +68,14 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	});
 	
 	//Check if locations are valid
-	if (projection instanceof OpenLayers.Projection){	
-		var tempLocations = [];
+	if (!(projection instanceof OpenLayers.Projection)){
+		//per default GeoTemCo uses WGS84 (-90<=lat<=90, -180<=lon<=180)
+		projection = new OpenLayers.Projection("EPSG:4326");
+	}
+	this.projection = projection;
+
+	var tempLocations = [];
+	if (typeof this.locations !== "undefined"){
 		$(this.locations).each(function(){
 			//EPSG:4326 === WGS84
 			this.latitude = parseFloat(this.latitude);
@@ -83,9 +89,24 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 						(this.longitude<=180) )
 					tempLocations.push(this);
 				else{
-					if (typeof console !== "undefined")
-						console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");
+					if ((GeoTemConfig.debug)&&(typeof console !== undefined)){
+							console.error("Object " + name + " has no valid coordinate. ("+this.latitude+","+this.longitude+")");						
+					}
 				}					
+				
+				//solve lat=-90 bug
+				if( this.longitude == 180 ){
+					this.longitude = 179.999;
+				}
+				if( this.longitude == -180 ){
+					this.longitude = -179.999;
+				}
+				if( this.latitude == 90 ){
+					this.latitude = 89.999;
+				}
+				if( this.latitude == -90 ){
+					this.latitude = -89.999;
+				}
 			}
 		});
 		this.locations = tempLocations;
@@ -120,6 +141,21 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 	this.isTemporal = false;
 	if ((typeof this.dates !== "undefined") && (this.dates.length > 0)) {
 		this.isTemporal = true;
+		//test if we already have date "objects" or if we should parse the dates
+		for (var i = 0; i < this.dates.length; i++){
+			if (typeof this.dates[i] === "string"){
+				var date = GeoTemConfig.getTimeData(this.dates[i]);
+				//check whether we got valid dates
+				if ((typeof date !== "undefined")&&(date != null)){
+					this.dates[i] = date; 
+				} else {
+					//at least one date is invalid, so this dataObject has
+					//no valid date information and is therefor not "temporal"
+					this.isTemporal = false;
+					break;
+				}
+			}
+		}
 	}
 
 	//TODO: allow more than one timespan (as with dates/places)
@@ -176,7 +212,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 			//check whether dates are correctly sorted
 			if (this.TimeSpanBegin>this.TimeSpanEnd){
 				//dates are in the wrong order
-				if (typeof console !== "undefined")
+				if ((GeoTemConfig.debug)&&(typeof console !== undefined))
 					console.error("Object " + this.name + " has wrong fuzzy dating (twisted start/end?).");
 				
 			} else {
@@ -200,6 +236,38 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 					this.TimeSpanGranularity = SimileAjax.DateTime.SECOND;
 				} else if (timeSpanGranularity === 6){
 					this.TimeSpanGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
+				if (timeSpanBeginGranularity === 0){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanBeginGranularity === 1){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanBeginGranularity === 2){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanBeginGranularity === 3){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanBeginGranularity === 4){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanBeginGranularity === 5){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanBeginGranularity === 6){
+					this.TimeSpanBeginGranularity = SimileAjax.DateTime.MILLISECOND;
+				}
+				
+				if (timeSpanEndGranularity === 0){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.YEAR;
+				} else if (timeSpanEndGranularity === 1){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MONTH;
+				} else if (timeSpanEndGranularity === 2){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.DAY;
+				} else if (timeSpanEndGranularity === 3){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.HOUR;
+				} else if (timeSpanEndGranularity === 4){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MINUTE;
+				} else if (timeSpanEndGranularity === 5){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.SECOND;
+				} else if (timeSpanEndGranularity === 6){
+					this.TimeSpanEndGranularity = SimileAjax.DateTime.MILLISECOND;
 				}
 				
 				if (this.TimeSpanEnd.year()-this.TimeSpanBegin.year() >= 1000)
@@ -231,6 +299,7 @@ function DataObject(name, description, locations, dates, weight, tableContent, p
 			}
 		}
 	}
+
 	
 	this.getDate = function(dateId) {
 		return this.dates[dateId].date;

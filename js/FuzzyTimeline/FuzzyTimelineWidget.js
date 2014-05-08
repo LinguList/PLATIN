@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the FuzzyTimeline widget div
  * @param {JSON} options user specified configuration that overwrites options in FuzzyTimelineConfig.js
  */
-function FuzzyTimelineWidget(core, div, options) {
+FuzzyTimelineWidget = function(core, div, options) {
 
 	this.datasets;
 	this.selected = undefined;
@@ -49,6 +49,9 @@ function FuzzyTimelineWidget(core, div, options) {
 	this.spanHash = [];
 	
 	this.handles = [];
+	this.zoomFactor = 1;
+	
+	this.scaleMode = "normal";
 }
 
 FuzzyTimelineWidget.prototype = {
@@ -117,7 +120,54 @@ FuzzyTimelineWidget.prototype = {
 		}
 	},
 	
+	scaleData : function(data){
+		var fuzzyTimeline = this;
+		if (fuzzyTimeline.scaleMode == "normal"){
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "logarithm"){
+			for(var index in data){
+				var val = data[index];
+				if (val!=0){
+					var sign = 1;
+					if (val<0){
+						sign = -1;
+					}
+					data[index] = sign*Math.log(Math.abs(data[index])+1);
+				}	
+			}
+			return data;
+		} else if (fuzzyTimeline.scaleMode == "percentage"){
+			var overallCnt = 0;
+			for(var index in data){
+				var val = data[index];
+				if (val > 0){
+					overallCnt += val;
+				}
+			}
+			//make 1 = 100%
+			overallCnt = overallCnt/100;
+			if (overallCnt != 0){
+				for(var index in data){
+					data[index] = (data[index])/overallCnt;	
+				}
+			}
+			return data;
+		}
+	},
+	
+	changeScaleMode : function(scaleMode) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.scaleMode = scaleMode;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
 	slidePositionChanged : function(spanWidth) {
+		var fuzzyTimeline = this;
+		fuzzyTimeline.spanWidth = spanWidth;
+		fuzzyTimeline.drawFuzzyTimeline();
+	},
+	
+	drawFuzzyTimeline : function(){
 		var fuzzyTimeline = this;
 		var datasets = fuzzyTimeline.datasets;
 		if (fuzzyTimeline.viewMode === "density"){
@@ -127,7 +177,7 @@ FuzzyTimelineWidget.prototype = {
 			fuzzyTimeline.density.selectionChanged(fuzzyTimeline.selected);
 		} else if (fuzzyTimeline.viewMode === "barchart"){
 			//redraw range plot
-			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,spanWidth);
+			fuzzyTimeline.rangeBars.drawRangeBarChart(datasets,fuzzyTimeline.spanWidth);
 			//select currently selected data (if there is any)
 			fuzzyTimeline.rangeBars.selectionChanged(fuzzyTimeline.selected);
 		}
@@ -363,6 +413,8 @@ FuzzyTimelineWidget.prototype = {
 		
 		var plotHeight = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).height();
 		var plotWidth = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).width();
+		//flot sends the wrong width if we extend the parent div, so scale it accordingly
+		plotWidth = plotWidth*fuzzyTimeline.zoomFactor;
 		var plotOffset = (fuzzyTimeline.density.plot?fuzzyTimeline.density.plot:fuzzyTimeline.rangeBars.plot).getPlotOffset().left;
 		
 		$(fuzzyTimeline.handles).each(function(){
@@ -421,6 +473,7 @@ FuzzyTimelineWidget.prototype = {
 			$(leftHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					if ((x < handle.x2) &&
 						(x >= plotOffset)){
 						x = x - leftHandle.offsetWidth;
@@ -441,6 +494,7 @@ FuzzyTimelineWidget.prototype = {
 			$(rightHandle).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					x = x - rightHandle.offsetWidth;
 					if ((x > handle.x1) &&
 						(x <= plotOffset+plotWidth)){
@@ -461,6 +515,9 @@ FuzzyTimelineWidget.prototype = {
 			$(dragButton).mousedown(function(){
 				$(fuzzyTimeline.gui.plotDiv).mousemove(function(eventObj){
 					var x = eventObj.clientX;
+					//TODO: for some reason we don't need the scoll offset here
+					//this should be investigated?
+					//x += $(fuzzyTimeline.gui.plotDiv).parent().scrollLeft();
 					var xdiff = x - $(dragButton).offset().left - $(dragButton).width()/2;
 					handle.x1 = handle.x1+xdiff;
 					handle.x2 = handle.x2+xdiff;
@@ -471,6 +528,16 @@ FuzzyTimelineWidget.prototype = {
 					moveDragButton();
 				});
 				$(fuzzyTimeline.gui.plotDiv).mouseup(function(eventObj){
+					if (handle.x1 < plotOffset)
+						handle.x1 = plotOffset;
+					if (handle.x2 > plotOffset+plotWidth)
+						handle.x2 = plotOffset+plotWidth;
+					
+					moveLeftHandle();
+					moveRightHandle();
+					resizeHandleBox();
+					moveDragButton();
+					
 					fuzzyTimeline.selectByX(handle.x1,handle.x2);
 					$(fuzzyTimeline.gui.plotDiv).unbind("mouseup");
 					$(fuzzyTimeline.gui.plotDiv).unbind("mousemove");
@@ -554,6 +621,8 @@ FuzzyTimelineWidget.prototype = {
 	//This function enlargens the plot area
 	zoomPlot : function(zoomFactor){
 		var fuzzyTimeline = this;
+		var oldZoomFactor = fuzzyTimeline.zoomFactor; 
+		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
 			//leave place for the scrollbar
@@ -562,5 +631,14 @@ FuzzyTimelineWidget.prototype = {
 			$(fuzzyTimeline.gui.plotDiv).width("100%");
 			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
 		}
+		
+		//fit handles
+		//this does not make much sense, as the selections are _completely_ different
+		//for each scale rate, as the objects may reside in different "ticks" of the graph
+		$(fuzzyTimeline.handles).each(function(){
+			var handle = this;
+			handle.x1 = handle.x1 * (zoomFactor/oldZoomFactor);
+			handle.x2 = handle.x2 * (zoomFactor/oldZoomFactor);
+		});
 	}
 };

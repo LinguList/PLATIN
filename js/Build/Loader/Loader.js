@@ -147,7 +147,11 @@ GeoTemCoLoader = {
 	},
 
 	loadTimeplot : function() {
-		TimeplotLoader.load(GeoTemCoLoader.urlPrefix + 'lib/', GeoTemCoLoader.loadScripts);
+		var jsFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/SimileRemnants.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(jsFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {
@@ -164,9 +168,12 @@ GeoTemCoLoader = {
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'lib/slider/js/timer.js'
 		}]);
+		// SIMILE was removed (see above in "loadTimeplot")
+		/*
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'js/Time/' + 'SimileTimeplotModify.js'
 		}]);
+		*/
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'lib/' + 'openlayers/' + 'OpenLayers.js'
 		}]);

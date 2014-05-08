@@ -28,7 +28,7 @@
  * @param {HTML object} div parent div to append the Storytelling widget div
  * @param {JSON} options user specified configuration that overwrites options in StorytellingConfig.js
  */
-function StorytellingWidget(core, div, options) {
+StorytellingWidget = function(core, div, options) {
 
 	this.datasets;
 	this.core = core;

@@ -3,7 +3,7 @@ Place and Time Navigator
 
 a fork and extension of [GeoTemCo](https://github.com/stjaenicke/GeoTemCo)
 
-developed at the [Max-Planck-Institute for the History of Science](http://www.mpiwg-berlin.mpg.de) with funding from [TOPOI](http://topoi.org).
+developed at the [Max-Planck-Institute for the History of Science](http://www.mpiwg-berlin.mpg.de) with funding from [TOPOI](http://topoi.org) within the Project [Atlas der Innovationen](http://www.topoi.org/group/d-6/).
 
 ## Introduction
 
@@ -25,6 +25,10 @@ Which added the following functionality:
 ## Important additional features
 
 The widget-architecture of GeoTemCo led to the creation of following additional features:
+
+### Dataset loading via URL
+
+Datasets in KML/CSV/JSON format can be loaded via URL. Those attributes of those datasets can be changed, if they don't follow the PLATIN syntax style. Also datasets can be filtered via URL.
 
 ### Pie Charts
 
@@ -55,6 +59,12 @@ lines are doubled by this clustering.
 
 Each DataObject can have an own color, if objects are clustered together, the cluster color 
 is calculated as the average of the RGB values.
+
+### Dataset color and shape changing (by user)
+
+(This feature is in beta-state.)
+
+Color and shape (on map) of the datasets can be changed on-the-fly from a dropdown menu in the table header.
 
 ### Story-Telling
 

@@ -123,8 +123,8 @@ Dataloader.prototype = {
 					return;
 				var origURL = kmlURL;
 				var fileName = this.getFileName(kmlURL);
-				if (typeof this.options.proxy != 'undefined')
-					kmlURL = this.options.proxy + kmlURL;
+				if (typeof GeoTemConfig.proxy != 'undefined')
+					kmlURL = GeoTemConfig.proxy + kmlURL;
 				var kml = GeoTemConfig.getKml(kmlURL);
 				if ((typeof kml !== "undefined") && (kml != null)) {
 					var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -159,8 +159,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmlURL;
 			var fileName = this.getFileName(kmlURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
 			if ((typeof kml !== "undefined") && (kml != null)) {
 				var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
@@ -197,8 +197,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = kmzURL;
 			var fileName = dataLoader.getFileName(kmzURL);
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			GeoTemConfig.getKmz(kmzURL, function(kmlArray){
 		    	$(kmlArray).each(function(){
@@ -235,8 +235,8 @@ Dataloader.prototype = {
 				return;
 			var origURL = csvURL;
 			var fileName = dataLoader.getFileName(csvURL);
-			if (typeof this.options.proxy != 'undefined')
-				csvURL = this.options.proxy + csvURL;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				csvURL = GeoTemConfig.proxy + csvURL;
 			GeoTemConfig.getCsv(csvURL, function(json){
 				if ((typeof json !== "undefined") && (json.length > 0)) {
 					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
