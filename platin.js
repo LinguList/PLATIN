@@ -33217,24 +33217,14 @@ MapWidget.prototype = {
 			this.map.setCenter(newCenter, this.map.zoom + 1);
 			map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 		}
 		this.navigation.wheelUp = function(evt) {
 			this.wheelChange(evt, 1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 		this.navigation.wheelDown = function(evt) {
 			this.wheelChange(evt, -1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 
 		this.resolutions = [78271.516953125, 39135.7584765625, 19567.87923828125, 9783.939619140625, 4891.9698095703125, 2445.9849047851562, 1222.9924523925781, 611.4962261962891, 305.74811309814453, 152.87405654907226, 76.43702827453613, 38.218514137268066, 19.109257068634033, 9.554628534317017, 4.777314267158508, 2.388657133579254, 1.194328566789627, 0.5971642833948135, 0.29858214169740677];
@@ -33253,7 +33243,16 @@ MapWidget.prototype = {
 		}
 		//add attribution control
 		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
-		this.mds = new MapDataSource(this.openlayersMap, this.options);
+		this.mds = new MapDataSource(this, this.options);
+
+        //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
+        this.openlayersMap.events.register("zoomend", map, function(){
+            map.drawObjectLayer(false);
+			if (map.zoomSlider) {
+				map.zoomSlider.setValue(map.getZoom());
+			}
+			map.core.triggerHighlight([]);
+        });
 
 		if (map.options.olNavigation) {
 			var zoomPanel = new OpenLayers.Control.PanZoom();
@@ -33628,7 +33627,7 @@ MapWidget.prototype = {
 
 		if (this.zoomSlider) {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
-			this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			this.zoomSlider.setValue(this.getZoom());
 		}
 		
 		Publisher.Subscribe('mapChanged', this, function(mapName) {
@@ -33897,10 +33896,10 @@ MapWidget.prototype = {
 				var gapY1 = 0.1 * (maxLat - minLat );
 				var gapY2 = (this.gui.headerHeight / this.gui.mapWindow.offsetHeight + 0.1 ) * (maxLat - minLat );
 				this.openlayersMap.zoomToExtent(new OpenLayers.Bounds(minLon - gapX, minLat - gapY1, maxLon + gapX, maxLat + gapY2));
-				this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+				this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 			}
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		var displayPoints = this.mds.getObjectsByZoom();
@@ -33920,7 +33919,7 @@ MapWidget.prototype = {
 				this.objectLayer.addFeatures([p.olFeature]);
 			}
 		}
-		var zoomLevel = this.openlayersMap.getZoom();
+		var zoomLevel = this.getZoom();
 		/*
 		 for (var i = 0; i < this.bins[zoomLevel].length; i++) {
 		 var p = this.bins[zoomLevel][i];
@@ -34397,16 +34396,15 @@ MapWidget.prototype = {
 	 * @param {int} delta the change of zoom levels
 	 */
 	zoom : function(delta) {
-		var zoom = this.openlayersMap.getZoom() + delta;
+		var zoom = this.getZoom() + delta;
 		if (this.openlayersMap.baseLayer instanceof OpenLayers.Layer.WMS) {
 			this.openlayersMap.zoomTo(zoom);
 		} else {
 			this.openlayersMap.zoomTo(Math.round(zoom));
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
-		this.drawObjectLayer(false);
 		return true;
 	},
 
@@ -34447,7 +34445,7 @@ MapWidget.prototype = {
 				this.countrySelectionControl.disable();
 			}
 		}
-		this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+		this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 		this.openlayersMap.setBaseLayer(this.baseLayers[index]);
 		if (this.baseLayers[index].name == 'Open Street Map') {
 			this.gui.osmLink.style.visibility = 'visible';
@@ -34523,7 +34521,21 @@ MapWidget.prototype = {
 	},
 
 	getZoom : function() {
-		return this.openlayersMap.getZoom();
+    	//calculate zoom from active resolution
+        var resolution = this.openlayersMap.getResolution();
+        var zoom = this.resolutions.indexOf(resolution);
+        if (zoom == -1){
+            //fractional zoom
+            for (zoom = 0; zoom < this.resolutions.length; zoom++){
+                if (resolution>=this.resolutions[zoom]){
+                    break;
+                }
+            }
+            if (zoom == this.resolutions.length){
+                zoom--;
+            }
+        }
+        return(zoom);
 	},
 
 	setMarker : function(lon, lat) {
@@ -34572,7 +34584,7 @@ MapWidget.prototype = {
 				if (xDist / resolution < x_s && yDist / resolution < y_s) {
 					this.openlayersMap.zoomTo(zoomLevels - i - 1);
 					if (this.zoomSlider) {
-						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+						this.zoomSlider.setValue(this.getZoom());
 					}
 					this.drawObjectLayer(false);
 					break;
@@ -34582,7 +34594,7 @@ MapWidget.prototype = {
 			//if there are no points on the map, zoom to max 
 			this.openlayersMap.zoomTo(0);
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 			this.drawObjectLayer(false);
 		}
@@ -34593,7 +34605,7 @@ MapWidget.prototype = {
 	},
 
 	getLevelOfDetail : function() {
-		var zoom = Math.floor(this.openlayersMap.getZoom());
+		var zoom = Math.floor(this.getZoom());
 		if (zoom <= 1) {
 			return 0;
 		} else if (zoom <= 3) {
@@ -38165,7 +38177,7 @@ DataloaderWidget.prototype = {
 		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
-				var datasetID = parseInt(paramName.substr(5));
+				var datasetID = parseInt(paramName.substr(6));
 				var dataset;
 				if (isNaN(datasetID)){
 					var dataset;
@@ -40728,6 +40740,7 @@ Overlayloader.prototype = {
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
+		this.addMapsForFreeWaterLayer();
 		this.addConfigLoader();
 		
 		// trigger change event on the select so 
@@ -40833,14 +40846,15 @@ Overlayloader.prototype = {
                 transitionEffect: "resize",
                 buffer: 1,
                 numZoomLevels: 12,
-                transparent : true
+                transparent : true,
+                isBaseLayer : false,
+                zoomOffset:zoomOffset?zoomOffset:0
               }
             );
 
 		newLayer.setIsBaseLayer(false);
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
-			this.openlayersMap.setBaseLayer(newLayer);
 			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 		});
 		
@@ -40974,10 +40988,27 @@ Overlayloader.prototype = {
 		$(this.RomanEmpireLoaderTab).append(this.loadRomanEmpireButton);
 
 		$(this.loadRomanEmpireButton).click($.proxy(function(){
-			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png");
+			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png",1);
 		},this));
 
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
+	},
+	
+	addMapsForFreeWaterLayer : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='MapsForFreeWaterLayerLoader'>Water Layer (Maps-For-Free)</option>");
+		
+		this.MapsForFreeWaterTab = document.createElement("div");
+		$(this.MapsForFreeWaterTab).attr("id","MapsForFreeWaterLayerLoader");
+
+		this.loadMapsForFreeWaterLayerButton = document.createElement("button");
+		$(this.loadMapsForFreeWaterLayerButton).text("load Layer");
+		$(this.MapsForFreeWaterTab).append(this.loadMapsForFreeWaterLayerButton);
+
+		$(this.loadMapsForFreeWaterLayerButton).click($.proxy(function(){
+			this.distributeXYZ("http://maps-for-free.com/layer/water/z${z}/row${y}/${z}_${x}-${y}.gif",1);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.MapsForFreeWaterTab);
 	},
 	
 	addConfigLoader : function() {
@@ -44751,14 +44782,15 @@ Binning.prototype = {
  * @release date: 2012-07-27
  * @version date: 2012-07-27
  *
- * @param {OpenLayers.Map} olMap openlayers map object of the map widget
+ * @param {MapWidget} parent Widget
  * @param {JSON} options map configuration
  */
-function MapDataSource(olMap, options) {
+function MapDataSource(parent, options) {
 
-	this.olMap = olMap;
+    this.parent = parent;
+	this.olMap = parent.openlayersMap;
 	this.circleSets = [];
-	this.binning = new Binning(olMap, options);
+	this.binning = new Binning(this.olMap, options);
 
 };
 
@@ -44784,7 +44816,7 @@ MapDataSource.prototype = {
 	},
 
 	getObjectsByZoom : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		if (this.circleSets.length < zoom) {
 			return null;
 		}
@@ -44806,7 +44838,7 @@ MapDataSource.prototype = {
 	},
 
 	clearOverlay : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		var circles = this.circleSets[zoom];
 		for (var i in circles ) {
 			for (var j in circles[i] ) {
@@ -44816,7 +44848,7 @@ MapDataSource.prototype = {
 	},
 
 	setOverlay : function(mapObjects) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		for (var j in mapObjects ) {
 			for (var k in mapObjects[j] ) {
 				var o = mapObjects[j][k];
@@ -44836,7 +44868,7 @@ MapDataSource.prototype = {
 	},
 
 	getCircle : function(index, id) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		return this.hashMapping[zoom][index][id];
 	}
 };
@@ -45996,7 +46028,7 @@ function MapZoomSlider(parent, orientation) {
 		this.slider.setMaximum(max);
 	}
 	//	this.setMaxAndLevels(1000,parent.openlayersMap.getNumZoomLevels());
-	//	this.setValue(parent.openlayersMap.getZoom());
+	//	this.setValue(parent.getZoom());
 
 	this.setLanguage = function() {
 		zoomIn.title = GeoTemConfig.getString('zoomIn');
