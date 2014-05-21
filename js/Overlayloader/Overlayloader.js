@@ -161,14 +161,15 @@ Overlayloader.prototype = {
                 transitionEffect: "resize",
                 buffer: 1,
                 numZoomLevels: 12,
-                transparent : true
+                transparent : true,
+                isBaseLayer : false,
+                zoomOffset:zoomOffset?zoomOffset:0
               }
             );
 
 		newLayer.setIsBaseLayer(false);
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
-			this.openlayersMap.setBaseLayer(newLayer);
 			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 		});
 		
