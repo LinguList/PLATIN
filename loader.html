@@ -98,7 +98,7 @@
 		 
 		var datasets = [];
 		var mapDiv = document.getElementById("mapContainerDiv");
-		var map = new WidgetWrapper();
+		var map = new WidgetWrapper(mapDiv);
 		var mapWidget = new MapWidget(map,mapDiv,{
 			mapTitle: "Publication Place"
 		});
