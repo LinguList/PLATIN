@@ -31,7 +31,7 @@
  * @param {HTML object} div parent div to append the time widget div
  * @param {JSON} options user specified configuration that overwrites options in TimeConfig.js
  */
-function TimeWidget(core, div, options) {
+TimeWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -1187,7 +1187,7 @@ TimeWidget.prototype = {
 			}
 		}
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		for (var i = 0; i < slices.length; i++) {
@@ -1231,7 +1231,7 @@ TimeWidget.prototype = {
 			}
 		}
 		var selectedObjects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			selectedObjects.push([]);
 		}
 		for (var i = 0; i < slices.length; i++) {

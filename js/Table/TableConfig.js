@@ -39,8 +39,12 @@ function TableConfig(options) {
 		tableSelectPage : true, // selection of complete table pages
 		tableSelectAll : false, // selection of complete tables
 		tableShowSelected : true, // show selected objects only option
+		tableKeepShowSelected : true, // don't revert to show all on "reset" (e.g. selection)
+		tableInvertSelection : true, // show invert selection option
 		tableSelectByText : true, // select objects by full-text search
-		unselectedCellColor : '#EEE' // color for an unselected row/tab
+		tableCreateNewFromSelected : true, // create new dataset from selected objects
+		unselectedCellColor : '#EEE', // color for an unselected row/tab
+		verticalAlign : 'top', // vertical alignment of the table cells ('top','center','bottom')
 	};
 	if ( typeof options != 'undefined') {
 		$.extend(this.options, options);

@@ -35,7 +35,7 @@ function Selection(objects, widget) {
 	this.objects = objects;
 	if ( typeof objects == 'undefined') {
 		this.objects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			this.objects.push([]);
 		}
 	}
@@ -46,7 +46,7 @@ function Selection(objects, widget) {
 			return this.objects;
 		}
 		this.objects = [];
-		for (var i = 0; i < GeoTemConfig.datasets; i++) {
+		for (var i = 0; i < GeoTemConfig.datasets.length; i++) {
 			this.objects.push([]);
 		}
 		return this.objects;
@@ -65,6 +65,17 @@ function Selection(objects, widget) {
 		}
 		return false;
 	};
-
+	
+	this.loadAllObjects = function() {
+		allObjects = [];
+		$(GeoTemConfig.datasets).each(function(){
+			var singleDatasetObjects = []; 
+			$(this.objects).each(function(){
+				singleDatasetObjects.push(this);
+			});
+			allObjects.push(singleDatasetObjects);
+		});
+		this.objects = allObjects;
+	};
 };
 

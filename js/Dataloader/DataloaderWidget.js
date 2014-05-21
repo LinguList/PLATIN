@@ -28,15 +28,13 @@
  * @param {HTML object} div parent div to append the Dataloader widget div
  * @param {JSON} options user specified configuration that overwrites options in DataloaderConfig.js
  */
-function DataloaderWidget(core, div, options) {
+DataloaderWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
 
 	this.options = (new DataloaderConfig(options)).options;
 	this.gui = new DataloaderGui(this, div, this.options);
-	
-	this.attachedWidgets = new Array();
 	
 	this.dataLoader = new Dataloader(this);
 }
@@ -81,29 +79,252 @@ DataloaderWidget.prototype = {
 	reset : function() {
 	},
 	
-	attachWidget : function(widget) {
-		this.attachedWidgets.push(widget);
-	},
-	
 	loadFromURL : function() {
 		var dataLoaderWidget = this;
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
+		var datasets = [];
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var loaderFunction = null;
-			if (paramName.toLowerCase().startsWith("kml"))
-				loaderFunction = GeoTemConfig.getKml;
-			else if (paramName.toLowerCase().startsWith("csv"))
-				loaderFunction = GeoTemConfig.getCsv;
-			if (loaderFunction){
-				if (typeof dataLoaderWidget.options.proxy != 'undefined')
-					paramValue = dataLoaderWidget.options.proxy + paramValue;
-				loaderFunction(paramValue,function(kmlDoc){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), paramValue);
-					if (dataSet != null)
-						dataLoaderWidget.dataLoader.distributeDataset(dataSet);			
-				});
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
+			var origURL = paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
+			if (paramName.toLowerCase().startsWith("kml")){
+				var kmlDoc = GeoTemConfig.getKml(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+			else if (paramName.toLowerCase().startsWith("csv")){
+				var json = GeoTemConfig.getCsv(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(3));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				var json = GeoTemConfig.getJson(paramValue);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(4));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null){
+					var datasetID = parseInt(paramName.substr(5));
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
 			}
 		});
+		//load (optional!) attribute renames
+		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
+		//examples:
+		//	&rename1={"latitude":"lat1","longitude":"lon1"}
+		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("rename")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+
+				if (typeof dataset === "undefined")
+					return;
+				
+				var renameFunc = function(index,latAttr,lonAttr,placeAttr,dateAttr,timespanBeginAttr,
+						timespanEndAttr,indexAttr){
+					var renameArray = [];
+					
+					if (typeof index === "undefined"){
+						index = 0;
+					}
+					
+					if ((typeof latAttr !== "undefined") && (typeof lonAttr !== "undefined")){
+						renameArray.push({
+							oldColumn:latAttr,
+							newColumn:"locations["+index+"].latitude"
+						});
+						renameArray.push({
+							oldColumn:lonAttr,
+							newColumn:"locations["+index+"].longitude"
+						});
+					}
+					
+					if (typeof placeAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:placeAttr,
+							newColumn:"locations["+index+"].place"
+						});
+					}
+
+					if (typeof dateAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:dateAttr,
+							newColumn:"dates["+index+"]"
+						});
+					}
+
+					if ((typeof timespanBeginAttr !== "undefined") && 
+							(typeof timespanEndAttr !== "undefined")){
+						renameArray.push({
+							oldColumn:timespanBeginAttr,
+							newColumn:"tableContent[TimeSpan:begin]"
+						});
+						renameArray.push({
+							oldColumn:timespanEndAttr,
+							newColumn:"tableContent[TimeSpan:end]"
+						});
+					}
+
+					if (typeof indexAttr !== "undefined"){
+						renameArray.push({
+							oldColumn:indexAttr,
+							newColumn:"index"
+						});
+					}
+					
+					GeoTemConfig.renameColumns(dataset,renameArray);
+				};
+				
+				var renames = JSON.parse(paramValue);
+
+				if (renames instanceof Array){
+					for (var i=0; i < renames.length; i++){
+						renameFunc(i,renames[i].latitude,renames[i].longitude,renames[i].place,renames[i].date,
+							renames[i].timeSpanBegin,renames[i].timeSpanEnd,renames[i].index);
+					}
+				} else {
+					renameFunc(0,renames.latitude,renames.longitude,renames.place,renames.date,
+							renames.timeSpanBegin,renames.timeSpanEnd,renames.index);
+				}
+			}
+		});
+		//load (optional!) filters
+		//those will create a new(!) dataset, that only contains the filtered IDs
+		$.each($.url().param(),function(paramName, paramValue){
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			if (paramName.toLowerCase().startsWith("filter")){
+				var datasetID = parseInt(paramName.substr(6));
+				var dataset;
+				if (isNaN(datasetID)){
+					var dataset;
+					for (datasetID in datasets){
+						break;
+					}
+				}
+				dataset = datasets[datasetID];
+				
+				if (typeof dataset === "undefined")
+					return;
+				
+				var filterValues = function(paramValue){
+					var filter = JSON.parse(paramValue);
+					var filteredObjects = [];
+					for(var i = 0; i < dataset.objects.length; i++){
+						var dataObject = dataset.objects[i];
+						if ($.inArray(dataObject.index,filter) != -1){
+							filteredObjects.push(dataObject);
+						}
+					}
+					var filteredDataset = new Dataset(filteredObjects, dataset.label + " (filtered)", dataset.url, dataset.type);
+					datasets.push(filteredDataset);
+				}
+				
+				if (paramValue instanceof Array){
+					for (var i=0; i < paramValue.length; i++){
+						filterValues(paramValue[i]);
+					}
+				} else {
+					filterValues(paramValue);
+				}
+
+			}
+		});
+		//Load the (optional!) dataset colors
+		$.each($.url().param(),function(paramName, paramValue){
+			if (paramName.toLowerCase().startsWith("color")){
+				//color is 1-based, index is 0-based!
+				var datasetID = parseInt(paramName.substring("color".length))-1;
+				if (datasets.length > datasetID){
+					if (typeof datasets[datasetID].color === "undefined"){
+						var color = new Object();
+						var colorsSelectedUnselected = paramValue.split(",");
+						if (colorsSelectedUnselected.length > 2)
+							return;
+						
+						var color1 = colorsSelectedUnselected[0];
+						if (color1.length != 6)
+							return;
+						
+						color.r1 = parseInt(color1.substr(0,2),16);
+						color.g1 = parseInt(color1.substr(2,2),16);
+						color.b1 = parseInt(color1.substr(4,2),16);
+						
+						//check if a unselected color is given
+						if (colorsSelectedUnselected.length == 2){
+							var color0 = colorsSelectedUnselected[1];
+							if (color0.length != 6)
+								return;
+							
+							color.r0 = parseInt(color0.substr(0,2),16);
+							color.g0 = parseInt(color0.substr(2,2),16);
+							color.b0 = parseInt(color0.substr(4,2),16);
+						} else {
+							//if not: use the selected color "halved"
+							color.r0 = Math.round(color.r1/2);
+							color.g0 = Math.round(color.g1/2);
+							color.b0 = Math.round(color.b1/2);
+						}
+						
+						datasets[datasetID].color = color;
+					}	
+				}
+			}	
+		});
+		//delete undefined entries in the array
+		//(can happen if the sequence given in the URL is not complete
+		// e.g. kml0=..,kml2=..)
+		//this also reorders the array,	 starting with 0
+		var tempDatasets = [];
+		for(var index in datasets){
+			if (datasets[index] instanceof Dataset){
+				tempDatasets.push(datasets[index]);
+			}
+		}
+		datasets = tempDatasets;
+		
+		if (datasets.length > 0)
+			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
 	}
 };

@@ -32,7 +32,6 @@ function Dataloader(parent) {
 	
 	this.parent = parent;
 	this.options = parent.options;
-	this.attachedWidgets = parent.attachedWidgets;
 
 	this.initialize();
 }
@@ -49,6 +48,8 @@ Dataloader.prototype = {
 
 	initialize : function() {
 
+		this.addStaticLoader();
+		this.addLocalStorageLoader();
 		this.addKMLLoader();
 		this.addKMZLoader();
 		this.addCSVLoader();
@@ -60,14 +61,82 @@ Dataloader.prototype = {
 		$(this.parent.gui.loaderTypeSelect).change();
 	},
 	
+	getFileName : function(url) {
+		var fileName = $.url(url).attr('file');
+		if ( (typeof fileName === "undefined") || (fileName.length === 0) ){
+			fileName = $.url(url).attr('path');
+			//startsWith and endsWith defined in SIMILE Ajax (string.js) 
+			while (fileName.endsWith("/")){
+				fileName = fileName.substr(0,fileName.length-1);
+			}
+			if (fileName.length > 1)
+				fileName = fileName.substr(fileName.lastIndexOf("/")+1);
+			else
+				fileName = "unnamed dataset";
+		}
+		return fileName;
+	},
+	
 	distributeDataset : function(dataSet) {
-		$(this.attachedWidgets).each(function(){
-			if (!(this.datasets instanceof Array))
-				this.datasets = new Array();
-			if ($.inArray(dataSet, this.datasets) == -1)
-					this.datasets.push(dataSet);
-			this.core.display(this.datasets);
-		});
+		GeoTemConfig.addDataset(dataSet);
+	},
+	
+	distributeDatasets : function(datasets) {
+		GeoTemConfig.addDatasets(datasets);
+	},
+	
+	addStaticLoader : function() {
+		if (this.options.staticKML.length > 0){
+			$(this.parent.gui.loaderTypeSelect).append("<option value='StaticLoader'>Static Data</option>");
+			
+			this.StaticLoaderTab = document.createElement("div");
+			$(this.StaticLoaderTab).attr("id","StaticLoader");
+			
+			this.staticKMLList = document.createElement("select");
+			$(this.StaticLoaderTab).append(this.staticKMLList);
+			
+			var staticKMLList = this.staticKMLList;
+			var isFirstHeader = true;
+			$(this.options.staticKML).each(function(){
+				var label = this.label;
+				var url = this.url;
+				var header = this.header;
+				if (typeof header !== "undefined"){
+					if (!isFirstHeader)
+						$(staticKMLList).append("</optgroup>");
+					$(staticKMLList).append("<optgroup label='"+header+"'>");
+					isFirstHeader = false;
+				} else
+					$(staticKMLList).append("<option value='"+url+"'>     "+label+"</option>");
+			});
+			//close last optgroup (if there were any)
+			if (!isFirstHeader)
+				$(staticKMLList).append("</optgroup>");
+			
+			this.loadStaticKMLButton = document.createElement("button");
+			$(this.loadStaticKMLButton).text("load");
+			$(this.StaticLoaderTab).append(this.loadStaticKMLButton);
+
+			$(this.loadStaticKMLButton).click($.proxy(function(){
+				var kmlURL = $(this.staticKMLList).find(":selected").attr("value");
+				if (kmlURL.length === 0)
+					return;
+				var origURL = kmlURL;
+				var fileName = this.getFileName(kmlURL);
+				if (typeof GeoTemConfig.proxy != 'undefined')
+					kmlURL = GeoTemConfig.proxy + kmlURL;
+				var kml = GeoTemConfig.getKml(kmlURL);
+				if ((typeof kml !== "undefined") && (kml != null)) {
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
+					
+					if (dataSet != null)
+						this.distributeDataset(dataSet);
+				} else
+					alert("Could not load file.");
+			},this));
+
+			$(this.parent.gui.loaders).append(this.StaticLoaderTab);
+		}
 	},
 	
 	addKMLLoader : function() {
@@ -86,15 +155,20 @@ Dataloader.prototype = {
 
 		$(this.loadKMLButton).click($.proxy(function(){
 			var kmlURL = $(this.kmlURL).val();
-			if (typeof this.options.proxy != 'undefined')
-				kmlURL = this.options.proxy + kmlURL;
+			if (kmlURL.length === 0)
+				return;
+			var origURL = kmlURL;
+			var fileName = this.getFileName(kmlURL);
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmlURL = GeoTemConfig.proxy + kmlURL;
 			var kml = GeoTemConfig.getKml(kmlURL);
-			if (kml != null) {
-				var dataSet = new Dataset(GeoTemConfig.loadKml(kml));
+			if ((typeof kml !== "undefined") && (kml != null)) {
+				var dataSet = new Dataset(GeoTemConfig.loadKml(kml), fileName, origURL);
 				
 				if (dataSet != null)
 					this.distributeDataset(dataSet);
-			}
+			} else
+				alert("Could not load file.");
 		},this));
 
 		$(this.parent.gui.loaders).append(this.KMLLoaderTab);
@@ -119,12 +193,16 @@ Dataloader.prototype = {
 	    	var dataLoader = this;
 			
 			var kmzURL = $(this.kmzURL).val();
-			if (typeof this.options.proxy != 'undefined')
-				kmzURL = this.options.proxy + kmzURL;
+			if (kmzURL.length === 0)
+				return;
+			var origURL = kmzURL;
+			var fileName = dataLoader.getFileName(kmzURL);
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				kmzURL = GeoTemConfig.proxy + kmzURL;
 			
 			GeoTemConfig.getKmz(kmzURL, function(kmlArray){
 		    	$(kmlArray).each(function(){
-					var dataSet = new Dataset(GeoTemConfig.loadKml(this));
+					var dataSet = new Dataset(GeoTemConfig.loadKml(this), fileName, origURL);
 						
 					if (dataSet != null)
 						dataLoader.distributeDataset(dataSet);
@@ -153,15 +231,20 @@ Dataloader.prototype = {
 			var dataLoader = this;
 			
 			var csvURL = $(this.csvURL).val();
-			if (typeof this.options.proxy != 'undefined')
-				csvURL = this.options.proxy + csvURL;
-			GeoTemConfig.getCsv(csvURL, function(kml){
-				if (kml != null) {
-					var dataSet = new Dataset(GeoTemConfig.loadKml(kml));
+			if (csvURL.length === 0)
+				return;
+			var origURL = csvURL;
+			var fileName = dataLoader.getFileName(csvURL);
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				csvURL = GeoTemConfig.proxy + csvURL;
+			GeoTemConfig.getCsv(csvURL, function(json){
+				if ((typeof json !== "undefined") && (json.length > 0)) {
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
 					
 					if (dataSet != null)
 						dataLoader.distributeDataset(dataSet);
-				}
+				} else
+					alert("Could not load file.");
 			});
 		},this));
 
@@ -227,8 +310,8 @@ Dataloader.prototype = {
 				
 				reader.onloadend = ($.proxy(function(theFile) {
 			        return function(e) {
-			        	var kml = GeoTemConfig.convertCsv(reader.result);
-						var dataSet = new Dataset(GeoTemConfig.loadKml($.parseXML(kml)), fileName);
+			        	var json = GeoTemConfig.convertCsv(reader.result);
+						var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName);
 						if (dataSet != null)
 							this.distributeDataset(dataSet);			
 			        };
@@ -239,5 +322,50 @@ Dataloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.localCSVLoaderTab);
+	},
+	
+	addLocalStorageLoader : function() {
+		var dataLoader = this;
+		this.localStorageLoaderTab = document.createElement("div");
+		$(this.localStorageLoaderTab).attr("id","LocalStorageLoader");
+		
+		var localDatasets = document.createElement("select");
+		$(this.localStorageLoaderTab).append(localDatasets);
+
+		var localStorageDatasetCount = 0;
+		for(var key in localStorage){
+			//TODO: this is a somewhat bad idea, as it is used in multiple widgets.
+			//A global GeoTemCo option "prefix" could be better. But still..
+			if (key.startsWith("GeoBrowser_dataset_")){
+				localStorageDatasetCount++;
+				var label = key.substring("GeoBrowser_dataset_".length);
+				var url = key;
+				$(localDatasets).append("<option value='"+url+"'>"+decodeURIComponent(label)+"</option>");
+			}
+		}
+		
+		//only show if there are datasets
+		if (localStorageDatasetCount > 0)
+			$(this.parent.gui.loaderTypeSelect).append("<option value='LocalStorageLoader'>browser storage</option>");
+
+		this.loadLocalStorageButton = document.createElement("button");
+		$(this.loadLocalStorageButton).text("load");
+		$(this.localStorageLoaderTab).append(this.loadLocalStorageButton);
+
+		$(this.loadLocalStorageButton).click($.proxy(function(){
+			var fileKey = $(localDatasets).find(":selected").attr("value");
+			if (fileKey.length === 0)
+				return;
+			var csv = $.remember({name:fileKey});
+			//TODO: this is a somewhat bad idea, as it is used in multiple widgets.
+			//A global GeoTemCo option "prefix" could be better. But still..
+			var fileName = decodeURIComponent(fileKey.substring("GeoBrowser_dataset_".length));
+			var json = GeoTemConfig.convertCsv(csv);
+			var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, fileKey, "local");
+			if (dataSet != null)
+				dataLoader.distributeDataset(dataSet);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.localStorageLoaderTab);
 	}
 };

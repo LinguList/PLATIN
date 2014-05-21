@@ -28,15 +28,7 @@
  */
 
 var arrayIndex = function(array, obj) {
-	if (Array.indexOf) {
-		return array.indexOf(obj);
-	}
-	for (var i = 0; i < array.length; i++) {
-		if (array[i] == obj) {
-			return i;
-		}
-	}
-	return -1;
+	return $.inArray(obj, array);
 }
 GeoTemCoLoader = {
 
@@ -64,6 +56,42 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.min.js'
 			},{
 				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/purl.min.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery.remember.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery/jquery-deparam.min.js'
+			},],GeoTemCoLoader.loadFlot);
+		}
+		else {
+			GeoTemCoLoader.loadFlot();
+		}
+	},
+	
+	loadFlot : function() {
+		if (typeof $.plot == 'undefined') {
+			(new DynaJsLoader()).loadScripts([{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.resize.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.pie.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.selection.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.time.js'
+			},{
+				url : GeoTemCoLoader.urlPrefix + 'lib/flot/jquery.flot.tooltip.js'
+			}],GeoTemCoLoader.loadMomentJS);
+		}
+		else {
+			GeoTemCoLoader.loadMomentJS();
+		}
+	},
+	
+	loadMomentJS : function() {
+		if (typeof moment == 'undefined') {
+			(new DynaJsLoader()).loadScripts([{
+				url : GeoTemCoLoader.urlPrefix + 'lib/momentjs/moment.js'
 			}],GeoTemCoLoader.loadJSZip);
 		}
 		else {
@@ -96,6 +124,21 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/ucsv/ucsv-1.1.0-min.js',
 			}];
 			
+			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadJqueryUI);
+		}
+		else {
+			GeoTemCoLoader.loadJqueryUI();
+		}
+	},
+
+	loadJqueryUI : function() {
+		if (typeof jQuery.ui == 'undefined') {
+			var jsZipFiles = [{
+				url : GeoTemCoLoader.urlPrefix + 'lib/jquery-ui/jquery-ui-1.10.3.custom.js'
+			}];
+			
+			$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/jquery-ui/jquery-ui-1.10.3.custom.css') );
+			
 			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadTimeplot);
 		}
 		else {
@@ -104,7 +147,11 @@ GeoTemCoLoader = {
 	},
 
 	loadTimeplot : function() {
-		TimeplotLoader.load(GeoTemCoLoader.urlPrefix + 'lib/', GeoTemCoLoader.loadScripts);
+		var jsFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/SimileRemnants.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(jsFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {
@@ -121,9 +168,12 @@ GeoTemCoLoader = {
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'lib/slider/js/timer.js'
 		}]);
+		// SIMILE was removed (see above in "loadTimeplot")
+		/*
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'js/Time/' + 'SimileTimeplotModify.js'
 		}]);
+		*/
 		(new DynaJsLoader()).loadScripts([{
 			url : GeoTemCoLoader.urlPrefix + 'lib/' + 'openlayers/' + 'OpenLayers.js'
 		}]);
@@ -203,6 +253,48 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Overlayloader/' + 'OverlayloaderWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Overlayloader/' + 'Overlayloader.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChart.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartCategoryChooser.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/PieChart/' + 'PieChartHashFunctions.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'PlacetableWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineDensity.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangeSlider.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangePiechart.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineRangeBars.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'Storytelling.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
@@ -212,7 +304,11 @@ GeoTemCoLoader = {
 
 		GeoTemConfig.configure(GeoTemCoLoader.urlPrefix);
 		Publisher.Publish('GeoTemCoReady', '', null);
-
+		
+		//TODO: find more appropriate position for this
+		$(window).resize(function() {
+		    Publisher.Publish("resizeWidget");
+		});
 	}
 }
 

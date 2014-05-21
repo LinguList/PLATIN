@@ -31,7 +31,7 @@
  * @param {HTML object} div parent div to append the map widget div
  * @param {JSON} options user specified configuration that overwrites options in MapConfig.js
  */
-function MapWidget(core, div, options) {
+MapWidget = function(core, div, options) {
 
 	this.core = core;
 	this.core.setWidget(this);
@@ -129,24 +129,14 @@ MapWidget.prototype = {
 			this.map.setCenter(newCenter, this.map.zoom + 1);
 			map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 		}
 		this.navigation.wheelUp = function(evt) {
 			this.wheelChange(evt, 1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 		this.navigation.wheelDown = function(evt) {
 			this.wheelChange(evt, -1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 
 		this.resolutions = [78271.516953125, 39135.7584765625, 19567.87923828125, 9783.939619140625, 4891.9698095703125, 2445.9849047851562, 1222.9924523925781, 611.4962261962891, 305.74811309814453, 152.87405654907226, 76.43702827453613, 38.218514137268066, 19.109257068634033, 9.554628534317017, 4.777314267158508, 2.388657133579254, 1.194328566789627, 0.5971642833948135, 0.29858214169740677];
@@ -163,7 +153,18 @@ MapWidget.prototype = {
 		if (map.options.navigate) {
 			this.activeControl = "navigate";
 		}
-		this.mds = new MapDataSource(this.openlayersMap, this.options);
+		//add attribution control
+		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
+		this.mds = new MapDataSource(this, this.options);
+
+        //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
+        this.openlayersMap.events.register("zoomend", map, function(){
+            map.drawObjectLayer(false);
+			if (map.zoomSlider) {
+				map.zoomSlider.setValue(map.getZoom());
+			}
+			map.core.triggerHighlight([]);
+        });
 
 		if (map.options.olNavigation) {
 			var zoomPanel = new OpenLayers.Control.PanZoom();
@@ -538,8 +539,13 @@ MapWidget.prototype = {
 
 		if (this.zoomSlider) {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
-			this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			this.zoomSlider.setValue(this.getZoom());
 		}
+		
+		Publisher.Subscribe('mapChanged', this, function(mapName) {
+			this.client.setBaseLayerByName(mapName);
+			this.client.gui.setMap();
+		});
 
 	},
 
@@ -550,14 +556,40 @@ MapWidget.prototype = {
 	addBaseLayers : function(layers) {
 		if ( layers instanceof Array) {
 			for (var i in layers ) {
-				var layer = new OpenLayers.Layer.WMS(layers[i].name, layers[i].url, {
-					projection : "EPSG:4326",
-					layers : layers[i].layer,
-					transparent : "true",
-					format : "image/png"
-				}, {
-					isBaseLayer : true
-				});
+				var layer;
+				if (layers[i].type === "XYZ"){
+			        layer = new OpenLayers.Layer.XYZ(
+			        			layers[i].name,
+				                [
+				                 	layers[i].url
+				                ], 
+				                {
+					                sphericalMercator: true,
+					                transitionEffect: "resize",
+					                buffer: 1,
+					                numZoomLevels: 12,
+					                transparent : true,
+					                attribution: layers[i].attribution
+				                }, 
+								{
+									isBaseLayer : true
+								}
+			            );
+				} else {
+					layer = new OpenLayers.Layer.WMS(
+							layers[i].name, layers[i].url, 
+							{
+								projection : "EPSG:4326",
+								layers : layers[i].layer,
+								transparent : "true",
+								format : "image/png"
+							}, 
+							{
+				                attribution: layers[i].attribution,
+								isBaseLayer : true
+							}
+					);
+				}
 				this.baseLayers.push(layer);
 				this.openlayersMap.addLayers([layer]);
 			}
@@ -625,11 +657,26 @@ MapWidget.prototype = {
 				resolutions : this.resolutions
 			}));
 		}
+		if (this.options.osmMapsMapQuest) {
+			this.baseLayers.push(new OpenLayers.Layer.OSM('Open Street Map (MapQuest)', 
+				["http://otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png",
+				 "http://otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"], 
+	            {
+					sphericalMercator : true,
+					zoomOffset : 1,
+					resolutions : this.resolutions
+	            }
+			));
+		}
 		for (var i = 0; i < this.baseLayers.length; i++) {
 			this.openlayersMap.addLayers([this.baseLayers[i]]);
 		}
 		if (this.options.alternativeMap) {
-			this.addBaseLayers([this.options.alternativeMap]);
+			if (!(this.options.alternativeMap instanceof Array))
+				this.options.alternativeMap = [this.options.alternativeMap];
+			this.addBaseLayers(this.options.alternativeMap);
 		}
 		this.setBaseLayerByName(this.options.baseLayer);
 	},
@@ -761,10 +808,10 @@ MapWidget.prototype = {
 				var gapY1 = 0.1 * (maxLat - minLat );
 				var gapY2 = (this.gui.headerHeight / this.gui.mapWindow.offsetHeight + 0.1 ) * (maxLat - minLat );
 				this.openlayersMap.zoomToExtent(new OpenLayers.Bounds(minLon - gapX, minLat - gapY1, maxLon + gapX, maxLat + gapY2));
-				this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+				this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 			}
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		var displayPoints = this.mds.getObjectsByZoom();
@@ -784,7 +831,7 @@ MapWidget.prototype = {
 				this.objectLayer.addFeatures([p.olFeature]);
 			}
 		}
-		var zoomLevel = this.openlayersMap.getZoom();
+		var zoomLevel = this.getZoom();
 		/*
 		 for (var i = 0; i < this.bins[zoomLevel].length; i++) {
 		 var p = this.bins[zoomLevel][i];
@@ -889,7 +936,7 @@ MapWidget.prototype = {
 						}
 					}
 					else {
-						c = GeoTemConfig.getColor(point.search);
+						c = GeoTemConfig.getAverageDatasetColor(point.search,point.elements);
 						shape = 'circle';
 						rotation = 0;
 					}
@@ -1030,12 +1077,12 @@ MapWidget.prototype = {
 			if( graphic.shape == 'square' ){
 				olRadius *= 0.75;
 			}
-		}		
-		if (olRadius != point.olFeature.style.pointRadius) {
-			point.olFeature.style.pointRadius = olRadius;
-			if (polygon.containsPoint(point.feature.geometry)) {
-				this.objectLayer.drawFeature(point.olFeature);
-			}
+		}
+		point.olFeature.style.pointRadius = olRadius;
+		var c = GeoTemConfig.getAverageDatasetColor(point.search, point.overlayElements);
+		point.olFeature.style.fillColor = 'rgb(' + c.r1 + ',' + c.g1 + ',' + c.b1 + ')';
+		if (polygon.containsPoint(point.feature.geometry)) {
+			this.objectLayer.drawFeature(point.olFeature);
 		}
 	},
 
@@ -1162,6 +1209,10 @@ MapWidget.prototype = {
 		this.core.triggerSelection(this.selection);
 		this.filterBar.reset(true);
 	},
+	
+	triggerMapChanged : function(mapName) {
+		Publisher.Publish('mapChanged', mapName, this);
+	},
 
 	/**
 	 * displays connections between data objects
@@ -1257,16 +1308,15 @@ MapWidget.prototype = {
 	 * @param {int} delta the change of zoom levels
 	 */
 	zoom : function(delta) {
-		var zoom = this.openlayersMap.getZoom() + delta;
+		var zoom = this.getZoom() + delta;
 		if (this.openlayersMap.baseLayer instanceof OpenLayers.Layer.WMS) {
 			this.openlayersMap.zoomTo(zoom);
 		} else {
 			this.openlayersMap.zoomTo(Math.round(zoom));
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
-		this.drawObjectLayer(false);
 		return true;
 	},
 
@@ -1307,13 +1357,19 @@ MapWidget.prototype = {
 				this.countrySelectionControl.disable();
 			}
 		}
-		this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+		this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 		this.openlayersMap.setBaseLayer(this.baseLayers[index]);
 		if (this.baseLayers[index].name == 'Open Street Map') {
 			this.gui.osmLink.style.visibility = 'visible';
 		} else {
 			this.gui.osmLink.style.visibility = 'hidden';
 		}
+		if (this.baseLayers[index].name == 'Open Street Map (MapQuest)') {
+			this.gui.osmMapQuestLink.style.visibility = 'visible';
+		} else {
+			this.gui.osmMapQuestLink.style.visibility = 'hidden';
+		}
+		this.triggerMapChanged(this.baseLayers[index].name);
 	},
 
 	//vhz added title to buttons
@@ -1377,7 +1433,21 @@ MapWidget.prototype = {
 	},
 
 	getZoom : function() {
-		return this.openlayersMap.getZoom();
+    	//calculate zoom from active resolution
+        var resolution = this.openlayersMap.getResolution();
+        var zoom = this.resolutions.indexOf(resolution);
+        if (zoom == -1){
+            //fractional zoom
+            for (zoom = 0; zoom < this.resolutions.length; zoom++){
+                if (resolution>=this.resolutions[zoom]){
+                    break;
+                }
+            }
+            if (zoom == this.resolutions.length){
+                zoom--;
+            }
+        }
+        return(zoom);
 	},
 
 	setMarker : function(lon, lat) {
@@ -1418,18 +1488,27 @@ MapWidget.prototype = {
 		var gap = 0;
 		var x_s = this.gui.mapWindow.offsetWidth / 2 - gap;
 		var y_s = this.gui.mapWindow.offsetHeight / 2 - gap;
-		var xDist = Math.abs(p.x - closestPoint.x);
-		var yDist = Math.abs(p.y - closestPoint.y);
-		for (var i = 0; i < zoomLevels; i++) {
-			var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
-			if (xDist / resolution < x_s && yDist / resolution < y_s) {
-				this.openlayersMap.zoomTo(zoomLevels - i - 1);
-				if (this.zoomSlider) {
-					this.zoomSlider.setValue(this.openlayersMap.getZoom());
+		if (typeof closestPoint !== "undefined"){
+			var xDist = Math.abs(p.x - closestPoint.x);
+			var yDist = Math.abs(p.y - closestPoint.y);
+			for (var i = 0; i < zoomLevels; i++) {
+				var resolution = this.openlayersMap.getResolutionForZoom(zoomLevels - i - 1);
+				if (xDist / resolution < x_s && yDist / resolution < y_s) {
+					this.openlayersMap.zoomTo(zoomLevels - i - 1);
+					if (this.zoomSlider) {
+						this.zoomSlider.setValue(this.getZoom());
+					}
+					this.drawObjectLayer(false);
+					break;
 				}
-				this.drawObjectLayer(false);
-				break;
 			}
+		} else {
+			//if there are no points on the map, zoom to max 
+			this.openlayersMap.zoomTo(0);
+			if (this.zoomSlider) {
+				this.zoomSlider.setValue(this.getZoom());
+			}
+			this.drawObjectLayer(false);
 		}
 	},
 
@@ -1438,7 +1517,7 @@ MapWidget.prototype = {
 	},
 
 	getLevelOfDetail : function() {
-		var zoom = Math.floor(this.openlayersMap.getZoom());
+		var zoom = Math.floor(this.getZoom());
 		if (zoom <= 1) {
 			return 0;
 		} else if (zoom <= 3) {
