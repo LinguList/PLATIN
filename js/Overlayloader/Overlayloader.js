@@ -56,6 +56,7 @@ Overlayloader.prototype = {
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
+		this.addMapsForFreeWaterLayer();
 		this.addConfigLoader();
 		
 		// trigger change event on the select so 
@@ -307,6 +308,23 @@ Overlayloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
+	},
+	
+	addMapsForFreeWaterLayer : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='MapsForFreeWaterLayerLoader'>Water Layer (Maps-For-Free)</option>");
+		
+		this.MapsForFreeWaterTab = document.createElement("div");
+		$(this.MapsForFreeWaterTab).attr("id","MapsForFreeWaterLayerLoader");
+
+		this.loadMapsForFreeWaterLayerButton = document.createElement("button");
+		$(this.loadMapsForFreeWaterLayerButton).text("load Layer");
+		$(this.MapsForFreeWaterTab).append(this.loadMapsForFreeWaterLayerButton);
+
+		$(this.loadMapsForFreeWaterLayerButton).click($.proxy(function(){
+			this.distributeXYZ("http://maps-for-free.com/layer/water/z${z}/row${y}/${z}_${x}-${y}.gif",1);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.MapsForFreeWaterTab);
 	},
 	
 	addConfigLoader : function() {
