@@ -29,7 +29,7 @@
  *
  * @param {Object} widget either a map, time or table widget
  */
-WidgetWrapper = function() {
+WidgetWrapper = function(div) {
 
 	var wrapper = this;
 
@@ -92,5 +92,11 @@ WidgetWrapper = function() {
 	this.triggerRise = function(id) {
 		Publisher.Publish('rise', id);
 	};
+	
+	$(div).resize(function(){
+		if ( typeof wrapper.widget != 'undefined' && typeof wrapper.widget.gui != 'undefined' && typeof wrapper.widget.gui.resize != 'undefined' ) {
+			wrapper.widget.gui.resize();
+		}
+	});
 
 };

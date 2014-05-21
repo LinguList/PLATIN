@@ -32,6 +32,7 @@ lib/flot/jquery.flot.resize.js
 lib/flot/jquery.flot.selection.js
 lib/flot/jquery.flot.time.js
 lib/flot/jquery.flot.tooltip.js
+lib/gridster/jquery.gridster.min.js
 lib/SimileRemnants.js
 js/Util/Tooltips.js
 js/GeoTemConfig.js
@@ -92,6 +93,7 @@ js/Build/Minifier/final.js)
 # css sources
 Cssfiles = %w(lib/openlayers/theme/default/style.css
 lib/jquery-ui/jquery-ui-1.10.3.custom.css
+lib/gridster/jquery.gridster.min.css
 css/style.css)
 
 def cat_files(outputfile, basename)

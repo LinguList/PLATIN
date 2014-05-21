@@ -45,16 +45,13 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 	$(this.sliderTable).height("49px");
 	div.appendChild(this.sliderTable);
 	
-	this.plotDIVHeight = $(this.fuzzyTimelineContainer).height()-$(this.sliderTable).height();
 	var plotScrollContainer = $("<div></div>");
 	plotScrollContainer.css("overflow-x","auto");
 	plotScrollContainer.css("overflow-y","hidden");
 	plotScrollContainer.width("100%");
-	plotScrollContainer.height(this.plotDIVHeight);
 	$(div).append(plotScrollContainer);
 	this.plotDiv = document.createElement("div");
 	$(this.plotDiv).width("100%");
-	$(this.plotDiv).height(this.plotDIVHeight);
 	plotScrollContainer.append(this.plotDiv);
 	if (this.parent.options.showRangePiechart){
 		this.rangePiechartDiv = document.createElement("div");
@@ -62,9 +59,15 @@ function FuzzyTimelineGui(fuzzyTimelineWidget, div, options) {
 		//alter plot div width (leave space for piechart)
 		$(this.plotDiv).width("75%");
 		$(this.rangePiechartDiv).width("25%");
-		$(this.rangePiechartDiv).height(plotDIVHeight);
 		div.appendChild(this.rangePiechartDiv);
 	}
+	
+	$(this.fuzzyTimelineContainer).resize(function(){
+		fuzzyTimelineGui.plotDIVHeight = $(fuzzyTimelineGui.fuzzyTimelineContainer).height()-$(fuzzyTimelineGui.sliderTable).height();
+		$(fuzzyTimelineGui.plotDiv).height(fuzzyTimelineGui.plotDIVHeight);
+		$(fuzzyTimelineGui.rangePiechartDiv).height(fuzzyTimelineGui.plotDIVHeight);
+	});
+	$(this.fuzzyTimelineContainer).resize();
 };
 
 FuzzyTimelineGui.prototype = {

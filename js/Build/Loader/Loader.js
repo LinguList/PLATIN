@@ -139,7 +139,22 @@ GeoTemCoLoader = {
 			
 			$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/jquery-ui/jquery-ui-1.10.3.custom.css') );
 			
-			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadTimeplot);
+			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadGridster);
+		}
+		else {
+			GeoTemCoLoader.loadGridster();
+		}
+	},
+
+	loadGridster : function() {
+		if (typeof jQuery.gridster == 'undefined') {
+			var gridsterFiles = [{
+				url : GeoTemCoLoader.urlPrefix + 'lib/gridster/jquery.gridster.min.js'
+			}];
+			
+			$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/gridster/jquery.gridster.min.css') );
+			
+			(new DynaJsLoader()).loadScripts(gridsterFiles, GeoTemCoLoader.loadTimeplot);
 		}
 		else {
 			GeoTemCoLoader.loadTimeplot();

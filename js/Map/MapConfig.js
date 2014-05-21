@@ -31,7 +31,7 @@ function MapConfig(options) {
 
 	this.options = {
 		mapWidth : false, // false or desired width css definition for the map
-		mapHeight : '580px', // false or desired height css definition for the map
+		mapHeight : false, // false or desired height css definition for the map
 		mapTitle : 'GeoTemCo Map View', // title will be shown in map header
 		mapIndex : 0, // index = position in location array; for multiple locations the 2nd map refers to index 1
 		alternativeMap :  [
