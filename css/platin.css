@@ -2966,6 +2966,14 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/pause-disabled.png");
 }
 
+.lockDeactivated {
+	background-image: url("../images/lock-deactivated.png");
+}
+
+.lockActivated {
+	background-image: url("../images/lock-activated.png");
+}
+
 .dragControl {
 	display: inline-block;
 	height: 19px;
