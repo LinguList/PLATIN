@@ -41516,11 +41516,13 @@ PieChart.prototype = {
 					//disregard empty cells
 					if ( (typeof columnData === "undefined") || (columnData == "") )
 						return;
+					
+					var weight = this.weight;
 				
 					if (typeof chartDataCounter[columnData] === "undefined")
-						chartDataCounter[columnData] = 1;
+						chartDataCounter[columnData] = weight;
 					else
-						chartDataCounter[columnData]++;
+						chartDataCounter[columnData] += weight;
 				});
 				
 				var chartData = [];
