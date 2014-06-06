@@ -30558,7 +30558,7 @@ GeoTemConfig.convertCsv = function(text){
 				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
-			else if (usedHeaders[j] == expectedHeaders[7]) {
+			else if (usedHeaders[j] == expectedHeaders[8]) {
 				dataObject["weight"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
