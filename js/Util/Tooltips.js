@@ -120,7 +120,8 @@ var Tooltips = {
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
 		"invertSelectionHelp" : "Invert the current selection",
-		"colorShapeDatasetHelp" : "change color or shape of dataset"
+		"colorShapeDatasetHelp" : "change color or shape of dataset",
+		"lockMap" : "lock the map in this state"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -213,6 +214,7 @@ var Tooltips = {
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
 		"invertSelectionHelp" : "Jetzige Selektion umkehren",
-		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern",
+		"lockMap" : "Karte in diesem Zustand halten."
 	}
 }

@@ -148,7 +148,7 @@ Overlayloader.prototype = {
 		this.parent.gui.refreshOverlayList();
 	},
 
-	distributeXYZ : function(xyzURL) {
+	distributeXYZ : function(xyzURL,zoomOffset) {
 		var newOverlay = new Object();
 		newOverlay.name = xyzURL;
 		newOverlay.layers = [];

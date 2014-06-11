@@ -30064,7 +30064,8 @@ var Tooltips = {
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
 		"invertSelectionHelp" : "Invert the current selection",
-		"colorShapeDatasetHelp" : "change color or shape of dataset"
+		"colorShapeDatasetHelp" : "change color or shape of dataset",
+		"lockMap" : "lock the map in this state"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -30157,7 +30158,8 @@ var Tooltips = {
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
 		"invertSelectionHelp" : "Jetzige Selektion umkehren",
-		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern",
+		"lockMap" : "Karte in diesem Zustand halten."
 	}
 }
 /*
@@ -30558,7 +30560,7 @@ GeoTemConfig.convertCsv = function(text){
 				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
-			else if (usedHeaders[j] == expectedHeaders[7]) {
+			else if (usedHeaders[j] == expectedHeaders[8]) {
 				dataObject["weight"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
@@ -32819,6 +32821,21 @@ function MapGui(map, div, options, iid) {
 		mapSum.appendChild(this.mapElements);
 		tools.appendChild(mapSum);
 	}
+	
+	this.lockTitle = document.createElement("td");
+	titles.appendChild(this.lockTitle);
+	this.lockIcon = document.createElement("td");
+	var lockButton = document.createElement("div");
+	$(lockButton).addClass('mapControl');
+	var activateLock = function() {
+		map.navigation.deactivate();
+	}
+	var deactivateLock = function() {
+		map.navigation.activate();
+	}
+	var lockMapControl = new MapControl(this.map, lockButton, 'lock', activateLock, deactivateLock);
+	tools.appendChild(lockMapControl.button);
+
 
 	var gui = this;
 	if (navigator.geolocation && options.geoLocation) {
@@ -40837,7 +40854,7 @@ Overlayloader.prototype = {
 		this.parent.gui.refreshOverlayList();
 	},
 
-	distributeXYZ : function(xyzURL) {
+	distributeXYZ : function(xyzURL,zoomOffset) {
 		var newOverlay = new Object();
 		newOverlay.name = xyzURL;
 		newOverlay.layers = [];
@@ -41504,11 +41521,13 @@ PieChart.prototype = {
 					//disregard empty cells
 					if ( (typeof columnData === "undefined") || (columnData == "") )
 						return;
+					
+					var weight = this.weight;
 				
 					if (typeof chartDataCounter[columnData] === "undefined")
-						chartDataCounter[columnData] = 1;
+						chartDataCounter[columnData] = weight;
 					else
-						chartDataCounter[columnData]++;
+						chartDataCounter[columnData] += weight;
 				});
 				
 				var chartData = [];
