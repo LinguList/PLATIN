@@ -204,7 +204,8 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		if (selection.valid())
+		if ((typeof selection.objects !== "undefined")&&
+			(selection.objects.length == GeoTemConfig.datasets.length))
 			fuzzyTimeline.selected = selection.objects;
 		else 
 			delete fuzzyTimeline.selected;
