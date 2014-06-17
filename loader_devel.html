@@ -89,13 +89,22 @@
     	});
 
     	var width = $(window).width()*0.45;
+    	var resizeWidget;
 		var gridster = $(".gridster ul").gridster({
 			widget_margins: [10, 10],
 			widget_base_dimensions: [width, width/10],
 			resize: {
 				enabled: true,
 				max_size: [2, 15],
-				min_size: [1, 1]
+				min_size: [1, 1],
+				start: function(event){
+					resizeWidget = $(event.target).parent();
+					resizeWidget.hide();
+				},
+				stop: function(event){
+					resizeWidget.show();
+					resizeWidget = null;
+				}
 			}
 		});
     	 
