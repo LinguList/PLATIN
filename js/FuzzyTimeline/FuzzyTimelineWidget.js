@@ -205,9 +205,17 @@ FuzzyTimelineWidget.prototype = {
 			return;
 		}
 		if ((typeof selection.objects !== "undefined")&&
-			(selection.objects.length == GeoTemConfig.datasets.length))
-			fuzzyTimeline.selected = selection.objects;
-		else 
+			(selection.objects.length == GeoTemConfig.datasets.length)){
+			var objectCount = 0;
+			for (var i=0, il=selection.objects.length; i < il; i++){
+				objectCount += selection.objects[i].length;
+			}
+			if (objectCount > 0){
+				fuzzyTimeline.selected = selection.objects;
+			} else {
+				delete fuzzyTimeline.selected;
+			}
+		} else 
 			delete fuzzyTimeline.selected;
 		if (fuzzyTimeline.viewMode === "density")
 			this.density.selectionChanged(fuzzyTimeline.selected);
