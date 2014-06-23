@@ -634,12 +634,11 @@ FuzzyTimelineWidget.prototype = {
 		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
-			//leave place for the scrollbar
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		} else{
 			$(fuzzyTimeline.gui.plotDiv).width("100%");
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
 		}
+		//leave place for the scrollbar
+		$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		
 		//fit handles
 		//this does not make much sense, as the selections are _completely_ different
