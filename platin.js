@@ -31597,7 +31597,28 @@ CircleObject.prototype = {
  * @param {Object} parent parent to call filter functions
  * @param {HTML object} parentDiv div to append filter buttons
  */
+FilterBarFactory = {
+	filterBarArray :[],
+	push : function(newFilterBar){
+		FilterBarFactory.filterBarArray.push(newFilterBar);
+	},
+	resetAll : function(show) {
+		$(FilterBarFactory.filterBarArray).each(function(){
+			if (show) {
+				this.filter.setAttribute('class', 'smallButton filter');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverse');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
+			} else {
+				this.filter.setAttribute('class', 'smallButton filterDisabled');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
+			}
+		});
+	}
+};
+
 function FilterBar(parent, parentDiv) {
+	FilterBarFactory.push(this);
 
 	var bar = this;
 
@@ -31632,15 +31653,7 @@ function FilterBar(parent, parentDiv) {
 	}
 
 	this.reset = function(show) {
-		if (show) {
-			this.filter.setAttribute('class', 'smallButton filter');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverse');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
-		} else {
-			this.filter.setAttribute('class', 'smallButton filterDisabled');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
-		}
+		FilterBarFactory.resetAll(show);
 	};
 
 };
@@ -40261,9 +40274,18 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		if (selection.valid())
-			fuzzyTimeline.selected = selection.objects;
-		else 
+		if ((typeof selection.objects !== "undefined")&&
+			(selection.objects.length == GeoTemConfig.datasets.length)){
+			var objectCount = 0;
+			for (var i=0, il=selection.objects.length; i < il; i++){
+				objectCount += selection.objects[i].length;
+			}
+			if (objectCount > 0){
+				fuzzyTimeline.selected = selection.objects;
+			} else {
+				delete fuzzyTimeline.selected;
+			}
+		} else 
 			delete fuzzyTimeline.selected;
 		if (fuzzyTimeline.viewMode === "density")
 			this.density.selectionChanged(fuzzyTimeline.selected);
@@ -40682,12 +40704,11 @@ FuzzyTimelineWidget.prototype = {
 		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
-			//leave place for the scrollbar
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		} else{
 			$(fuzzyTimeline.gui.plotDiv).width("100%");
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
 		}
+		//leave place for the scrollbar
+		$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		
 		//fit handles
 		//this does not make much sense, as the selections are _completely_ different
