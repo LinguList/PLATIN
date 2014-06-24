@@ -30,7 +30,28 @@
  * @param {Object} parent parent to call filter functions
  * @param {HTML object} parentDiv div to append filter buttons
  */
+FilterBarFactory = {
+	filterBarArray :[],
+	push : function(newFilterBar){
+		FilterBarFactory.filterBarArray.push(newFilterBar);
+	},
+	resetAll : function(show) {
+		$(FilterBarFactory.filterBarArray).each(function(){
+			if (show) {
+				this.filter.setAttribute('class', 'smallButton filter');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverse');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
+			} else {
+				this.filter.setAttribute('class', 'smallButton filterDisabled');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
+			}
+		});
+	}
+};
+
 function FilterBar(parent, parentDiv) {
+	FilterBarFactory.push(this);
 
 	var bar = this;
 
@@ -65,15 +86,7 @@ function FilterBar(parent, parentDiv) {
 	}
 
 	this.reset = function(show) {
-		if (show) {
-			this.filter.setAttribute('class', 'smallButton filter');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverse');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
-		} else {
-			this.filter.setAttribute('class', 'smallButton filterDisabled');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
-		}
+		FilterBarFactory.resetAll(show);
 	};
 
 };

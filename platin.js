@@ -30062,7 +30062,8 @@ var Tooltips = {
 		"removeDatasetHelp" : "Remove this dataset",
 		"exportDatasetHelp" : "Export this dataset to a KML file",
 		"invertSelectionHelp" : "Invert the current selection",
-		"colorShapeDatasetHelp" : "change color or shape of dataset"
+		"colorShapeDatasetHelp" : "change color or shape of dataset",
+		"lockMap" : "lock the map in this state"
 	},
 	"de" : {
 		"locationType" : "Ortsfacette",
@@ -30155,7 +30156,8 @@ var Tooltips = {
 		"removeDatasetHelp" : "Diesen Datensatz entfernen",
 		"exportDatasetHelp" : "Diesen Datensatz in KML Datei exportieren",
 		"invertSelectionHelp" : "Jetzige Selektion umkehren",
-		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern"
+		"colorShapeDatasetHelp" : "Farbe oder Form des Datensatzes ändern",
+		"lockMap" : "Karte in diesem Zustand halten."
 	}
 }
 /*
@@ -30556,7 +30558,7 @@ GeoTemConfig.convertCsv = function(text){
 				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
-			else if (usedHeaders[j] == expectedHeaders[7]) {
+			else if (usedHeaders[j] == expectedHeaders[8]) {
 				dataObject["weight"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
@@ -31595,7 +31597,28 @@ CircleObject.prototype = {
  * @param {Object} parent parent to call filter functions
  * @param {HTML object} parentDiv div to append filter buttons
  */
+FilterBarFactory = {
+	filterBarArray :[],
+	push : function(newFilterBar){
+		FilterBarFactory.filterBarArray.push(newFilterBar);
+	},
+	resetAll : function(show) {
+		$(FilterBarFactory.filterBarArray).each(function(){
+			if (show) {
+				this.filter.setAttribute('class', 'smallButton filter');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverse');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
+			} else {
+				this.filter.setAttribute('class', 'smallButton filterDisabled');
+				this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
+				this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
+			}
+		});
+	}
+};
+
 function FilterBar(parent, parentDiv) {
+	FilterBarFactory.push(this);
 
 	var bar = this;
 
@@ -31630,15 +31653,7 @@ function FilterBar(parent, parentDiv) {
 	}
 
 	this.reset = function(show) {
-		if (show) {
-			this.filter.setAttribute('class', 'smallButton filter');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverse');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancel');
-		} else {
-			this.filter.setAttribute('class', 'smallButton filterDisabled');
-			this.filterInverse.setAttribute('class', 'smallButton filterInverseDisabled');
-			this.cancelSelection.setAttribute('class', 'smallButton filterCancelDisabled');
-		}
+		FilterBarFactory.resetAll(show);
 	};
 
 };
@@ -32817,6 +32832,21 @@ function MapGui(map, div, options, iid) {
 		mapSum.appendChild(this.mapElements);
 		tools.appendChild(mapSum);
 	}
+	
+	this.lockTitle = document.createElement("td");
+	titles.appendChild(this.lockTitle);
+	this.lockIcon = document.createElement("td");
+	var lockButton = document.createElement("div");
+	$(lockButton).addClass('mapControl');
+	var activateLock = function() {
+		map.navigation.deactivate();
+	}
+	var deactivateLock = function() {
+		map.navigation.activate();
+	}
+	var lockMapControl = new MapControl(this.map, lockButton, 'lock', activateLock, deactivateLock);
+	tools.appendChild(lockMapControl.button);
+
 
 	var gui = this;
 	if (navigator.geolocation && options.geoLocation) {
@@ -38177,7 +38207,7 @@ DataloaderWidget.prototype = {
 		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
-				var datasetID = parseInt(paramName.substr(5));
+				var datasetID = parseInt(paramName.substr(6));
 				var dataset;
 				if (isNaN(datasetID)){
 					var dataset;
@@ -40244,9 +40274,18 @@ FuzzyTimelineWidget.prototype = {
 		if( !GeoTemConfig.selectionEvents ){
 			return;
 		}
-		if (selection.valid())
-			fuzzyTimeline.selected = selection.objects;
-		else 
+		if ((typeof selection.objects !== "undefined")&&
+			(selection.objects.length == GeoTemConfig.datasets.length)){
+			var objectCount = 0;
+			for (var i=0, il=selection.objects.length; i < il; i++){
+				objectCount += selection.objects[i].length;
+			}
+			if (objectCount > 0){
+				fuzzyTimeline.selected = selection.objects;
+			} else {
+				delete fuzzyTimeline.selected;
+			}
+		} else 
 			delete fuzzyTimeline.selected;
 		if (fuzzyTimeline.viewMode === "density")
 			this.density.selectionChanged(fuzzyTimeline.selected);
@@ -40665,12 +40704,11 @@ FuzzyTimelineWidget.prototype = {
 		fuzzyTimeline.zoomFactor = zoomFactor;
 		if (zoomFactor > 1){
 			$(fuzzyTimeline.gui.plotDiv).width(zoomFactor*100+"%");
-			//leave place for the scrollbar
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		} else{
 			$(fuzzyTimeline.gui.plotDiv).width("100%");
-			$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight);
 		}
+		//leave place for the scrollbar
+		$(fuzzyTimeline.gui.plotDiv).height(fuzzyTimeline.gui.plotDIVHeight-20);
 		
 		//fit handles
 		//this does not make much sense, as the selections are _completely_ different
@@ -40740,6 +40778,7 @@ Overlayloader.prototype = {
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
+		this.addMapsForFreeWaterLayer();
 		this.addConfigLoader();
 		
 		// trigger change event on the select so 
@@ -40831,7 +40870,7 @@ Overlayloader.prototype = {
 		this.parent.gui.refreshOverlayList();
 	},
 
-	distributeXYZ : function(xyzURL) {
+	distributeXYZ : function(xyzURL,zoomOffset) {
 		var newOverlay = new Object();
 		newOverlay.name = xyzURL;
 		newOverlay.layers = [];
@@ -40845,14 +40884,15 @@ Overlayloader.prototype = {
                 transitionEffect: "resize",
                 buffer: 1,
                 numZoomLevels: 12,
-                transparent : true
+                transparent : true,
+                isBaseLayer : false,
+                zoomOffset:zoomOffset?zoomOffset:0
               }
             );
 
 		newLayer.setIsBaseLayer(false);
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
-			this.openlayersMap.setBaseLayer(newLayer);
 			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 		});
 		
@@ -40986,10 +41026,27 @@ Overlayloader.prototype = {
 		$(this.RomanEmpireLoaderTab).append(this.loadRomanEmpireButton);
 
 		$(this.loadRomanEmpireButton).click($.proxy(function(){
-			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png");
+			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png",1);
 		},this));
 
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
+	},
+	
+	addMapsForFreeWaterLayer : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='MapsForFreeWaterLayerLoader'>Water Layer (Maps-For-Free)</option>");
+		
+		this.MapsForFreeWaterTab = document.createElement("div");
+		$(this.MapsForFreeWaterTab).attr("id","MapsForFreeWaterLayerLoader");
+
+		this.loadMapsForFreeWaterLayerButton = document.createElement("button");
+		$(this.loadMapsForFreeWaterLayerButton).text("load Layer");
+		$(this.MapsForFreeWaterTab).append(this.loadMapsForFreeWaterLayerButton);
+
+		$(this.loadMapsForFreeWaterLayerButton).click($.proxy(function(){
+			this.distributeXYZ("http://maps-for-free.com/layer/water/z${z}/row${y}/${z}_${x}-${y}.gif",1);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.MapsForFreeWaterTab);
 	},
 	
 	addConfigLoader : function() {
@@ -41480,11 +41537,13 @@ PieChart.prototype = {
 					//disregard empty cells
 					if ( (typeof columnData === "undefined") || (columnData == "") )
 						return;
+					
+					var weight = this.weight;
 				
 					if (typeof chartDataCounter[columnData] === "undefined")
-						chartDataCounter[columnData] = 1;
+						chartDataCounter[columnData] = weight;
 					else
-						chartDataCounter[columnData]++;
+						chartDataCounter[columnData] += weight;
 				});
 				
 				var chartData = [];

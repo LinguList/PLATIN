@@ -149,7 +149,7 @@ DataloaderWidget.prototype = {
 		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
-				var datasetID = parseInt(paramName.substr(5));
+				var datasetID = parseInt(paramName.substr(6));
 				var dataset;
 				if (isNaN(datasetID)){
 					var dataset;
