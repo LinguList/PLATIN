@@ -274,6 +274,12 @@ GeoTemCoLoader = {
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Placetable/' + 'Placetable.js',
 		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlayConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlayWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/LineOverlay/' + 'LineOverlay.js',
+		}, {			
 			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineConfig.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/FuzzyTimeline/' + 'FuzzyTimelineGui.js',

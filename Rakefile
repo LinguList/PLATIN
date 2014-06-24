@@ -7,7 +7,7 @@ CSS_FILE='css/platin.css'
 
 task :default => :all
 
-task :all => [:clean, COMPRESSED_OUTPUT_FILE, OUTPUT_FILE, CSS_FILE, :copyJqueryUIImageDirectory]
+task :all => [COMPRESSED_OUTPUT_FILE, OUTPUT_FILE, CSS_FILE, :copyJqueryUIImageDirectory]
 
 # javascript sources
 Files = %w(js/Build/Minifier/basic.js
@@ -75,6 +75,9 @@ js/Storytelling/Storytelling.js
 js/Storytelling/StorytellingConfig.js
 js/Storytelling/StorytellingGui.js
 js/Storytelling/StorytellingWidget.js
+js/LineOverlay/LineOverlay.js
+js/LineOverlay/LineOverlayConfig.js
+js/LineOverlay/LineOverlayWidget.js
 js/Util/DataObject.js
 js/Util/Dataset.js
 js/Time/TimeDataSource.js
