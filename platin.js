@@ -40129,6 +40129,8 @@ DataloaderWidget.prototype = {
 					}
 					setTimeout(function(){parseParam(paramNr+1)},1);
 				});
+			} else {
+				setTimeout(function(){parseParam(paramNr+1)},1);
 			}
 		};
 		
