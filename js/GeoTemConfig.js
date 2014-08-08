@@ -396,7 +396,7 @@ GeoTemConfig.convertCsv = function(text){
 				tableContent["TimeSpan:end"] = ""+innerArray[j];
 			}   						
 			/* weight */
-			else if (usedHeaders[j] == expectedHeaders[7]) {
+			else if (usedHeaders[j] == expectedHeaders[8]) {
 				dataObject["weight"] = ""+innerArray[j];
 			}   						
 			/* Longitude */                                                          
@@ -1209,8 +1209,12 @@ GeoTemConfig.renameColumns = function(dataset, renames){
 	//actually create new dataObjects
 	for (var i = 0; i < dataset.objects.length; i++){
 		var dataObject = dataset.objects[i];
+		//save index
+		var index = dataObject.index;
 
 		dataset.objects[i] = new DataObject(dataObject.name, dataObject.description, dataObject.locations, 
 			dataObject.dates, dataObject.weight, dataObject.tableContent, dataObject.projection);
+		//set index
+		dataset.objects[i].setIndex(index);
 	}
 };

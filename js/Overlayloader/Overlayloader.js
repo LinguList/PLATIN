@@ -56,6 +56,7 @@ Overlayloader.prototype = {
 		this.addArcGISWMSLoader();
 		this.addXYZLoader();
 		this.addRomanEmpireLoader();
+		this.addMapsForFreeWaterLayer();
 		this.addConfigLoader();
 		
 		// trigger change event on the select so 
@@ -147,7 +148,7 @@ Overlayloader.prototype = {
 		this.parent.gui.refreshOverlayList();
 	},
 
-	distributeXYZ : function(xyzURL) {
+	distributeXYZ : function(xyzURL,zoomOffset) {
 		var newOverlay = new Object();
 		newOverlay.name = xyzURL;
 		newOverlay.layers = [];
@@ -161,14 +162,15 @@ Overlayloader.prototype = {
                 transitionEffect: "resize",
                 buffer: 1,
                 numZoomLevels: 12,
-                transparent : true
+                transparent : true,
+                isBaseLayer : false,
+                zoomOffset:zoomOffset?zoomOffset:0
               }
             );
 
 		newLayer.setIsBaseLayer(false);
 		$(this.attachedMapWidgets).each(function(){
 			this.openlayersMap.addLayer(newLayer);
-			this.openlayersMap.setBaseLayer(newLayer);
 			newOverlay.layers.push({map:this.openlayersMap,layer:newLayer});
 		});
 		
@@ -302,10 +304,27 @@ Overlayloader.prototype = {
 		$(this.RomanEmpireLoaderTab).append(this.loadRomanEmpireButton);
 
 		$(this.loadRomanEmpireButton).click($.proxy(function(){
-			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png");
+			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png",1);
 		},this));
 
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
+	},
+	
+	addMapsForFreeWaterLayer : function() {
+		$(this.parent.gui.loaderTypeSelect).append("<option value='MapsForFreeWaterLayerLoader'>Water Layer (Maps-For-Free)</option>");
+		
+		this.MapsForFreeWaterTab = document.createElement("div");
+		$(this.MapsForFreeWaterTab).attr("id","MapsForFreeWaterLayerLoader");
+
+		this.loadMapsForFreeWaterLayerButton = document.createElement("button");
+		$(this.loadMapsForFreeWaterLayerButton).text("load Layer");
+		$(this.MapsForFreeWaterTab).append(this.loadMapsForFreeWaterLayerButton);
+
+		$(this.loadMapsForFreeWaterLayerButton).click($.proxy(function(){
+			this.distributeXYZ("http://maps-for-free.com/layer/water/z${z}/row${y}/${z}_${x}-${y}.gif",1);
+		},this));
+
+		$(this.parent.gui.loaders).append(this.MapsForFreeWaterTab);
 	},
 	
 	addConfigLoader : function() {
