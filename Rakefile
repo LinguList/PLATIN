@@ -20,10 +20,10 @@ lib/jquery/jquery-deparam.min.js
 lib/jquery/jquery.remember.js
 lib/jquery/purl.min.js
 lib/jquery-ui/jquery-ui-1.10.3.custom.js
-lib/jszip/jszip.js
-lib/jszip/jszip-deflate.js
-lib/jszip/jszip-inflate.js
-lib/jszip/jszip-load.js
+lib/jszip/jszip.min.js
+lib/sheetjs/shim.js
+lib/sheetjs/xls.min.js
+lib/sheetjs/xlsx.js
 lib/momentjs/moment.js
 lib/ucsv/ucsv-1.1.0-min.js
 lib/flot/jquery.flot.js
