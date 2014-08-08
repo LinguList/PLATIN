@@ -536,6 +536,26 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
 };
 
 /**
+ * loads a binary file  
+ * @param {String} url of the file to load
+ * @return binary data
+ */
+GeoTemConfig.getBinary = function(url,asyncFunc) {
+	var async = true;
+
+	var req = new XMLHttpRequest();
+    req.open("GET",url,async);
+    req.responseType = "arraybuffer";
+    
+    var binaryData;
+	req.onload = function() {
+		var arrayBuffer = req.response;
+		asyncFunc(arrayBuffer);
+    };
+	req.send();
+};
+
+/**
  * returns a Date and a SimileAjax.DateTime granularity value for a given XML time
  * @param {String} xmlTime the XML time as String
  * @return JSON object with a Date and a SimileAjax.DateTime granularity
