@@ -12,7 +12,7 @@ PLATIN is a HTML5-based tool for presentation and analysis of spatial and tempor
 The projects starting goal was to bring the functionality of the [DARIAH](http://www.dariah.eu) [GeoBrowser](http://dev2.dariah.eu/e4d/‎) to [GeoTemCo](http://www.informatik.uni-leipzig.de/geotemco/). 
 
 Which added the following functionality:
-* CSV loading
+* CSV/XLS/XLSX loading
 * loading of URL-specified datasets
 * deletion of datasets and refining of datasets
 * exporting of datasets (to KML or CSV files)
