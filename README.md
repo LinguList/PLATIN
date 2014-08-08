@@ -28,7 +28,7 @@ The widget-architecture of GeoTemCo led to the creation of following additional 
 
 ### Dataset loading via URL
 
-Datasets in KML/CSV/JSON format can be loaded via URL. Those attributes of those datasets can be changed, if they don't follow the PLATIN syntax style. Also datasets can be filtered via URL.
+Datasets in KML/CSV/XLS/XLSX/JSON format can be loaded via URL. Those attributes of those datasets can be changed, if they don't follow the PLATIN syntax style. Also datasets can be filtered via URL.
 
 ### Pie Charts
 
