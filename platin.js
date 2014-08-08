@@ -18303,3975 +18303,5571 @@ $.effects.effect.transfer = function( o, done ) {
 };
 
 })(jQuery);
-/**
+/*!
 
 JSZip - A Javascript class for generating and reading zip files
 <http://stuartk.com/jszip>
 
-(c) 2009-2012 Stuart Knightley <stuart [at] stuartk.com>
-Dual licenced under the MIT license or GPLv3. See LICENSE.markdown.
-
-Usage:
-   zip = new JSZip();
-   zip.file("hello.txt", "Hello, World!").add("tempfile", "nothing");
-   zip.folder("images").file("smile.gif", base64Data, {base64: true});
-   zip.file("Xmas.txt", "Ho ho ho !", {date : new Date("December 25, 2007 00:00:01")});
-   zip.remove("tempfile");
-
-   base64zip = zip.generate();
-
-**/
-
-/**
- * Representation a of zip file in js
- * @constructor
- * @param {String=|ArrayBuffer=|Uint8Array=} data the data to load, if any (optional).
- * @param {Object=} options the options for creating this objects (optional).
- */
-var JSZip = function(data, options) {
-   // object containing the files :
-   // {
-   //   "folder/" : {...},
-   //   "folder/data.txt" : {...}
-   // }
-   this.files = {};
-
-   // Where we are in the hierarchy
-   this.root = "";
-
-   if (data) {
-      this.load(data, options);
-   }
-};
-
-JSZip.signature = {
-   LOCAL_FILE_HEADER : "\x50\x4b\x03\x04",
-   CENTRAL_FILE_HEADER : "\x50\x4b\x01\x02",
-   CENTRAL_DIRECTORY_END : "\x50\x4b\x05\x06",
-   ZIP64_CENTRAL_DIRECTORY_LOCATOR : "\x50\x4b\x06\x07",
-   ZIP64_CENTRAL_DIRECTORY_END : "\x50\x4b\x06\x06",
-   DATA_DESCRIPTOR : "\x50\x4b\x07\x08"
-};
-
-// Default properties for a new file
-JSZip.defaults = {
-   base64: false,
-   binary: false,
-   dir: false,
-   date: null
-};
-
-
-JSZip.prototype = (function () {
-   /**
-    * A simple object representing a file in the zip file.
-    * @constructor
-    * @param {string} name the name of the file
-    * @param {string} data the data
-    * @param {Object} options the options of the file
-    */
-   var ZipObject = function (name, data, options) {
-      this.name = name;
-      this.data = data;
-      this.options = options;
-   };
-
-   ZipObject.prototype = {
-      /**
-       * Return the content as UTF8 string.
-       * @return {string} the UTF8 string.
-       */
-      asText : function () {
-         var result = this.data;
-         if (result === null || typeof result === "undefined") {
-            return "";
-         }
-         if (this.options.base64) {
-            result = JSZipBase64.decode(result);
-         }
-         if (this.options.binary) {
-            result = JSZip.prototype.utf8decode(result);
-         }
-         return result;
-      },
-      /**
-       * Returns the binary content.
-       * @return {string} the content as binary.
-       */
-      asBinary : function () {
-         var result = this.data;
-         if (result === null || typeof result === "undefined") {
-            return "";
-         }
-         if (this.options.base64) {
-            result = JSZipBase64.decode(result);
-         }
-         if (!this.options.binary) {
-            result = JSZip.prototype.utf8encode(result);
-         }
-         return result;
-      },
-      /**
-       * Returns the content as an Uint8Array.
-       * @return {Uint8Array} the content as an Uint8Array.
-       */
-      asUint8Array : function () {
-         return JSZip.utils.string2Uint8Array(this.asBinary());
-      },
-      /**
-       * Returns the content as an ArrayBuffer.
-       * @return {ArrayBuffer} the content as an ArrayBufer.
-       */
-      asArrayBuffer : function () {
-         return JSZip.utils.string2Uint8Array(this.asBinary()).buffer;
-      }
-   };
-
-   /**
-    * Transform an integer into a string in hexadecimal.
-    * @private
-    * @param {number} dec the number to convert.
-    * @param {number} bytes the number of bytes to generate.
-    * @returns {string} the result.
-    */
-   var decToHex = function(dec, bytes) {
-      var hex = "", i;
-      for(i = 0; i < bytes; i++) {
-         hex += String.fromCharCode(dec&0xff);
-         dec=dec>>>8;
-      }
-      return hex;
-   };
-
-   /**
-    * Merge the objects passed as parameters into a new one.
-    * @private
-    * @param {...Object} var_args All objects to merge.
-    * @return {Object} a new object with the data of the others.
-    */
-   var extend = function () {
-      var result = {}, i, attr;
-      for (i = 0; i < arguments.length; i++) { // arguments is not enumerable in some browsers
-         for (attr in arguments[i]) {
-            if (arguments[i].hasOwnProperty(attr) && typeof result[attr] === "undefined") {
-               result[attr] = arguments[i][attr];
-            }
-         }
-      }
-      return result;
-   };
-
-   /**
-    * Transforms the (incomplete) options from the user into the complete
-    * set of options to create a file.
-    * @private
-    * @param {Object} o the options from the user.
-    * @return {Object} the complete set of options.
-    */
-   var prepareFileAttrs = function (o) {
-      o = o || {};
-      if (o.base64 === true && o.binary == null) {
-         o.binary = true;
-      }
-      o = extend(o, JSZip.defaults);
-      o.date = o.date || new Date();
-
-      return o;
-   };
-
-  /**
-   * Add a file in the current folder.
-   * @private
-   * @param {string} name the name of the file
-   * @param {String|ArrayBuffer|Uint8Array} data the data of the file
-   * @param {Object} o the options of the file
-   * @return {Object} the new file.
-   */
-   var fileAdd = function (name, data, o) {
-      // be sure sub folders exist
-      var parent = parentFolder(name);
-      if (parent) {
-         folderAdd.call(this, parent);
-      }
-
-      o = prepareFileAttrs(o);
-
-      if (o.dir || data === null || typeof data === "undefined") {
-         o.base64 = false;
-         o.binary = false;
-         data = null;
-      } else if (JSZip.support.uint8array && data instanceof Uint8Array) {
-         o.base64 = false;
-         o.binary = true;
-         data = JSZip.utils.uint8Array2String(data);
-      } else if (JSZip.support.arraybuffer && data instanceof ArrayBuffer) {
-         o.base64 = false;
-         o.binary = true;
-         var bufferView = new Uint8Array(data);
-         data = JSZip.utils.uint8Array2String(bufferView);
-      } else if (o.binary && !o.base64) {
-         // optimizedBinaryString == true means that the file has already been filtered with a 0xFF mask
-         if (o.optimizedBinaryString !== true) {
-            // this is a string, not in a base64 format.
-            // Be sure that this is a correct "binary string"
-            data = JSZip.utils.string2binary(data);
-         }
-         // we remove this option since it's only relevant here
-         delete o.optimizedBinaryString;
-      }
-
-      return this.files[name] = new ZipObject(name, data, o);
-   };
-
-
-   /**
-    * Find the parent folder of the path.
-    * @private
-    * @param {string} path the path to use
-    * @return {string} the parent folder, or ""
-    */
-   var parentFolder = function (path) {
-      if (path.slice(-1) == '/') {
-         path = path.substring(0, path.length - 1);
-      }
-      var lastSlash = path.lastIndexOf('/');
-      return (lastSlash > 0) ? path.substring(0, lastSlash) : "";
-   };
-
-   /**
-    * Add a (sub) folder in the current folder.
-    * @private
-    * @param {string} name the folder's name
-    * @return {Object} the new folder.
-    */
-   var folderAdd = function (name) {
-      // Check the name ends with a /
-      if (name.slice(-1) != "/") {
-         name += "/"; // IE doesn't like substr(-1)
-      }
-
-      // Does this folder already exist?
-      if (!this.files[name]) {
-         // be sure sub folders exist
-         var parent = parentFolder(name);
-         if (parent) {
-            folderAdd.call(this, parent);
-         }
-
-         fileAdd.call(this, name, null, {dir:true});
-      }
-      return this.files[name];
-   };
-
-   /**
-    * Generate the data found in the local header of a zip file.
-    * Do not create it now, as some parts are re-used later.
-    * @private
-    * @param {Object} file the file to use.
-    * @param {string} utfEncodedFileName the file name, utf8 encoded.
-    * @param {string} compressionType the compression to use.
-    * @return {Object} an object containing header and compressedData.
-    */
-   var prepareLocalHeaderData = function(file, utfEncodedFileName, compressionType) {
-      var useUTF8 = utfEncodedFileName !== file.name,
-          data    = file.asBinary(),
-          o       = file.options,
-          dosTime,
-          dosDate;
-
-      // date
-      // @see http://www.delorie.com/djgpp/doc/rbinter/it/52/13.html
-      // @see http://www.delorie.com/djgpp/doc/rbinter/it/65/16.html
-      // @see http://www.delorie.com/djgpp/doc/rbinter/it/66/16.html
-
-      dosTime = o.date.getHours();
-      dosTime = dosTime << 6;
-      dosTime = dosTime | o.date.getMinutes();
-      dosTime = dosTime << 5;
-      dosTime = dosTime | o.date.getSeconds() / 2;
-
-      dosDate = o.date.getFullYear() - 1980;
-      dosDate = dosDate << 4;
-      dosDate = dosDate | (o.date.getMonth() + 1);
-      dosDate = dosDate << 5;
-      dosDate = dosDate | o.date.getDate();
-
-      var hasData = data !== null && data.length !== 0;
-
-      var compression    = JSZip.compressions[compressionType];
-      var compressedData = hasData ? compression.compress(data) : '';
-
-      var header = "";
-
-      // version needed to extract
-      header += "\x0A\x00";
-      // general purpose bit flag
-      // set bit 11 if utf8
-      header += useUTF8 ? "\x00\x08" : "\x00\x00";
-      // compression method
-      header += hasData ? compression.magic : JSZip.compressions['STORE'].magic;
-      // last mod file time
-      header += decToHex(dosTime, 2);
-      // last mod file date
-      header += decToHex(dosDate, 2);
-      // crc-32
-      header += hasData ? decToHex(this.crc32(data), 4) : '\x00\x00\x00\x00';
-      // compressed size
-      header += hasData ? decToHex(compressedData.length, 4) : '\x00\x00\x00\x00';
-      // uncompressed size
-      header += hasData ? decToHex(data.length, 4) : '\x00\x00\x00\x00';
-      // file name length
-      header += decToHex(utfEncodedFileName.length, 2);
-      // extra field length
-      header += "\x00\x00";
-
-      return {
-         header:header,
-         compressedData:compressedData
-      };
-   };
-
-
-   // return the actual prototype of JSZip
-   return {
-      /**
-       * Read an existing zip and merge the data in the current JSZip object.
-       * The implementation is in jszip-load.js, don't forget to include it.
-       * @param {String|ArrayBuffer|Uint8Array} stream  The stream to load
-       * @param {Object} options Options for loading the stream.
-       *  options.base64 : is the stream in base64 ? default : false
-       * @return {JSZip} the current JSZip object
-       */
-      load : function (stream, options) {
-         throw new Error("Load method is not defined. Is the file jszip-load.js included ?");
-      },
-
-      /**
-       * Filter nested files/folders with the specified function.
-       * @param {Function} search the predicate to use :
-       * function (relativePath, file) {...}
-       * It takes 2 arguments : the relative path and the file.
-       * @return {Array} An array of matching elements.
-       */
-      filter : function (search) {
-         var result = [], filename, relativePath, file, fileClone;
-         for (filename in this.files) {
-            if ( !this.files.hasOwnProperty(filename) ) { continue; }
-            file = this.files[filename];
-            // return a new object, don't let the user mess with our internal objects :)
-            fileClone = new ZipObject(file.name, file.data, extend(file.options));
-            relativePath = filename.slice(this.root.length, filename.length);
-            if (filename.slice(0, this.root.length) === this.root && // the file is in the current root
-                search(relativePath, fileClone)) { // and the file matches the function
-               result.push(fileClone);
-            }
-         }
-         return result;
-      },
-
-      /**
-       * Add a file to the zip file, or search a file.
-       * @param   {string|RegExp} name The name of the file to add (if data is defined),
-       * the name of the file to find (if no data) or a regex to match files.
-       * @param   {String|ArrayBuffer|Uint8Array} data  The file data, either raw or base64 encoded
-       * @param   {Object} o     File options
-       * @return  {JSZip|Object|Array} this JSZip object (when adding a file),
-       * a file (when searching by string) or an array of files (when searching by regex).
-       */
-      file : function(name, data, o) {
-         if (arguments.length === 1) {
-            if (name instanceof RegExp) {
-               var regexp = name;
-               return this.filter(function(relativePath, file) {
-                  return !file.options.dir && regexp.test(relativePath);
-               });
-            } else { // text
-               return this.filter(function (relativePath, file) {
-                  return !file.options.dir && relativePath === name;
-               })[0]||null;
-            }
-         } else { // more than one argument : we have data !
-            name = this.root+name;
-            fileAdd.call(this, name, data, o);
-         }
-         return this;
-      },
-
-      /**
-       * Add a directory to the zip file, or search.
-       * @param   {String|RegExp} arg The name of the directory to add, or a regex to search folders.
-       * @return  {JSZip} an object with the new directory as the root, or an array containing matching folders.
-       */
-      folder : function(arg) {
-         if (!arg) {
-            return this;
-         }
-
-         if (arg instanceof RegExp) {
-            return this.filter(function(relativePath, file) {
-               return file.options.dir && arg.test(relativePath);
-            });
-         }
-
-         // else, name is a new folder
-         var name = this.root + arg;
-         var newFolder = folderAdd.call(this, name);
-
-         // Allow chaining by returning a new object with this folder as the root
-         var ret = this.clone();
-         ret.root = newFolder.name;
-         return ret;
-      },
-
-      /**
-       * Delete a file, or a directory and all sub-files, from the zip
-       * @param {string} name the name of the file to delete
-       * @return {JSZip} this JSZip object
-       */
-      remove : function(name) {
-         name = this.root + name;
-         var file = this.files[name];
-         if (!file) {
-            // Look for any folders
-            if (name.slice(-1) != "/") {
-               name += "/";
-            }
-            file = this.files[name];
-         }
-
-         if (file) {
-            if (!file.options.dir) {
-               // file
-               delete this.files[name];
-            } else {
-               // folder
-               var kids = this.filter(function (relativePath, file) {
-                  return file.name.slice(0, name.length) === name;
-               });
-               for (var i = 0; i < kids.length; i++) {
-                  delete this.files[kids[i].name];
-               }
-            }
-         }
-
-         return this;
-      },
-
-      /**
-       * Generate the complete zip file
-       * @param {Object} options the options to generate the zip file :
-       * - base64, (deprecated, use type instead) true to generate base64.
-       * - compression, "STORE" by default.
-       * - type, "base64" by default. Values are : string, base64, uint8array, arraybuffer, blob.
-       * @return {String|Uint8Array|ArrayBuffer|Blob} the zip file
-       */
-      generate : function(options) {
-         options = extend(options || {}, {
-            base64 : true,
-            compression : "STORE",
-            type : "base64"
-         });
-         var compression = options.compression.toUpperCase();
-
-         // The central directory, and files data
-         var directory = [], files = [], fileOffset = 0;
-
-         if (!JSZip.compressions[compression]) {
-            throw compression + " is not a valid compression method !";
-         }
-
-         for (var name in this.files) {
-            if ( !this.files.hasOwnProperty(name) ) { continue; }
-
-            var file = this.files[name];
-
-            var utfEncodedFileName = this.utf8encode(file.name);
-
-            var fileRecord = "",
-            dirRecord = "",
-            data = prepareLocalHeaderData.call(this, file, utfEncodedFileName, compression);
-            fileRecord = JSZip.signature.LOCAL_FILE_HEADER + data.header + utfEncodedFileName + data.compressedData;
-
-            dirRecord = JSZip.signature.CENTRAL_FILE_HEADER +
-            // version made by (00: DOS)
-            "\x14\x00" +
-            // file header (common to file and central directory)
-            data.header +
-            // file comment length
-            "\x00\x00" +
-            // disk number start
-            "\x00\x00" +
-            // internal file attributes TODO
-            "\x00\x00" +
-            // external file attributes
-            (this.files[name].options.dir===true?"\x10\x00\x00\x00":"\x00\x00\x00\x00")+
-            // relative offset of local header
-            decToHex(fileOffset, 4) +
-            // file name
-            utfEncodedFileName;
-
-            fileOffset += fileRecord.length;
-
-            files.push(fileRecord);
-            directory.push(dirRecord);
-         }
-
-         var fileData = files.join("");
-         var dirData = directory.join("");
-
-         var dirEnd = "";
-
-         // end of central dir signature
-         dirEnd = JSZip.signature.CENTRAL_DIRECTORY_END +
-         // number of this disk
-         "\x00\x00" +
-         // number of the disk with the start of the central directory
-         "\x00\x00" +
-         // total number of entries in the central directory on this disk
-         decToHex(files.length, 2) +
-         // total number of entries in the central directory
-         decToHex(files.length, 2) +
-         // size of the central directory   4 bytes
-         decToHex(dirData.length, 4) +
-         // offset of start of central directory with respect to the starting disk number
-         decToHex(fileData.length, 4) +
-         // .ZIP file comment length
-         "\x00\x00";
-
-         var zip = fileData + dirData + dirEnd;
-
-
-         switch(options.type.toLowerCase()) {
-            case "uint8array" :
-               return JSZip.utils.string2Uint8Array(zip);
-            case "arraybuffer" :
-               return JSZip.utils.string2Uint8Array(zip).buffer;
-            case "blob" :
-               return JSZip.utils.string2Blob(zip);
-            case "base64" :
-               return (options.base64) ? JSZipBase64.encode(zip) : zip;
-            default : // case "string" :
-               return zip;
-         }
-      },
-
-      /**
-       *
-       *  Javascript crc32
-       *  http://www.webtoolkit.info/
-       *
-       */
-      crc32 : function(str, crc) {
-
-         if (str === "" || typeof str === "undefined") {
-            return 0;
-         }
-
-         var table = [
-            0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA,
-            0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
-            0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
-            0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
-            0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE,
-            0x1ADAD47D, 0x6DDDE4EB, 0xF4D4B551, 0x83D385C7,
-            0x136C9856, 0x646BA8C0, 0xFD62F97A, 0x8A65C9EC,
-            0x14015C4F, 0x63066CD9, 0xFA0F3D63, 0x8D080DF5,
-            0x3B6E20C8, 0x4C69105E, 0xD56041E4, 0xA2677172,
-            0x3C03E4D1, 0x4B04D447, 0xD20D85FD, 0xA50AB56B,
-            0x35B5A8FA, 0x42B2986C, 0xDBBBC9D6, 0xACBCF940,
-            0x32D86CE3, 0x45DF5C75, 0xDCD60DCF, 0xABD13D59,
-            0x26D930AC, 0x51DE003A, 0xC8D75180, 0xBFD06116,
-            0x21B4F4B5, 0x56B3C423, 0xCFBA9599, 0xB8BDA50F,
-            0x2802B89E, 0x5F058808, 0xC60CD9B2, 0xB10BE924,
-            0x2F6F7C87, 0x58684C11, 0xC1611DAB, 0xB6662D3D,
-            0x76DC4190, 0x01DB7106, 0x98D220BC, 0xEFD5102A,
-            0x71B18589, 0x06B6B51F, 0x9FBFE4A5, 0xE8B8D433,
-            0x7807C9A2, 0x0F00F934, 0x9609A88E, 0xE10E9818,
-            0x7F6A0DBB, 0x086D3D2D, 0x91646C97, 0xE6635C01,
-            0x6B6B51F4, 0x1C6C6162, 0x856530D8, 0xF262004E,
-            0x6C0695ED, 0x1B01A57B, 0x8208F4C1, 0xF50FC457,
-            0x65B0D9C6, 0x12B7E950, 0x8BBEB8EA, 0xFCB9887C,
-            0x62DD1DDF, 0x15DA2D49, 0x8CD37CF3, 0xFBD44C65,
-            0x4DB26158, 0x3AB551CE, 0xA3BC0074, 0xD4BB30E2,
-            0x4ADFA541, 0x3DD895D7, 0xA4D1C46D, 0xD3D6F4FB,
-            0x4369E96A, 0x346ED9FC, 0xAD678846, 0xDA60B8D0,
-            0x44042D73, 0x33031DE5, 0xAA0A4C5F, 0xDD0D7CC9,
-            0x5005713C, 0x270241AA, 0xBE0B1010, 0xC90C2086,
-            0x5768B525, 0x206F85B3, 0xB966D409, 0xCE61E49F,
-            0x5EDEF90E, 0x29D9C998, 0xB0D09822, 0xC7D7A8B4,
-            0x59B33D17, 0x2EB40D81, 0xB7BD5C3B, 0xC0BA6CAD,
-            0xEDB88320, 0x9ABFB3B6, 0x03B6E20C, 0x74B1D29A,
-            0xEAD54739, 0x9DD277AF, 0x04DB2615, 0x73DC1683,
-            0xE3630B12, 0x94643B84, 0x0D6D6A3E, 0x7A6A5AA8,
-            0xE40ECF0B, 0x9309FF9D, 0x0A00AE27, 0x7D079EB1,
-            0xF00F9344, 0x8708A3D2, 0x1E01F268, 0x6906C2FE,
-            0xF762575D, 0x806567CB, 0x196C3671, 0x6E6B06E7,
-            0xFED41B76, 0x89D32BE0, 0x10DA7A5A, 0x67DD4ACC,
-            0xF9B9DF6F, 0x8EBEEFF9, 0x17B7BE43, 0x60B08ED5,
-            0xD6D6A3E8, 0xA1D1937E, 0x38D8C2C4, 0x4FDFF252,
-            0xD1BB67F1, 0xA6BC5767, 0x3FB506DD, 0x48B2364B,
-            0xD80D2BDA, 0xAF0A1B4C, 0x36034AF6, 0x41047A60,
-            0xDF60EFC3, 0xA867DF55, 0x316E8EEF, 0x4669BE79,
-            0xCB61B38C, 0xBC66831A, 0x256FD2A0, 0x5268E236,
-            0xCC0C7795, 0xBB0B4703, 0x220216B9, 0x5505262F,
-            0xC5BA3BBE, 0xB2BD0B28, 0x2BB45A92, 0x5CB36A04,
-            0xC2D7FFA7, 0xB5D0CF31, 0x2CD99E8B, 0x5BDEAE1D,
-            0x9B64C2B0, 0xEC63F226, 0x756AA39C, 0x026D930A,
-            0x9C0906A9, 0xEB0E363F, 0x72076785, 0x05005713,
-            0x95BF4A82, 0xE2B87A14, 0x7BB12BAE, 0x0CB61B38,
-            0x92D28E9B, 0xE5D5BE0D, 0x7CDCEFB7, 0x0BDBDF21,
-            0x86D3D2D4, 0xF1D4E242, 0x68DDB3F8, 0x1FDA836E,
-            0x81BE16CD, 0xF6B9265B, 0x6FB077E1, 0x18B74777,
-            0x88085AE6, 0xFF0F6A70, 0x66063BCA, 0x11010B5C,
-            0x8F659EFF, 0xF862AE69, 0x616BFFD3, 0x166CCF45,
-            0xA00AE278, 0xD70DD2EE, 0x4E048354, 0x3903B3C2,
-            0xA7672661, 0xD06016F7, 0x4969474D, 0x3E6E77DB,
-            0xAED16A4A, 0xD9D65ADC, 0x40DF0B66, 0x37D83BF0,
-            0xA9BCAE53, 0xDEBB9EC5, 0x47B2CF7F, 0x30B5FFE9,
-            0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6,
-            0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF,
-            0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
-            0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
-         ];
-
-         if (typeof(crc) == "undefined") { crc = 0; }
-         var x = 0;
-         var y = 0;
-
-         crc = crc ^ (-1);
-         for( var i = 0, iTop = str.length; i < iTop; i++ ) {
-            y = ( crc ^ str.charCodeAt( i ) ) & 0xFF;
-            x = table[y];
-            crc = ( crc >>> 8 ) ^ x;
-         }
-
-         return crc ^ (-1);
-      },
-
-      // Inspired by http://my.opera.com/GreyWyvern/blog/show.dml/1725165
-      clone : function() {
-         var newObj = new JSZip();
-         for (var i in this) {
-            if (typeof this[i] !== "function") {
-               newObj[i] = this[i];
-            }
-         }
-         return newObj;
-      },
-
-
-      /**
-       * http://www.webtoolkit.info/javascript-utf8.html
-       */
-      utf8encode : function (string) {
-         string = string.replace(/\r\n/g,"\n");
-         var utftext = "";
-
-         for (var n = 0; n < string.length; n++) {
-
-            var c = string.charCodeAt(n);
-
-            if (c < 128) {
-               utftext += String.fromCharCode(c);
-            } else if ((c > 127) && (c < 2048)) {
-               utftext += String.fromCharCode((c >> 6) | 192);
-               utftext += String.fromCharCode((c & 63) | 128);
-            } else {
-               utftext += String.fromCharCode((c >> 12) | 224);
-               utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-               utftext += String.fromCharCode((c & 63) | 128);
-            }
-
-         }
-
-         return utftext;
-      },
-
-      /**
-       * http://www.webtoolkit.info/javascript-utf8.html
-       */
-      utf8decode : function (utftext) {
-         var string = "";
-         var i = 0;
-         var c = 0, c1 = 0, c2 = 0, c3 = 0;
-
-         while ( i < utftext.length ) {
-
-            c = utftext.charCodeAt(i);
-
-            if (c < 128) {
-               string += String.fromCharCode(c);
-               i++;
-            } else if ((c > 191) && (c < 224)) {
-               c2 = utftext.charCodeAt(i+1);
-               string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-               i += 2;
-            } else {
-               c2 = utftext.charCodeAt(i+1);
-               c3 = utftext.charCodeAt(i+2);
-               string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-               i += 3;
-            }
-
-         }
-
-         return string;
-      }
-   };
-}());
-
-/*
- * Compression methods
- * This object is filled in as follow :
- * name : {
- *    magic // the 2 bytes indentifying the compression method
- *    compress // function, take the uncompressed content and return it compressed.
- *    uncompress // function, take the compressed content and return it uncompressed.
- * }
- *
- * STORE is the default compression method, so it's included in this file.
- * Other methods should go to separated files : the user wants modularity.
- */
-JSZip.compressions = {
-   "STORE" : {
-      magic : "\x00\x00",
-      compress : function (content) {
-         return content; // no compression
-      },
-      uncompress : function (content) {
-         return content; // no compression
-      }
-   }
-};
-
-/*
- * List features that require a modern browser, and if the current browser support them.
- */
-JSZip.support = {
-   // contains true if JSZip can read/generate ArrayBuffer, false otherwise.
-   arraybuffer : (function(){
-      return typeof ArrayBuffer !== "undefined" && typeof Uint8Array !== "undefined";
-   })(),
-   // contains true if JSZip can read/generate Uint8Array, false otherwise.
-   uint8array : (function(){
-      return typeof Uint8Array !== "undefined";
-   })(),
-   // contains true if JSZip can read/generate Blob, false otherwise.
-   blob : (function(){
-      // the spec started with BlobBuilder then replaced it with a construtor for Blob.
-      // Result : we have browsers that :
-      // * know the BlobBuilder (but with prefix)
-      // * know the Blob constructor
-      // * know about Blob but not about how to build them
-      // About the "=== 0" test : if given the wrong type, it may be converted to a string.
-      // Instead of an empty content, we will get "[object Uint8Array]" for example.
-      if (typeof ArrayBuffer === "undefined") {
-         return false;
-      }
-      var buffer = new ArrayBuffer(0);
-      try {
-         return new Blob([buffer], { type: "application/zip" }).size === 0;
-      }
-      catch(e) {}
-
-      try {
-         var builder = new (window.BlobBuilder || window.WebKitBlobBuilder ||
-                            window.MozBlobBuilder || window.MSBlobBuilder)();
-         builder.append(buffer);
-         return builder.getBlob('application/zip').size === 0;
-      }
-      catch(e) {}
-
-      return false;
-   })()
-};
-
-JSZip.utils = {
-   /**
-    * Convert a string to a "binary string" : a string containing only char codes between 0 and 255.
-    * @param {string} str the string to transform.
-    * @return {String} the binary string.
-    */
-   string2binary : function (str) {
-      var result = "";
-      for (var i = 0; i < str.length; i++) {
-         result += String.fromCharCode(str.charCodeAt(i) & 0xff);
-      }
-      return result;
-   },
-   /**
-    * Create a Uint8Array from the string.
-    * @param {string} str the string to transform.
-    * @return {Uint8Array} the typed array.
-    * @throws {Error} an Error if the browser doesn't support the requested feature.
-    */
-   string2Uint8Array : function (str) {
-      if (!JSZip.support.uint8array) {
-         throw new Error("Uint8Array is not supported by this browser");
-      }
-      var buffer = new ArrayBuffer(str.length);
-      var bufferView = new Uint8Array(buffer);
-      for(var i = 0; i < str.length; i++) {
-         bufferView[i] = str.charCodeAt(i);
-      }
-
-      return bufferView;
-   },
-
-   /**
-    * Create a string from the Uint8Array.
-    * @param {Uint8Array} array the array to transform.
-    * @return {string} the string.
-    * @throws {Error} an Error if the browser doesn't support the requested feature.
-    */
-   uint8Array2String : function (array) {
-      if (!JSZip.support.uint8array) {
-         throw new Error("Uint8Array is not supported by this browser");
-      }
-      var result = "";
-      for(var i = 0; i < array.length; i++) {
-         result += String.fromCharCode(array[i]);
-      }
-
-      return result;
-   },
-   /**
-    * Create a blob from the given string.
-    * @param {string} str the string to transform.
-    * @return {Blob} the string.
-    * @throws {Error} an Error if the browser doesn't support the requested feature.
-    */
-   string2Blob : function (str) {
-      if (!JSZip.support.blob) {
-         throw new Error("Blob is not supported by this browser");
-      }
-
-      var buffer = JSZip.utils.string2Uint8Array(str).buffer;
-      try {
-         // Blob constructor
-         return new Blob([buffer], { type: "application/zip" });
-      }
-      catch(e) {}
-
-      try {
-         // deprecated, browser only, old way
-         var builder = new (window.BlobBuilder || window.WebKitBlobBuilder ||
-                            window.MozBlobBuilder || window.MSBlobBuilder)();
-         builder.append(buffer);
-         return builder.getBlob('application/zip');
-      }
-      catch(e) {}
-
-      // well, fuck ?!
-      throw new Error("Bug : can't construct the Blob.");
-   }
-};
-
-/**
- *
- *  Base64 encode / decode
- *  http://www.webtoolkit.info/
- *
- *  Hacked so that it doesn't utf8 en/decode everything
- **/
-var JSZipBase64 = (function() {
-   // private property
-   var _keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-   return {
-      // public method for encoding
-      encode : function(input, utf8) {
-         var output = "";
-         var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-         var i = 0;
-
-         while (i < input.length) {
-
-            chr1 = input.charCodeAt(i++);
-            chr2 = input.charCodeAt(i++);
-            chr3 = input.charCodeAt(i++);
-
-            enc1 = chr1 >> 2;
-            enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-            enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-            enc4 = chr3 & 63;
-
-            if (isNaN(chr2)) {
-               enc3 = enc4 = 64;
-            } else if (isNaN(chr3)) {
-               enc4 = 64;
-            }
-
-            output = output +
-               _keyStr.charAt(enc1) + _keyStr.charAt(enc2) +
-               _keyStr.charAt(enc3) + _keyStr.charAt(enc4);
-
-         }
-
-         return output;
-      },
-
-      // public method for decoding
-      decode : function(input, utf8) {
-         var output = "";
-         var chr1, chr2, chr3;
-         var enc1, enc2, enc3, enc4;
-         var i = 0;
-
-         input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-
-         while (i < input.length) {
-
-            enc1 = _keyStr.indexOf(input.charAt(i++));
-            enc2 = _keyStr.indexOf(input.charAt(i++));
-            enc3 = _keyStr.indexOf(input.charAt(i++));
-            enc4 = _keyStr.indexOf(input.charAt(i++));
-
-            chr1 = (enc1 << 2) | (enc2 >> 4);
-            chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-            chr3 = ((enc3 & 3) << 6) | enc4;
-
-            output = output + String.fromCharCode(chr1);
-
-            if (enc3 != 64) {
-               output = output + String.fromCharCode(chr2);
-            }
-            if (enc4 != 64) {
-               output = output + String.fromCharCode(chr3);
-            }
-
-         }
-
-         return output;
-
-      }
-   };
-}());
-
-// enforcing Stuk's coding style
-// vim: set shiftwidth=3 softtabstop=3:
-/*
- * Port of a script by Masanao Izumo.
- *
- * Only changes : wrap all the variables in a function and add the 
- * main function to JSZip (DEFLATE compression method).
- * Everything else was written by M. Izumo.
- *
- * Original code can be found here: http://www.onicos.com/staff/iz/amuse/javascript/expert/deflate.txt
- */
-
-if(!JSZip) {
-   throw "JSZip not defined";
-}
-
-/*
- * Original:
- *   http://www.onicos.com/staff/iz/amuse/javascript/expert/deflate.txt
- */
-
-(function(){
-
-/* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
- * Version: 1.0.1
- * LastModified: Dec 25 1999
- */
-
-/* Interface:
- * data = zip_deflate(src);
- */
-
-/* constant parameters */
-var zip_WSIZE = 32768;		// Sliding Window size
-var zip_STORED_BLOCK = 0;
-var zip_STATIC_TREES = 1;
-var zip_DYN_TREES    = 2;
-
-/* for deflate */
-var zip_DEFAULT_LEVEL = 6;
-var zip_FULL_SEARCH = true;
-var zip_INBUFSIZ = 32768;	// Input buffer size
-var zip_INBUF_EXTRA = 64;	// Extra buffer
-var zip_OUTBUFSIZ = 1024 * 8;
-var zip_window_size = 2 * zip_WSIZE;
-var zip_MIN_MATCH = 3;
-var zip_MAX_MATCH = 258;
-var zip_BITS = 16;
-// for SMALL_MEM
-var zip_LIT_BUFSIZE = 0x2000;
-var zip_HASH_BITS = 13;
-// for MEDIUM_MEM
-// var zip_LIT_BUFSIZE = 0x4000;
-// var zip_HASH_BITS = 14;
-// for BIG_MEM
-// var zip_LIT_BUFSIZE = 0x8000;
-// var zip_HASH_BITS = 15;
-if(zip_LIT_BUFSIZE > zip_INBUFSIZ)
-    alert("error: zip_INBUFSIZ is too small");
-if((zip_WSIZE<<1) > (1<<zip_BITS))
-    alert("error: zip_WSIZE is too large");
-if(zip_HASH_BITS > zip_BITS-1)
-    alert("error: zip_HASH_BITS is too large");
-if(zip_HASH_BITS < 8 || zip_MAX_MATCH != 258)
-    alert("error: Code too clever");
-var zip_DIST_BUFSIZE = zip_LIT_BUFSIZE;
-var zip_HASH_SIZE = 1 << zip_HASH_BITS;
-var zip_HASH_MASK = zip_HASH_SIZE - 1;
-var zip_WMASK = zip_WSIZE - 1;
-var zip_NIL = 0; // Tail of hash chains
-var zip_TOO_FAR = 4096;
-var zip_MIN_LOOKAHEAD = zip_MAX_MATCH + zip_MIN_MATCH + 1;
-var zip_MAX_DIST = zip_WSIZE - zip_MIN_LOOKAHEAD;
-var zip_SMALLEST = 1;
-var zip_MAX_BITS = 15;
-var zip_MAX_BL_BITS = 7;
-var zip_LENGTH_CODES = 29;
-var zip_LITERALS =256;
-var zip_END_BLOCK = 256;
-var zip_L_CODES = zip_LITERALS + 1 + zip_LENGTH_CODES;
-var zip_D_CODES = 30;
-var zip_BL_CODES = 19;
-var zip_REP_3_6 = 16;
-var zip_REPZ_3_10 = 17;
-var zip_REPZ_11_138 = 18;
-var zip_HEAP_SIZE = 2 * zip_L_CODES + 1;
-var zip_H_SHIFT = parseInt((zip_HASH_BITS + zip_MIN_MATCH - 1) /
-			   zip_MIN_MATCH);
-
-/* variables */
-var zip_free_queue;
-var zip_qhead, zip_qtail;
-var zip_initflag;
-var zip_outbuf = null;
-var zip_outcnt, zip_outoff;
-var zip_complete;
-var zip_window;
-var zip_d_buf;
-var zip_l_buf;
-var zip_prev;
-var zip_bi_buf;
-var zip_bi_valid;
-var zip_block_start;
-var zip_ins_h;
-var zip_hash_head;
-var zip_prev_match;
-var zip_match_available;
-var zip_match_length;
-var zip_prev_length;
-var zip_strstart;
-var zip_match_start;
-var zip_eofile;
-var zip_lookahead;
-var zip_max_chain_length;
-var zip_max_lazy_match;
-var zip_compr_level;
-var zip_good_match;
-var zip_nice_match;
-var zip_dyn_ltree;
-var zip_dyn_dtree;
-var zip_static_ltree;
-var zip_static_dtree;
-var zip_bl_tree;
-var zip_l_desc;
-var zip_d_desc;
-var zip_bl_desc;
-var zip_bl_count;
-var zip_heap;
-var zip_heap_len;
-var zip_heap_max;
-var zip_depth;
-var zip_length_code;
-var zip_dist_code;
-var zip_base_length;
-var zip_base_dist;
-var zip_flag_buf;
-var zip_last_lit;
-var zip_last_dist;
-var zip_last_flags;
-var zip_flags;
-var zip_flag_bit;
-var zip_opt_len;
-var zip_static_len;
-var zip_deflate_data;
-var zip_deflate_pos;
-
-/* objects (deflate) */
-
-var zip_DeflateCT = function() {
-    this.fc = 0; // frequency count or bit string
-    this.dl = 0; // father node in Huffman tree or length of bit string
-}
-
-var zip_DeflateTreeDesc = function() {
-    this.dyn_tree = null;	// the dynamic tree
-    this.static_tree = null;	// corresponding static tree or NULL
-    this.extra_bits = null;	// extra bits for each code or NULL
-    this.extra_base = 0;	// base index for extra_bits
-    this.elems = 0;		// max number of elements in the tree
-    this.max_length = 0;	// max bit length for the codes
-    this.max_code = 0;		// largest code with non zero frequency
-}
-
-/* Values for max_lazy_match, good_match and max_chain_length, depending on
- * the desired pack level (0..9). The values given below have been tuned to
- * exclude worst case performance for pathological files. Better values may be
- * found for specific files.
- */
-var zip_DeflateConfiguration = function(a, b, c, d) {
-    this.good_length = a; // reduce lazy search above this match length
-    this.max_lazy = b;    // do not perform lazy search above this match length
-    this.nice_length = c; // quit search above this match length
-    this.max_chain = d;
-}
-
-var zip_DeflateBuffer = function() {
-    this.next = null;
-    this.len = 0;
-    this.ptr = new Array(zip_OUTBUFSIZ);
-    this.off = 0;
-}
-
-/* constant tables */
-var zip_extra_lbits = new Array(
-    0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0);
-var zip_extra_dbits = new Array(
-    0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13);
-var zip_extra_blbits = new Array(
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7);
-var zip_bl_order = new Array(
-    16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
-var zip_configuration_table = new Array(
-	new zip_DeflateConfiguration(0,    0,   0,    0),
-	new zip_DeflateConfiguration(4,    4,   8,    4),
-	new zip_DeflateConfiguration(4,    5,  16,    8),
-	new zip_DeflateConfiguration(4,    6,  32,   32),
-	new zip_DeflateConfiguration(4,    4,  16,   16),
-	new zip_DeflateConfiguration(8,   16,  32,   32),
-	new zip_DeflateConfiguration(8,   16, 128,  128),
-	new zip_DeflateConfiguration(8,   32, 128,  256),
-	new zip_DeflateConfiguration(32, 128, 258, 1024),
-	new zip_DeflateConfiguration(32, 258, 258, 4096));
-
-
-/* routines (deflate) */
-
-var zip_deflate_start = function(level) {
-    var i;
-
-    if(!level)
-	level = zip_DEFAULT_LEVEL;
-    else if(level < 1)
-	level = 1;
-    else if(level > 9)
-	level = 9;
-
-    zip_compr_level = level;
-    zip_initflag = false;
-    zip_eofile = false;
-    if(zip_outbuf != null)
-	return;
-
-    zip_free_queue = zip_qhead = zip_qtail = null;
-    zip_outbuf = new Array(zip_OUTBUFSIZ);
-    zip_window = new Array(zip_window_size);
-    zip_d_buf = new Array(zip_DIST_BUFSIZE);
-    zip_l_buf = new Array(zip_INBUFSIZ + zip_INBUF_EXTRA);
-    zip_prev = new Array(1 << zip_BITS);
-    zip_dyn_ltree = new Array(zip_HEAP_SIZE);
-    for(i = 0; i < zip_HEAP_SIZE; i++)
-	zip_dyn_ltree[i] = new zip_DeflateCT();
-    zip_dyn_dtree = new Array(2*zip_D_CODES+1);
-    for(i = 0; i < 2*zip_D_CODES+1; i++)
-	zip_dyn_dtree[i] = new zip_DeflateCT();
-    zip_static_ltree = new Array(zip_L_CODES+2);
-    for(i = 0; i < zip_L_CODES+2; i++)
-	zip_static_ltree[i] = new zip_DeflateCT();
-    zip_static_dtree = new Array(zip_D_CODES);
-    for(i = 0; i < zip_D_CODES; i++)
-	zip_static_dtree[i] = new zip_DeflateCT();
-    zip_bl_tree = new Array(2*zip_BL_CODES+1);
-    for(i = 0; i < 2*zip_BL_CODES+1; i++)
-	zip_bl_tree[i] = new zip_DeflateCT();
-    zip_l_desc = new zip_DeflateTreeDesc();
-    zip_d_desc = new zip_DeflateTreeDesc();
-    zip_bl_desc = new zip_DeflateTreeDesc();
-    zip_bl_count = new Array(zip_MAX_BITS+1);
-    zip_heap = new Array(2*zip_L_CODES+1);
-    zip_depth = new Array(2*zip_L_CODES+1);
-    zip_length_code = new Array(zip_MAX_MATCH-zip_MIN_MATCH+1);
-    zip_dist_code = new Array(512);
-    zip_base_length = new Array(zip_LENGTH_CODES);
-    zip_base_dist = new Array(zip_D_CODES);
-    zip_flag_buf = new Array(parseInt(zip_LIT_BUFSIZE / 8));
-}
-
-var zip_deflate_end = function() {
-    zip_free_queue = zip_qhead = zip_qtail = null;
-    zip_outbuf = null;
-    zip_window = null;
-    zip_d_buf = null;
-    zip_l_buf = null;
-    zip_prev = null;
-    zip_dyn_ltree = null;
-    zip_dyn_dtree = null;
-    zip_static_ltree = null;
-    zip_static_dtree = null;
-    zip_bl_tree = null;
-    zip_l_desc = null;
-    zip_d_desc = null;
-    zip_bl_desc = null;
-    zip_bl_count = null;
-    zip_heap = null;
-    zip_depth = null;
-    zip_length_code = null;
-    zip_dist_code = null;
-    zip_base_length = null;
-    zip_base_dist = null;
-    zip_flag_buf = null;
-}
-
-var zip_reuse_queue = function(p) {
-    p.next = zip_free_queue;
-    zip_free_queue = p;
-}
-
-var zip_new_queue = function() {
-    var p;
-
-    if(zip_free_queue != null)
-    {
-	p = zip_free_queue;
-	zip_free_queue = zip_free_queue.next;
-    }
-    else
-	p = new zip_DeflateBuffer();
-    p.next = null;
-    p.len = p.off = 0;
-
-    return p;
-}
-
-var zip_head1 = function(i) {
-    return zip_prev[zip_WSIZE + i];
-}
-
-var zip_head2 = function(i, val) {
-    return zip_prev[zip_WSIZE + i] = val;
-}
-
-/* put_byte is used for the compressed output, put_ubyte for the
- * uncompressed output. However unlzw() uses window for its
- * suffix table instead of its output buffer, so it does not use put_ubyte
- * (to be cleaned up).
- */
-var zip_put_byte = function(c) {
-    zip_outbuf[zip_outoff + zip_outcnt++] = c;
-    if(zip_outoff + zip_outcnt == zip_OUTBUFSIZ)
-	zip_qoutbuf();
-}
-
-/* Output a 16 bit value, lsb first */
-var zip_put_short = function(w) {
-    w &= 0xffff;
-    if(zip_outoff + zip_outcnt < zip_OUTBUFSIZ - 2) {
-	zip_outbuf[zip_outoff + zip_outcnt++] = (w & 0xff);
-	zip_outbuf[zip_outoff + zip_outcnt++] = (w >>> 8);
-    } else {
-	zip_put_byte(w & 0xff);
-	zip_put_byte(w >>> 8);
-    }
-}
-
-/* ==========================================================================
- * Insert string s in the dictionary and set match_head to the previous head
- * of the hash chain (the most recent string with same hash key). Return
- * the previous length of the hash chain.
- * IN  assertion: all calls to to INSERT_STRING are made with consecutive
- *    input characters and the first MIN_MATCH bytes of s are valid
- *    (except for the last MIN_MATCH-1 bytes of the input file).
- */
-var zip_INSERT_STRING = function() {
-    zip_ins_h = ((zip_ins_h << zip_H_SHIFT)
-		 ^ (zip_window[zip_strstart + zip_MIN_MATCH - 1] & 0xff))
-	& zip_HASH_MASK;
-    zip_hash_head = zip_head1(zip_ins_h);
-    zip_prev[zip_strstart & zip_WMASK] = zip_hash_head;
-    zip_head2(zip_ins_h, zip_strstart);
-}
-
-/* Send a code of the given tree. c and tree must not have side effects */
-var zip_SEND_CODE = function(c, tree) {
-    zip_send_bits(tree[c].fc, tree[c].dl);
-}
-
-/* Mapping from a distance to a distance code. dist is the distance - 1 and
- * must not have side effects. dist_code[256] and dist_code[257] are never
- * used.
- */
-var zip_D_CODE = function(dist) {
-    return (dist < 256 ? zip_dist_code[dist]
-	    : zip_dist_code[256 + (dist>>7)]) & 0xff;
-}
-
-/* ==========================================================================
- * Compares to subtrees, using the tree depth as tie breaker when
- * the subtrees have equal frequency. This minimizes the worst case length.
- */
-var zip_SMALLER = function(tree, n, m) {
-    return tree[n].fc < tree[m].fc ||
-      (tree[n].fc == tree[m].fc && zip_depth[n] <= zip_depth[m]);
-}
-
-/* ==========================================================================
- * read string data
- */
-var zip_read_buff = function(buff, offset, n) {
-    var i;
-    for(i = 0; i < n && zip_deflate_pos < zip_deflate_data.length; i++)
-	buff[offset + i] =
-	    zip_deflate_data.charCodeAt(zip_deflate_pos++) & 0xff;
-    return i;
-}
-
-/* ==========================================================================
- * Initialize the "longest match" routines for a new file
- */
-var zip_lm_init = function() {
-    var j;
-
-    /* Initialize the hash table. */
-    for(j = 0; j < zip_HASH_SIZE; j++)
-//	zip_head2(j, zip_NIL);
-	zip_prev[zip_WSIZE + j] = 0;
-    /* prev will be initialized on the fly */
-
-    /* Set the default configuration parameters:
-     */
-    zip_max_lazy_match = zip_configuration_table[zip_compr_level].max_lazy;
-    zip_good_match     = zip_configuration_table[zip_compr_level].good_length;
-    if(!zip_FULL_SEARCH)
-	zip_nice_match = zip_configuration_table[zip_compr_level].nice_length;
-    zip_max_chain_length = zip_configuration_table[zip_compr_level].max_chain;
-
-    zip_strstart = 0;
-    zip_block_start = 0;
-
-    zip_lookahead = zip_read_buff(zip_window, 0, 2 * zip_WSIZE);
-    if(zip_lookahead <= 0) {
-	zip_eofile = true;
-	zip_lookahead = 0;
-	return;
-    }
-    zip_eofile = false;
-    /* Make sure that we always have enough lookahead. This is important
-     * if input comes from a device such as a tty.
-     */
-    while(zip_lookahead < zip_MIN_LOOKAHEAD && !zip_eofile)
-	zip_fill_window();
-
-    /* If lookahead < MIN_MATCH, ins_h is garbage, but this is
-     * not important since only literal bytes will be emitted.
-     */
-    zip_ins_h = 0;
-    for(j = 0; j < zip_MIN_MATCH - 1; j++) {
-//      UPDATE_HASH(ins_h, window[j]);
-	zip_ins_h = ((zip_ins_h << zip_H_SHIFT) ^ (zip_window[j] & 0xff)) & zip_HASH_MASK;
-    }
-}
-
-/* ==========================================================================
- * Set match_start to the longest match starting at the given string and
- * return its length. Matches shorter or equal to prev_length are discarded,
- * in which case the result is equal to prev_length and match_start is
- * garbage.
- * IN assertions: cur_match is the head of the hash chain for the current
- *   string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
- */
-var zip_longest_match = function(cur_match) {
-    var chain_length = zip_max_chain_length; // max hash chain length
-    var scanp = zip_strstart; // current string
-    var matchp;		// matched string
-    var len;		// length of current match
-    var best_len = zip_prev_length;	// best match length so far
-
-    /* Stop when cur_match becomes <= limit. To simplify the code,
-     * we prevent matches with the string of window index 0.
-     */
-    var limit = (zip_strstart > zip_MAX_DIST ? zip_strstart - zip_MAX_DIST : zip_NIL);
-
-    var strendp = zip_strstart + zip_MAX_MATCH;
-    var scan_end1 = zip_window[scanp + best_len - 1];
-    var scan_end  = zip_window[scanp + best_len];
-
-    /* Do not waste too much time if we already have a good match: */
-    if(zip_prev_length >= zip_good_match)
-	chain_length >>= 2;
-
-//  Assert(encoder->strstart <= window_size-MIN_LOOKAHEAD, "insufficient lookahead");
-
-    do {
-//    Assert(cur_match < encoder->strstart, "no future");
-	matchp = cur_match;
-
-	/* Skip to next match if the match length cannot increase
-	    * or if the match length is less than 2:
-	*/
-	if(zip_window[matchp + best_len]	!= scan_end  ||
-	   zip_window[matchp + best_len - 1]	!= scan_end1 ||
-	   zip_window[matchp]			!= zip_window[scanp] ||
-	   zip_window[++matchp]			!= zip_window[scanp + 1]) {
-	    continue;
-	}
-
-	/* The check at best_len-1 can be removed because it will be made
-         * again later. (This heuristic is not always a win.)
-         * It is not necessary to compare scan[2] and match[2] since they
-         * are always equal when the other bytes match, given that
-         * the hash keys are equal and that HASH_BITS >= 8.
-         */
-	scanp += 2;
-	matchp++;
-
-	/* We check for insufficient lookahead only every 8th comparison;
-         * the 256th check will be made at strstart+258.
-         */
-	do {
-	} while(zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		zip_window[++scanp] == zip_window[++matchp] &&
-		scanp < strendp);
-
-      len = zip_MAX_MATCH - (strendp - scanp);
-      scanp = strendp - zip_MAX_MATCH;
-
-      if(len > best_len) {
-	  zip_match_start = cur_match;
-	  best_len = len;
-	  if(zip_FULL_SEARCH) {
-	      if(len >= zip_MAX_MATCH) break;
-	  } else {
-	      if(len >= zip_nice_match) break;
-	  }
-
-	  scan_end1  = zip_window[scanp + best_len-1];
-	  scan_end   = zip_window[scanp + best_len];
-      }
-    } while((cur_match = zip_prev[cur_match & zip_WMASK]) > limit
-	    && --chain_length != 0);
-
-    return best_len;
-}
-
-/* ==========================================================================
- * Fill the window when the lookahead becomes insufficient.
- * Updates strstart and lookahead, and sets eofile if end of input file.
- * IN assertion: lookahead < MIN_LOOKAHEAD && strstart + lookahead > 0
- * OUT assertions: at least one byte has been read, or eofile is set;
- *    file reads are performed for at least two bytes (required for the
- *    translate_eol option).
- */
-var zip_fill_window = function() {
-    var n, m;
-
-    // Amount of free space at the end of the window.
-    var more = zip_window_size - zip_lookahead - zip_strstart;
-
-    /* If the window is almost full and there is insufficient lookahead,
-     * move the upper half to the lower one to make room in the upper half.
-     */
-    if(more == -1) {
-	/* Very unlikely, but possible on 16 bit machine if strstart == 0
-         * and lookahead == 1 (input done one byte at time)
-         */
-	more--;
-    } else if(zip_strstart >= zip_WSIZE + zip_MAX_DIST) {
-	/* By the IN assertion, the window is not empty so we can't confuse
-         * more == 0 with more == 64K on a 16 bit machine.
-         */
-//	Assert(window_size == (ulg)2*WSIZE, "no sliding with BIG_MEM");
-
-//	System.arraycopy(window, WSIZE, window, 0, WSIZE);
-	for(n = 0; n < zip_WSIZE; n++)
-	    zip_window[n] = zip_window[n + zip_WSIZE];
-      
-	zip_match_start -= zip_WSIZE;
-	zip_strstart    -= zip_WSIZE; /* we now have strstart >= MAX_DIST: */
-	zip_block_start -= zip_WSIZE;
-
-	for(n = 0; n < zip_HASH_SIZE; n++) {
-	    m = zip_head1(n);
-	    zip_head2(n, m >= zip_WSIZE ? m - zip_WSIZE : zip_NIL);
-	}
-	for(n = 0; n < zip_WSIZE; n++) {
-	    /* If n is not on any hash chain, prev[n] is garbage but
-	     * its value will never be used.
-	     */
-	    m = zip_prev[n];
-	    zip_prev[n] = (m >= zip_WSIZE ? m - zip_WSIZE : zip_NIL);
-	}
-	more += zip_WSIZE;
-    }
-    // At this point, more >= 2
-    if(!zip_eofile) {
-	n = zip_read_buff(zip_window, zip_strstart + zip_lookahead, more);
-	if(n <= 0)
-	    zip_eofile = true;
-	else
-	    zip_lookahead += n;
-    }
-}
-
-/* ==========================================================================
- * Processes a new input file and return its compressed length. This
- * function does not perform lazy evaluationof matches and inserts
- * new strings in the dictionary only for unmatched strings or for short
- * matches. It is used only for the fast compression options.
- */
-var zip_deflate_fast = function() {
-    while(zip_lookahead != 0 && zip_qhead == null) {
-	var flush; // set if current block must be flushed
-
-	/* Insert the string window[strstart .. strstart+2] in the
-	 * dictionary, and set hash_head to the head of the hash chain:
-	 */
-	zip_INSERT_STRING();
-
-	/* Find the longest match, discarding those <= prev_length.
-	 * At this point we have always match_length < MIN_MATCH
-	 */
-	if(zip_hash_head != zip_NIL &&
-	   zip_strstart - zip_hash_head <= zip_MAX_DIST) {
-	    /* To simplify the code, we prevent matches with the string
-	     * of window index 0 (in particular we have to avoid a match
-	     * of the string with itself at the start of the input file).
-	     */
-	    zip_match_length = zip_longest_match(zip_hash_head);
-	    /* longest_match() sets match_start */
-	    if(zip_match_length > zip_lookahead)
-		zip_match_length = zip_lookahead;
-	}
-	if(zip_match_length >= zip_MIN_MATCH) {
-//	    check_match(strstart, match_start, match_length);
-
-	    flush = zip_ct_tally(zip_strstart - zip_match_start,
-				 zip_match_length - zip_MIN_MATCH);
-	    zip_lookahead -= zip_match_length;
-
-	    /* Insert new strings in the hash table only if the match length
-	     * is not too large. This saves time but degrades compression.
-	     */
-	    if(zip_match_length <= zip_max_lazy_match) {
-		zip_match_length--; // string at strstart already in hash table
-		do {
-		    zip_strstart++;
-		    zip_INSERT_STRING();
-		    /* strstart never exceeds WSIZE-MAX_MATCH, so there are
-		     * always MIN_MATCH bytes ahead. If lookahead < MIN_MATCH
-		     * these bytes are garbage, but it does not matter since
-		     * the next lookahead bytes will be emitted as literals.
-		     */
-		} while(--zip_match_length != 0);
-		zip_strstart++;
-	    } else {
-		zip_strstart += zip_match_length;
-		zip_match_length = 0;
-		zip_ins_h = zip_window[zip_strstart] & 0xff;
-//		UPDATE_HASH(ins_h, window[strstart + 1]);
-		zip_ins_h = ((zip_ins_h<<zip_H_SHIFT) ^ (zip_window[zip_strstart + 1] & 0xff)) & zip_HASH_MASK;
-
-//#if MIN_MATCH != 3
-//		Call UPDATE_HASH() MIN_MATCH-3 more times
-//#endif
-
-	    }
-	} else {
-	    /* No match, output a literal byte */
-	    flush = zip_ct_tally(0, zip_window[zip_strstart] & 0xff);
-	    zip_lookahead--;
-	    zip_strstart++;
-	}
-	if(flush) {
-	    zip_flush_block(0);
-	    zip_block_start = zip_strstart;
-	}
-
-	/* Make sure that we always have enough lookahead, except
-	 * at the end of the input file. We need MAX_MATCH bytes
-	 * for the next match, plus MIN_MATCH bytes to insert the
-	 * string following the next match.
-	 */
-	while(zip_lookahead < zip_MIN_LOOKAHEAD && !zip_eofile)
-	    zip_fill_window();
-    }
-}
-
-var zip_deflate_better = function() {
-    /* Process the input block. */
-    while(zip_lookahead != 0 && zip_qhead == null) {
-	/* Insert the string window[strstart .. strstart+2] in the
-	 * dictionary, and set hash_head to the head of the hash chain:
-	 */
-	zip_INSERT_STRING();
-
-	/* Find the longest match, discarding those <= prev_length.
-	 */
-	zip_prev_length = zip_match_length;
-	zip_prev_match = zip_match_start;
-	zip_match_length = zip_MIN_MATCH - 1;
-
-	if(zip_hash_head != zip_NIL &&
-	   zip_prev_length < zip_max_lazy_match &&
-	   zip_strstart - zip_hash_head <= zip_MAX_DIST) {
-	    /* To simplify the code, we prevent matches with the string
-	     * of window index 0 (in particular we have to avoid a match
-	     * of the string with itself at the start of the input file).
-	     */
-	    zip_match_length = zip_longest_match(zip_hash_head);
-	    /* longest_match() sets match_start */
-	    if(zip_match_length > zip_lookahead)
-		zip_match_length = zip_lookahead;
-
-	    /* Ignore a length 3 match if it is too distant: */
-	    if(zip_match_length == zip_MIN_MATCH &&
-	       zip_strstart - zip_match_start > zip_TOO_FAR) {
-		/* If prev_match is also MIN_MATCH, match_start is garbage
-		 * but we will ignore the current match anyway.
-		 */
-		zip_match_length--;
-	    }
-	}
-	/* If there was a match at the previous step and the current
-	 * match is not better, output the previous match:
-	 */
-	if(zip_prev_length >= zip_MIN_MATCH &&
-	   zip_match_length <= zip_prev_length) {
-	    var flush; // set if current block must be flushed
-
-//	    check_match(strstart - 1, prev_match, prev_length);
-	    flush = zip_ct_tally(zip_strstart - 1 - zip_prev_match,
-				 zip_prev_length - zip_MIN_MATCH);
-
-	    /* Insert in hash table all strings up to the end of the match.
-	     * strstart-1 and strstart are already inserted.
-	     */
-	    zip_lookahead -= zip_prev_length - 1;
-	    zip_prev_length -= 2;
-	    do {
-		zip_strstart++;
-		zip_INSERT_STRING();
-		/* strstart never exceeds WSIZE-MAX_MATCH, so there are
-		 * always MIN_MATCH bytes ahead. If lookahead < MIN_MATCH
-		 * these bytes are garbage, but it does not matter since the
-		 * next lookahead bytes will always be emitted as literals.
-		 */
-	    } while(--zip_prev_length != 0);
-	    zip_match_available = 0;
-	    zip_match_length = zip_MIN_MATCH - 1;
-	    zip_strstart++;
-	    if(flush) {
-		zip_flush_block(0);
-		zip_block_start = zip_strstart;
-	    }
-	} else if(zip_match_available != 0) {
-	    /* If there was no match at the previous position, output a
-	     * single literal. If there was a match but the current match
-	     * is longer, truncate the previous match to a single literal.
-	     */
-	    if(zip_ct_tally(0, zip_window[zip_strstart - 1] & 0xff)) {
-		zip_flush_block(0);
-		zip_block_start = zip_strstart;
-	    }
-	    zip_strstart++;
-	    zip_lookahead--;
-	} else {
-	    /* There is no previous match to compare with, wait for
-	     * the next step to decide.
-	     */
-	    zip_match_available = 1;
-	    zip_strstart++;
-	    zip_lookahead--;
-	}
-
-	/* Make sure that we always have enough lookahead, except
-	 * at the end of the input file. We need MAX_MATCH bytes
-	 * for the next match, plus MIN_MATCH bytes to insert the
-	 * string following the next match.
-	 */
-	while(zip_lookahead < zip_MIN_LOOKAHEAD && !zip_eofile)
-	    zip_fill_window();
-    }
-}
-
-var zip_init_deflate = function() {
-    if(zip_eofile)
-	return;
-    zip_bi_buf = 0;
-    zip_bi_valid = 0;
-    zip_ct_init();
-    zip_lm_init();
-
-    zip_qhead = null;
-    zip_outcnt = 0;
-    zip_outoff = 0;
-
-    if(zip_compr_level <= 3)
-    {
-	zip_prev_length = zip_MIN_MATCH - 1;
-	zip_match_length = 0;
-    }
-    else
-    {
-	zip_match_length = zip_MIN_MATCH - 1;
-	zip_match_available = 0;
-    }
-
-    zip_complete = false;
-}
-
-/* ==========================================================================
- * Same as above, but achieves better compression. We use a lazy
- * evaluation for matches: a match is finally adopted only if there is
- * no better match at the next window position.
- */
-var zip_deflate_internal = function(buff, off, buff_size) {
-    var n;
-
-    if(!zip_initflag)
-    {
-	zip_init_deflate();
-	zip_initflag = true;
-	if(zip_lookahead == 0) { // empty
-	    zip_complete = true;
-	    return 0;
-	}
-    }
-
-    if((n = zip_qcopy(buff, off, buff_size)) == buff_size)
-	return buff_size;
-
-    if(zip_complete)
-	return n;
-
-    if(zip_compr_level <= 3) // optimized for speed
-	zip_deflate_fast();
-    else
-	zip_deflate_better();
-    if(zip_lookahead == 0) {
-	if(zip_match_available != 0)
-	    zip_ct_tally(0, zip_window[zip_strstart - 1] & 0xff);
-	zip_flush_block(1);
-	zip_complete = true;
-    }
-    return n + zip_qcopy(buff, n + off, buff_size - n);
-}
-
-var zip_qcopy = function(buff, off, buff_size) {
-    var n, i, j;
-
-    n = 0;
-    while(zip_qhead != null && n < buff_size)
-    {
-	i = buff_size - n;
-	if(i > zip_qhead.len)
-	    i = zip_qhead.len;
-//      System.arraycopy(qhead.ptr, qhead.off, buff, off + n, i);
-	for(j = 0; j < i; j++)
-	    buff[off + n + j] = zip_qhead.ptr[zip_qhead.off + j];
-	
-	zip_qhead.off += i;
-	zip_qhead.len -= i;
-	n += i;
-	if(zip_qhead.len == 0) {
-	    var p;
-	    p = zip_qhead;
-	    zip_qhead = zip_qhead.next;
-	    zip_reuse_queue(p);
-	}
-    }
-
-    if(n == buff_size)
-	return n;
-
-    if(zip_outoff < zip_outcnt) {
-	i = buff_size - n;
-	if(i > zip_outcnt - zip_outoff)
-	    i = zip_outcnt - zip_outoff;
-	// System.arraycopy(outbuf, outoff, buff, off + n, i);
-	for(j = 0; j < i; j++)
-	    buff[off + n + j] = zip_outbuf[zip_outoff + j];
-	zip_outoff += i;
-	n += i;
-	if(zip_outcnt == zip_outoff)
-	    zip_outcnt = zip_outoff = 0;
-    }
-    return n;
-}
-
-/* ==========================================================================
- * Allocate the match buffer, initialize the various tables and save the
- * location of the internal file attribute (ascii/binary) and method
- * (DEFLATE/STORE).
- */
-var zip_ct_init = function() {
-    var n;	// iterates over tree elements
-    var bits;	// bit counter
-    var length;	// length value
-    var code;	// code value
-    var dist;	// distance index
-
-    if(zip_static_dtree[0].dl != 0) return; // ct_init already called
-
-    zip_l_desc.dyn_tree		= zip_dyn_ltree;
-    zip_l_desc.static_tree	= zip_static_ltree;
-    zip_l_desc.extra_bits	= zip_extra_lbits;
-    zip_l_desc.extra_base	= zip_LITERALS + 1;
-    zip_l_desc.elems		= zip_L_CODES;
-    zip_l_desc.max_length	= zip_MAX_BITS;
-    zip_l_desc.max_code		= 0;
-
-    zip_d_desc.dyn_tree		= zip_dyn_dtree;
-    zip_d_desc.static_tree	= zip_static_dtree;
-    zip_d_desc.extra_bits	= zip_extra_dbits;
-    zip_d_desc.extra_base	= 0;
-    zip_d_desc.elems		= zip_D_CODES;
-    zip_d_desc.max_length	= zip_MAX_BITS;
-    zip_d_desc.max_code		= 0;
-
-    zip_bl_desc.dyn_tree	= zip_bl_tree;
-    zip_bl_desc.static_tree	= null;
-    zip_bl_desc.extra_bits	= zip_extra_blbits;
-    zip_bl_desc.extra_base	= 0;
-    zip_bl_desc.elems		= zip_BL_CODES;
-    zip_bl_desc.max_length	= zip_MAX_BL_BITS;
-    zip_bl_desc.max_code	= 0;
-
-    // Initialize the mapping length (0..255) -> length code (0..28)
-    length = 0;
-    for(code = 0; code < zip_LENGTH_CODES-1; code++) {
-	zip_base_length[code] = length;
-	for(n = 0; n < (1<<zip_extra_lbits[code]); n++)
-	    zip_length_code[length++] = code;
-    }
-    // Assert (length == 256, "ct_init: length != 256");
-
-    /* Note that the length 255 (match length 258) can be represented
-     * in two different ways: code 284 + 5 bits or code 285, so we
-     * overwrite length_code[255] to use the best encoding:
-     */
-    zip_length_code[length-1] = code;
-
-    /* Initialize the mapping dist (0..32K) -> dist code (0..29) */
-    dist = 0;
-    for(code = 0 ; code < 16; code++) {
-	zip_base_dist[code] = dist;
-	for(n = 0; n < (1<<zip_extra_dbits[code]); n++) {
-	    zip_dist_code[dist++] = code;
-	}
-    }
-    // Assert (dist == 256, "ct_init: dist != 256");
-    dist >>= 7; // from now on, all distances are divided by 128
-    for( ; code < zip_D_CODES; code++) {
-	zip_base_dist[code] = dist << 7;
-	for(n = 0; n < (1<<(zip_extra_dbits[code]-7)); n++)
-	    zip_dist_code[256 + dist++] = code;
-    }
-    // Assert (dist == 256, "ct_init: 256+dist != 512");
-
-    // Construct the codes of the static literal tree
-    for(bits = 0; bits <= zip_MAX_BITS; bits++)
-	zip_bl_count[bits] = 0;
-    n = 0;
-    while(n <= 143) { zip_static_ltree[n++].dl = 8; zip_bl_count[8]++; }
-    while(n <= 255) { zip_static_ltree[n++].dl = 9; zip_bl_count[9]++; }
-    while(n <= 279) { zip_static_ltree[n++].dl = 7; zip_bl_count[7]++; }
-    while(n <= 287) { zip_static_ltree[n++].dl = 8; zip_bl_count[8]++; }
-    /* Codes 286 and 287 do not exist, but we must include them in the
-     * tree construction to get a canonical Huffman tree (longest code
-     * all ones)
-     */
-    zip_gen_codes(zip_static_ltree, zip_L_CODES + 1);
-
-    /* The static distance tree is trivial: */
-    for(n = 0; n < zip_D_CODES; n++) {
-	zip_static_dtree[n].dl = 5;
-	zip_static_dtree[n].fc = zip_bi_reverse(n, 5);
-    }
-
-    // Initialize the first block of the first file:
-    zip_init_block();
-}
-
-/* ==========================================================================
- * Initialize a new block.
- */
-var zip_init_block = function() {
-    var n; // iterates over tree elements
-
-    // Initialize the trees.
-    for(n = 0; n < zip_L_CODES;  n++) zip_dyn_ltree[n].fc = 0;
-    for(n = 0; n < zip_D_CODES;  n++) zip_dyn_dtree[n].fc = 0;
-    for(n = 0; n < zip_BL_CODES; n++) zip_bl_tree[n].fc = 0;
-
-    zip_dyn_ltree[zip_END_BLOCK].fc = 1;
-    zip_opt_len = zip_static_len = 0;
-    zip_last_lit = zip_last_dist = zip_last_flags = 0;
-    zip_flags = 0;
-    zip_flag_bit = 1;
-}
-
-/* ==========================================================================
- * Restore the heap property by moving down the tree starting at node k,
- * exchanging a node with the smallest of its two sons if necessary, stopping
- * when the heap property is re-established (each father smaller than its
- * two sons).
- */
-var zip_pqdownheap = function(
-    tree,	// the tree to restore
-    k) {	// node to move down
-    var v = zip_heap[k];
-    var j = k << 1;	// left son of k
-
-    while(j <= zip_heap_len) {
-	// Set j to the smallest of the two sons:
-	if(j < zip_heap_len &&
-	   zip_SMALLER(tree, zip_heap[j + 1], zip_heap[j]))
-	    j++;
-
-	// Exit if v is smaller than both sons
-	if(zip_SMALLER(tree, v, zip_heap[j]))
-	    break;
-
-	// Exchange v with the smallest son
-	zip_heap[k] = zip_heap[j];
-	k = j;
-
-	// And continue down the tree, setting j to the left son of k
-	j <<= 1;
-    }
-    zip_heap[k] = v;
-}
-
-/* ==========================================================================
- * Compute the optimal bit lengths for a tree and update the total bit length
- * for the current block.
- * IN assertion: the fields freq and dad are set, heap[heap_max] and
- *    above are the tree nodes sorted by increasing frequency.
- * OUT assertions: the field len is set to the optimal bit length, the
- *     array bl_count contains the frequencies for each bit length.
- *     The length opt_len is updated; static_len is also updated if stree is
- *     not null.
- */
-var zip_gen_bitlen = function(desc) { // the tree descriptor
-    var tree		= desc.dyn_tree;
-    var extra		= desc.extra_bits;
-    var base		= desc.extra_base;
-    var max_code	= desc.max_code;
-    var max_length	= desc.max_length;
-    var stree		= desc.static_tree;
-    var h;		// heap index
-    var n, m;		// iterate over the tree elements
-    var bits;		// bit length
-    var xbits;		// extra bits
-    var f;		// frequency
-    var overflow = 0;	// number of elements with bit length too large
-
-    for(bits = 0; bits <= zip_MAX_BITS; bits++)
-	zip_bl_count[bits] = 0;
-
-    /* In a first pass, compute the optimal bit lengths (which may
-     * overflow in the case of the bit length tree).
-     */
-    tree[zip_heap[zip_heap_max]].dl = 0; // root of the heap
-
-    for(h = zip_heap_max + 1; h < zip_HEAP_SIZE; h++) {
-	n = zip_heap[h];
-	bits = tree[tree[n].dl].dl + 1;
-	if(bits > max_length) {
-	    bits = max_length;
-	    overflow++;
-	}
-	tree[n].dl = bits;
-	// We overwrite tree[n].dl which is no longer needed
-
-	if(n > max_code)
-	    continue; // not a leaf node
-
-	zip_bl_count[bits]++;
-	xbits = 0;
-	if(n >= base)
-	    xbits = extra[n - base];
-	f = tree[n].fc;
-	zip_opt_len += f * (bits + xbits);
-	if(stree != null)
-	    zip_static_len += f * (stree[n].dl + xbits);
-    }
-    if(overflow == 0)
-	return;
-
-    // This happens for example on obj2 and pic of the Calgary corpus
-
-    // Find the first bit length which could increase:
-    do {
-	bits = max_length - 1;
-	while(zip_bl_count[bits] == 0)
-	    bits--;
-	zip_bl_count[bits]--;		// move one leaf down the tree
-	zip_bl_count[bits + 1] += 2;	// move one overflow item as its brother
-	zip_bl_count[max_length]--;
-	/* The brother of the overflow item also moves one step up,
-	 * but this does not affect bl_count[max_length]
-	 */
-	overflow -= 2;
-    } while(overflow > 0);
-
-    /* Now recompute all bit lengths, scanning in increasing frequency.
-     * h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
-     * lengths instead of fixing only the wrong ones. This idea is taken
-     * from 'ar' written by Haruhiko Okumura.)
-     */
-    for(bits = max_length; bits != 0; bits--) {
-	n = zip_bl_count[bits];
-	while(n != 0) {
-	    m = zip_heap[--h];
-	    if(m > max_code)
-		continue;
-	    if(tree[m].dl != bits) {
-		zip_opt_len += (bits - tree[m].dl) * tree[m].fc;
-		tree[m].fc = bits;
-	    }
-	    n--;
-	}
-    }
-}
-
-  /* ==========================================================================
-   * Generate the codes for a given tree and bit counts (which need not be
-   * optimal).
-   * IN assertion: the array bl_count contains the bit length statistics for
-   * the given tree and the field len is set for all tree elements.
-   * OUT assertion: the field code is set for all tree elements of non
-   *     zero code length.
-   */
-var zip_gen_codes = function(tree,	// the tree to decorate
-		   max_code) {	// largest code with non zero frequency
-    var next_code = new Array(zip_MAX_BITS+1); // next code value for each bit length
-    var code = 0;		// running code value
-    var bits;			// bit index
-    var n;			// code index
-
-    /* The distribution counts are first used to generate the code values
-     * without bit reversal.
-     */
-    for(bits = 1; bits <= zip_MAX_BITS; bits++) {
-	code = ((code + zip_bl_count[bits-1]) << 1);
-	next_code[bits] = code;
-    }
-
-    /* Check that the bit counts in bl_count are consistent. The last code
-     * must be all ones.
-     */
-//    Assert (code + encoder->bl_count[MAX_BITS]-1 == (1<<MAX_BITS)-1,
-//	    "inconsistent bit counts");
-//    Tracev((stderr,"\ngen_codes: max_code %d ", max_code));
-
-    for(n = 0; n <= max_code; n++) {
-	var len = tree[n].dl;
-	if(len == 0)
-	    continue;
-	// Now reverse the bits
-	tree[n].fc = zip_bi_reverse(next_code[len]++, len);
-
-//      Tracec(tree != static_ltree, (stderr,"\nn %3d %c l %2d c %4x (%x) ",
-//	  n, (isgraph(n) ? n : ' '), len, tree[n].fc, next_code[len]-1));
-    }
-}
-
-/* ==========================================================================
- * Construct one Huffman tree and assigns the code bit strings and lengths.
- * Update the total bit length for the current block.
- * IN assertion: the field freq is set for all tree elements.
- * OUT assertions: the fields len and code are set to the optimal bit length
- *     and corresponding code. The length opt_len is updated; static_len is
- *     also updated if stree is not null. The field max_code is set.
- */
-var zip_build_tree = function(desc) { // the tree descriptor
-    var tree	= desc.dyn_tree;
-    var stree	= desc.static_tree;
-    var elems	= desc.elems;
-    var n, m;		// iterate over heap elements
-    var max_code = -1;	// largest code with non zero frequency
-    var node = elems;	// next internal node of the tree
-
-    /* Construct the initial heap, with least frequent element in
-     * heap[SMALLEST]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
-     * heap[0] is not used.
-     */
-    zip_heap_len = 0;
-    zip_heap_max = zip_HEAP_SIZE;
-
-    for(n = 0; n < elems; n++) {
-	if(tree[n].fc != 0) {
-	    zip_heap[++zip_heap_len] = max_code = n;
-	    zip_depth[n] = 0;
-	} else
-	    tree[n].dl = 0;
-    }
-
-    /* The pkzip format requires that at least one distance code exists,
-     * and that at least one bit should be sent even if there is only one
-     * possible code. So to avoid special checks later on we force at least
-     * two codes of non zero frequency.
-     */
-    while(zip_heap_len < 2) {
-	var xnew = zip_heap[++zip_heap_len] = (max_code < 2 ? ++max_code : 0);
-	tree[xnew].fc = 1;
-	zip_depth[xnew] = 0;
-	zip_opt_len--;
-	if(stree != null)
-	    zip_static_len -= stree[xnew].dl;
-	// new is 0 or 1 so it does not have extra bits
-    }
-    desc.max_code = max_code;
-
-    /* The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
-     * establish sub-heaps of increasing lengths:
-     */
-    for(n = zip_heap_len >> 1; n >= 1; n--)
-	zip_pqdownheap(tree, n);
-
-    /* Construct the Huffman tree by repeatedly combining the least two
-     * frequent nodes.
-     */
-    do {
-	n = zip_heap[zip_SMALLEST];
-	zip_heap[zip_SMALLEST] = zip_heap[zip_heap_len--];
-	zip_pqdownheap(tree, zip_SMALLEST);
-
-	m = zip_heap[zip_SMALLEST];  // m = node of next least frequency
-
-	// keep the nodes sorted by frequency
-	zip_heap[--zip_heap_max] = n;
-	zip_heap[--zip_heap_max] = m;
-
-	// Create a new node father of n and m
-	tree[node].fc = tree[n].fc + tree[m].fc;
-//	depth[node] = (char)(MAX(depth[n], depth[m]) + 1);
-	if(zip_depth[n] > zip_depth[m] + 1)
-	    zip_depth[node] = zip_depth[n];
-	else
-	    zip_depth[node] = zip_depth[m] + 1;
-	tree[n].dl = tree[m].dl = node;
-
-	// and insert the new node in the heap
-	zip_heap[zip_SMALLEST] = node++;
-	zip_pqdownheap(tree, zip_SMALLEST);
-
-    } while(zip_heap_len >= 2);
-
-    zip_heap[--zip_heap_max] = zip_heap[zip_SMALLEST];
-
-    /* At this point, the fields freq and dad are set. We can now
-     * generate the bit lengths.
-     */
-    zip_gen_bitlen(desc);
-
-    // The field len is now set, we can generate the bit codes
-    zip_gen_codes(tree, max_code);
-}
-
-/* ==========================================================================
- * Scan a literal or distance tree to determine the frequencies of the codes
- * in the bit length tree. Updates opt_len to take into account the repeat
- * counts. (The contribution of the bit length codes will be added later
- * during the construction of bl_tree.)
- */
-var zip_scan_tree = function(tree,// the tree to be scanned
-		       max_code) {  // and its largest code of non zero frequency
-    var n;			// iterates over all tree elements
-    var prevlen = -1;		// last emitted length
-    var curlen;			// length of current code
-    var nextlen = tree[0].dl;	// length of next code
-    var count = 0;		// repeat count of the current code
-    var max_count = 7;		// max repeat count
-    var min_count = 4;		// min repeat count
-
-    if(nextlen == 0) {
-	max_count = 138;
-	min_count = 3;
-    }
-    tree[max_code + 1].dl = 0xffff; // guard
-
-    for(n = 0; n <= max_code; n++) {
-	curlen = nextlen;
-	nextlen = tree[n + 1].dl;
-	if(++count < max_count && curlen == nextlen)
-	    continue;
-	else if(count < min_count)
-	    zip_bl_tree[curlen].fc += count;
-	else if(curlen != 0) {
-	    if(curlen != prevlen)
-		zip_bl_tree[curlen].fc++;
-	    zip_bl_tree[zip_REP_3_6].fc++;
-	} else if(count <= 10)
-	    zip_bl_tree[zip_REPZ_3_10].fc++;
-	else
-	    zip_bl_tree[zip_REPZ_11_138].fc++;
-	count = 0; prevlen = curlen;
-	if(nextlen == 0) {
-	    max_count = 138;
-	    min_count = 3;
-	} else if(curlen == nextlen) {
-	    max_count = 6;
-	    min_count = 3;
-	} else {
-	    max_count = 7;
-	    min_count = 4;
-	}
-    }
-}
-
-  /* ==========================================================================
-   * Send a literal or distance tree in compressed form, using the codes in
-   * bl_tree.
-   */
-var zip_send_tree = function(tree, // the tree to be scanned
-		   max_code) { // and its largest code of non zero frequency
-    var n;			// iterates over all tree elements
-    var prevlen = -1;		// last emitted length
-    var curlen;			// length of current code
-    var nextlen = tree[0].dl;	// length of next code
-    var count = 0;		// repeat count of the current code
-    var max_count = 7;		// max repeat count
-    var min_count = 4;		// min repeat count
-
-    /* tree[max_code+1].dl = -1; */  /* guard already set */
-    if(nextlen == 0) {
-      max_count = 138;
-      min_count = 3;
-    }
-
-    for(n = 0; n <= max_code; n++) {
-	curlen = nextlen;
-	nextlen = tree[n+1].dl;
-	if(++count < max_count && curlen == nextlen) {
-	    continue;
-	} else if(count < min_count) {
-	    do { zip_SEND_CODE(curlen, zip_bl_tree); } while(--count != 0);
-	} else if(curlen != 0) {
-	    if(curlen != prevlen) {
-		zip_SEND_CODE(curlen, zip_bl_tree);
-		count--;
-	    }
-	    // Assert(count >= 3 && count <= 6, " 3_6?");
-	    zip_SEND_CODE(zip_REP_3_6, zip_bl_tree);
-	    zip_send_bits(count - 3, 2);
-	} else if(count <= 10) {
-	    zip_SEND_CODE(zip_REPZ_3_10, zip_bl_tree);
-	    zip_send_bits(count-3, 3);
-	} else {
-	    zip_SEND_CODE(zip_REPZ_11_138, zip_bl_tree);
-	    zip_send_bits(count-11, 7);
-	}
-	count = 0;
-	prevlen = curlen;
-	if(nextlen == 0) {
-	    max_count = 138;
-	    min_count = 3;
-	} else if(curlen == nextlen) {
-	    max_count = 6;
-	    min_count = 3;
-	} else {
-	    max_count = 7;
-	    min_count = 4;
-	}
-    }
-}
-
-/* ==========================================================================
- * Construct the Huffman tree for the bit lengths and return the index in
- * bl_order of the last bit length code to send.
- */
-var zip_build_bl_tree = function() {
-    var max_blindex;  // index of last bit length code of non zero freq
-
-    // Determine the bit length frequencies for literal and distance trees
-    zip_scan_tree(zip_dyn_ltree, zip_l_desc.max_code);
-    zip_scan_tree(zip_dyn_dtree, zip_d_desc.max_code);
-
-    // Build the bit length tree:
-    zip_build_tree(zip_bl_desc);
-    /* opt_len now includes the length of the tree representations, except
-     * the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
-     */
-
-    /* Determine the number of bit length codes to send. The pkzip format
-     * requires that at least 4 bit length codes be sent. (appnote.txt says
-     * 3 but the actual value used is 4.)
-     */
-    for(max_blindex = zip_BL_CODES-1; max_blindex >= 3; max_blindex--) {
-	if(zip_bl_tree[zip_bl_order[max_blindex]].dl != 0) break;
-    }
-    /* Update opt_len to include the bit length tree and counts */
-    zip_opt_len += 3*(max_blindex+1) + 5+5+4;
-//    Tracev((stderr, "\ndyn trees: dyn %ld, stat %ld",
-//	    encoder->opt_len, encoder->static_len));
-
-    return max_blindex;
-}
-
-/* ==========================================================================
- * Send the header for a block using dynamic Huffman trees: the counts, the
- * lengths of the bit length codes, the literal tree and the distance tree.
- * IN assertion: lcodes >= 257, dcodes >= 1, blcodes >= 4.
- */
-var zip_send_all_trees = function(lcodes, dcodes, blcodes) { // number of codes for each tree
-    var rank; // index in bl_order
-
-//    Assert (lcodes >= 257 && dcodes >= 1 && blcodes >= 4, "not enough codes");
-//    Assert (lcodes <= L_CODES && dcodes <= D_CODES && blcodes <= BL_CODES,
-//	    "too many codes");
-//    Tracev((stderr, "\nbl counts: "));
-    zip_send_bits(lcodes-257, 5); // not +255 as stated in appnote.txt
-    zip_send_bits(dcodes-1,   5);
-    zip_send_bits(blcodes-4,  4); // not -3 as stated in appnote.txt
-    for(rank = 0; rank < blcodes; rank++) {
-//      Tracev((stderr, "\nbl code %2d ", bl_order[rank]));
-	zip_send_bits(zip_bl_tree[zip_bl_order[rank]].dl, 3);
-    }
-
-    // send the literal tree
-    zip_send_tree(zip_dyn_ltree,lcodes-1);
-
-    // send the distance tree
-    zip_send_tree(zip_dyn_dtree,dcodes-1);
-}
-
-/* ==========================================================================
- * Determine the best encoding for the current block: dynamic trees, static
- * trees or store, and output the encoded block to the zip file.
- */
-var zip_flush_block = function(eof) { // true if this is the last block for a file
-    var opt_lenb, static_lenb; // opt_len and static_len in bytes
-    var max_blindex;	// index of last bit length code of non zero freq
-    var stored_len;	// length of input block
-
-    stored_len = zip_strstart - zip_block_start;
-    zip_flag_buf[zip_last_flags] = zip_flags; // Save the flags for the last 8 items
-
-    // Construct the literal and distance trees
-    zip_build_tree(zip_l_desc);
-//    Tracev((stderr, "\nlit data: dyn %ld, stat %ld",
-//	    encoder->opt_len, encoder->static_len));
-
-    zip_build_tree(zip_d_desc);
-//    Tracev((stderr, "\ndist data: dyn %ld, stat %ld",
-//	    encoder->opt_len, encoder->static_len));
-    /* At this point, opt_len and static_len are the total bit lengths of
-     * the compressed block data, excluding the tree representations.
-     */
-
-    /* Build the bit length tree for the above two trees, and get the index
-     * in bl_order of the last bit length code to send.
-     */
-    max_blindex = zip_build_bl_tree();
-
-    // Determine the best encoding. Compute first the block length in bytes
-    opt_lenb	= (zip_opt_len   +3+7)>>3;
-    static_lenb = (zip_static_len+3+7)>>3;
-
-//    Trace((stderr, "\nopt %lu(%lu) stat %lu(%lu) stored %lu lit %u dist %u ",
-//	   opt_lenb, encoder->opt_len,
-//	   static_lenb, encoder->static_len, stored_len,
-//	   encoder->last_lit, encoder->last_dist));
-
-    if(static_lenb <= opt_lenb)
-	opt_lenb = static_lenb;
-    if(stored_len + 4 <= opt_lenb // 4: two words for the lengths
-       && zip_block_start >= 0) {
-	var i;
-
-	/* The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.
-	 * Otherwise we can't have processed more than WSIZE input bytes since
-	 * the last block flush, because compression would have been
-	 * successful. If LIT_BUFSIZE <= WSIZE, it is never too late to
-	 * transform a block into a stored block.
-	 */
-	zip_send_bits((zip_STORED_BLOCK<<1)+eof, 3);  /* send block type */
-	zip_bi_windup();		 /* align on byte boundary */
-	zip_put_short(stored_len);
-	zip_put_short(~stored_len);
-
-      // copy block
-/*
-      p = &window[block_start];
-      for(i = 0; i < stored_len; i++)
-	put_byte(p[i]);
+(c) 2009-2014 Stuart Knightley <stuart [at] stuartk.com>
+Dual licenced under the MIT license or GPLv3. See https://raw.github.com/Stuk/jszip/master/LICENSE.markdown.
+
+JSZip uses the library pako released under the MIT license :
+https://github.com/nodeca/pako/blob/master/LICENSE
 */
-	for(i = 0; i < stored_len; i++)
-	    zip_put_byte(zip_window[zip_block_start + i]);
+!function(a){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=a();else if("function"==typeof define&&define.amd)define([],a);else{var b;"undefined"!=typeof window?b=window:"undefined"!=typeof global?b=global:"undefined"!=typeof self&&(b=self),b.JSZip=a()}}(function(){return function a(b,c,d){function e(g,h){if(!c[g]){if(!b[g]){var i="function"==typeof require&&require;if(!h&&i)return i(g,!0);if(f)return f(g,!0);throw new Error("Cannot find module '"+g+"'")}var j=c[g]={exports:{}};b[g][0].call(j.exports,function(a){var c=b[g][1][a];return e(c?c:a)},j,j.exports,a,b,c,d)}return c[g].exports}for(var f="function"==typeof require&&require,g=0;g<d.length;g++)e(d[g]);return e}({1:[function(a,b,c){"use strict";var d="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";c.encode=function(a){for(var b,c,e,f,g,h,i,j="",k=0;k<a.length;)b=a.charCodeAt(k++),c=a.charCodeAt(k++),e=a.charCodeAt(k++),f=b>>2,g=(3&b)<<4|c>>4,h=(15&c)<<2|e>>6,i=63&e,isNaN(c)?h=i=64:isNaN(e)&&(i=64),j=j+d.charAt(f)+d.charAt(g)+d.charAt(h)+d.charAt(i);return j},c.decode=function(a){var b,c,e,f,g,h,i,j="",k=0;for(a=a.replace(/[^A-Za-z0-9\+\/\=]/g,"");k<a.length;)f=d.indexOf(a.charAt(k++)),g=d.indexOf(a.charAt(k++)),h=d.indexOf(a.charAt(k++)),i=d.indexOf(a.charAt(k++)),b=f<<2|g>>4,c=(15&g)<<4|h>>2,e=(3&h)<<6|i,j+=String.fromCharCode(b),64!=h&&(j+=String.fromCharCode(c)),64!=i&&(j+=String.fromCharCode(e));return j}},{}],2:[function(a,b){"use strict";function c(){this.compressedSize=0,this.uncompressedSize=0,this.crc32=0,this.compressionMethod=null,this.compressedContent=null}c.prototype={getContent:function(){return null},getCompressedContent:function(){return null}},b.exports=c},{}],3:[function(a,b,c){"use strict";c.STORE={magic:"\x00\x00",compress:function(a){return a},uncompress:function(a){return a},compressInputType:null,uncompressInputType:null},c.DEFLATE=a("./flate")},{"./flate":8}],4:[function(a,b){"use strict";var c=a("./utils"),d=[0,1996959894,3993919788,2567524794,124634137,1886057615,3915621685,2657392035,249268274,2044508324,3772115230,2547177864,162941995,2125561021,3887607047,2428444049,498536548,1789927666,4089016648,2227061214,450548861,1843258603,4107580753,2211677639,325883990,1684777152,4251122042,2321926636,335633487,1661365465,4195302755,2366115317,997073096,1281953886,3579855332,2724688242,1006888145,1258607687,3524101629,2768942443,901097722,1119000684,3686517206,2898065728,853044451,1172266101,3705015759,2882616665,651767980,1373503546,3369554304,3218104598,565507253,1454621731,3485111705,3099436303,671266974,1594198024,3322730930,2970347812,795835527,1483230225,3244367275,3060149565,1994146192,31158534,2563907772,4023717930,1907459465,112637215,2680153253,3904427059,2013776290,251722036,2517215374,3775830040,2137656763,141376813,2439277719,3865271297,1802195444,476864866,2238001368,4066508878,1812370925,453092731,2181625025,4111451223,1706088902,314042704,2344532202,4240017532,1658658271,366619977,2362670323,4224994405,1303535960,984961486,2747007092,3569037538,1256170817,1037604311,2765210733,3554079995,1131014506,879679996,2909243462,3663771856,1141124467,855842277,2852801631,3708648649,1342533948,654459306,3188396048,3373015174,1466479909,544179635,3110523913,3462522015,1591671054,702138776,2966460450,3352799412,1504918807,783551873,3082640443,3233442989,3988292384,2596254646,62317068,1957810842,3939845945,2647816111,81470997,1943803523,3814918930,2489596804,225274430,2053790376,3826175755,2466906013,167816743,2097651377,4027552580,2265490386,503444072,1762050814,4150417245,2154129355,426522225,1852507879,4275313526,2312317920,282753626,1742555852,4189708143,2394877945,397917763,1622183637,3604390888,2714866558,953729732,1340076626,3518719985,2797360999,1068828381,1219638859,3624741850,2936675148,906185462,1090812512,3747672003,2825379669,829329135,1181335161,3412177804,3160834842,628085408,1382605366,3423369109,3138078467,570562233,1426400815,3317316542,2998733608,733239954,1555261956,3268935591,3050360625,752459403,1541320221,2607071920,3965973030,1969922972,40735498,2617837225,3943577151,1913087877,83908371,2512341634,3803740692,2075208622,213261112,2463272603,3855990285,2094854071,198958881,2262029012,4057260610,1759359992,534414190,2176718541,4139329115,1873836001,414664567,2282248934,4279200368,1711684554,285281116,2405801727,4167216745,1634467795,376229701,2685067896,3608007406,1308918612,956543938,2808555105,3495958263,1231636301,1047427035,2932959818,3654703836,1088359270,936918e3,2847714899,3736837829,1202900863,817233897,3183342108,3401237130,1404277552,615818150,3134207493,3453421203,1423857449,601450431,3009837614,3294710456,1567103746,711928724,3020668471,3272380065,1510334235,755167117];b.exports=function(a,b){if("undefined"==typeof a||!a.length)return 0;var e="string"!==c.getTypeOf(a);"undefined"==typeof b&&(b=0);var f=0,g=0,h=0;b=-1^b;for(var i=0,j=a.length;j>i;i++)h=e?a[i]:a.charCodeAt(i),g=255&(b^h),f=d[g],b=b>>>8^f;return-1^b}},{"./utils":21}],5:[function(a,b){"use strict";function c(){this.data=null,this.length=0,this.index=0}var d=a("./utils");c.prototype={checkOffset:function(a){this.checkIndex(this.index+a)},checkIndex:function(a){if(this.length<a||0>a)throw new Error("End of data reached (data length = "+this.length+", asked index = "+a+"). Corrupted zip ?")},setIndex:function(a){this.checkIndex(a),this.index=a},skip:function(a){this.setIndex(this.index+a)},byteAt:function(){},readInt:function(a){var b,c=0;for(this.checkOffset(a),b=this.index+a-1;b>=this.index;b--)c=(c<<8)+this.byteAt(b);return this.index+=a,c},readString:function(a){return d.transformTo("string",this.readData(a))},readData:function(){},lastIndexOfSignature:function(){},readDate:function(){var a=this.readInt(4);return new Date((a>>25&127)+1980,(a>>21&15)-1,a>>16&31,a>>11&31,a>>5&63,(31&a)<<1)}},b.exports=c},{"./utils":21}],6:[function(a,b,c){"use strict";c.base64=!1,c.binary=!1,c.dir=!1,c.createFolders=!1,c.date=null,c.compression=null,c.comment=null},{}],7:[function(a,b,c){"use strict";var d=a("./utils");c.string2binary=function(a){return d.string2binary(a)},c.string2Uint8Array=function(a){return d.transformTo("uint8array",a)},c.uint8Array2String=function(a){return d.transformTo("string",a)},c.string2Blob=function(a){var b=d.transformTo("arraybuffer",a);return d.arrayBuffer2Blob(b)},c.arrayBuffer2Blob=function(a){return d.arrayBuffer2Blob(a)},c.transformTo=function(a,b){return d.transformTo(a,b)},c.getTypeOf=function(a){return d.getTypeOf(a)},c.checkSupport=function(a){return d.checkSupport(a)},c.MAX_VALUE_16BITS=d.MAX_VALUE_16BITS,c.MAX_VALUE_32BITS=d.MAX_VALUE_32BITS,c.pretty=function(a){return d.pretty(a)},c.findCompression=function(a){return d.findCompression(a)},c.isRegExp=function(a){return d.isRegExp(a)}},{"./utils":21}],8:[function(a,b,c){"use strict";var d="undefined"!=typeof Uint8Array&&"undefined"!=typeof Uint16Array&&"undefined"!=typeof Uint32Array,e=a("pako");c.uncompressInputType=d?"uint8array":"array",c.compressInputType=d?"uint8array":"array",c.magic="\b\x00",c.compress=function(a){return e.deflateRaw(a)},c.uncompress=function(a){return e.inflateRaw(a)}},{pako:24}],9:[function(a,b){"use strict";function c(a,b){return this instanceof c?(this.files={},this.comment=null,this.root="",a&&this.load(a,b),void(this.clone=function(){var a=new c;for(var b in this)"function"!=typeof this[b]&&(a[b]=this[b]);return a})):new c(a,b)}var d=a("./base64");c.prototype=a("./object"),c.prototype.load=a("./load"),c.support=a("./support"),c.defaults=a("./defaults"),c.utils=a("./deprecatedPublicUtils"),c.base64={encode:function(a){return d.encode(a)},decode:function(a){return d.decode(a)}},c.compressions=a("./compressions"),b.exports=c},{"./base64":1,"./compressions":3,"./defaults":6,"./deprecatedPublicUtils":7,"./load":10,"./object":13,"./support":17}],10:[function(a,b){"use strict";var c=a("./base64"),d=a("./zipEntries");b.exports=function(a,b){var e,f,g,h;for(b=b||{},b.base64&&(a=c.decode(a)),f=new d(a,b),e=f.files,g=0;g<e.length;g++)h=e[g],this.file(h.fileName,h.decompressed,{binary:!0,optimizedBinaryString:!0,date:h.date,dir:h.dir,comment:h.fileComment.length?h.fileComment:null,createFolders:b.createFolders});return f.zipComment.length&&(this.comment=f.zipComment),this}},{"./base64":1,"./zipEntries":22}],11:[function(a,b){(function(a){"use strict";b.exports=function(b,c){return new a(b,c)},b.exports.test=function(b){return a.isBuffer(b)}}).call(this,"undefined"!=typeof Buffer?Buffer:void 0)},{}],12:[function(a,b){"use strict";function c(a){this.data=a,this.length=this.data.length,this.index=0}var d=a("./uint8ArrayReader");c.prototype=new d,c.prototype.readData=function(a){this.checkOffset(a);var b=this.data.slice(this.index,this.index+a);return this.index+=a,b},b.exports=c},{"./uint8ArrayReader":18}],13:[function(a,b){"use strict";var c=a("./support"),d=a("./utils"),e=a("./crc32"),f=a("./signature"),g=a("./defaults"),h=a("./base64"),i=a("./compressions"),j=a("./compressedObject"),k=a("./nodeBuffer"),l=a("./utf8"),m=a("./stringWriter"),n=a("./uint8ArrayWriter"),o=function(a){if(a._data instanceof j&&(a._data=a._data.getContent(),a.options.binary=!0,a.options.base64=!1,"uint8array"===d.getTypeOf(a._data))){var b=a._data;a._data=new Uint8Array(b.length),0!==b.length&&a._data.set(b,0)}return a._data},p=function(a){var b=o(a),e=d.getTypeOf(b);return"string"===e?!a.options.binary&&c.nodebuffer?k(b,"utf-8"):a.asBinary():b},q=function(a){var b=o(this);return null===b||"undefined"==typeof b?"":(this.options.base64&&(b=h.decode(b)),b=a&&this.options.binary?A.utf8decode(b):d.transformTo("string",b),a||this.options.binary||(b=d.transformTo("string",A.utf8encode(b))),b)},r=function(a,b,c){this.name=a,this.dir=c.dir,this.date=c.date,this.comment=c.comment,this._data=b,this.options=c,this._initialMetadata={dir:c.dir,date:c.date}};r.prototype={asText:function(){return q.call(this,!0)},asBinary:function(){return q.call(this,!1)},asNodeBuffer:function(){var a=p(this);return d.transformTo("nodebuffer",a)},asUint8Array:function(){var a=p(this);return d.transformTo("uint8array",a)},asArrayBuffer:function(){return this.asUint8Array().buffer}};var s=function(a,b){var c,d="";for(c=0;b>c;c++)d+=String.fromCharCode(255&a),a>>>=8;return d},t=function(){var a,b,c={};for(a=0;a<arguments.length;a++)for(b in arguments[a])arguments[a].hasOwnProperty(b)&&"undefined"==typeof c[b]&&(c[b]=arguments[a][b]);return c},u=function(a){return a=a||{},a.base64!==!0||null!==a.binary&&void 0!==a.binary||(a.binary=!0),a=t(a,g),a.date=a.date||new Date,null!==a.compression&&(a.compression=a.compression.toUpperCase()),a},v=function(a,b,c){var e,f=d.getTypeOf(b);if(c=u(c),c.createFolders&&(e=w(a))&&x.call(this,e,!0),c.dir||null===b||"undefined"==typeof b)c.base64=!1,c.binary=!1,b=null;else if("string"===f)c.binary&&!c.base64&&c.optimizedBinaryString!==!0&&(b=d.string2binary(b));else{if(c.base64=!1,c.binary=!0,!(f||b instanceof j))throw new Error("The data of '"+a+"' is in an unsupported format !");"arraybuffer"===f&&(b=d.transformTo("uint8array",b))}var g=new r(a,b,c);return this.files[a]=g,g},w=function(a){"/"==a.slice(-1)&&(a=a.substring(0,a.length-1));var b=a.lastIndexOf("/");return b>0?a.substring(0,b):""},x=function(a,b){return"/"!=a.slice(-1)&&(a+="/"),b="undefined"!=typeof b?b:!1,this.files[a]||v.call(this,a,null,{dir:!0,createFolders:b}),this.files[a]},y=function(a,b){var c,f=new j;return a._data instanceof j?(f.uncompressedSize=a._data.uncompressedSize,f.crc32=a._data.crc32,0===f.uncompressedSize||a.dir?(b=i.STORE,f.compressedContent="",f.crc32=0):a._data.compressionMethod===b.magic?f.compressedContent=a._data.getCompressedContent():(c=a._data.getContent(),f.compressedContent=b.compress(d.transformTo(b.compressInputType,c)))):(c=p(a),(!c||0===c.length||a.dir)&&(b=i.STORE,c=""),f.uncompressedSize=c.length,f.crc32=e(c),f.compressedContent=b.compress(d.transformTo(b.compressInputType,c))),f.compressedSize=f.compressedContent.length,f.compressionMethod=b.magic,f},z=function(a,b,c,g){var h,i,j,k,m=(c.compressedContent,d.transformTo("string",l.utf8encode(b.name))),n=b.comment||"",o=d.transformTo("string",l.utf8encode(n)),p=m.length!==b.name.length,q=o.length!==n.length,r=b.options,t="",u="",v="";j=b._initialMetadata.dir!==b.dir?b.dir:r.dir,k=b._initialMetadata.date!==b.date?b.date:r.date,h=k.getHours(),h<<=6,h|=k.getMinutes(),h<<=5,h|=k.getSeconds()/2,i=k.getFullYear()-1980,i<<=4,i|=k.getMonth()+1,i<<=5,i|=k.getDate(),p&&(u=s(1,1)+s(e(m),4)+m,t+="up"+s(u.length,2)+u),q&&(v=s(1,1)+s(this.crc32(o),4)+o,t+="uc"+s(v.length,2)+v);var w="";w+="\n\x00",w+=p||q?"\x00\b":"\x00\x00",w+=c.compressionMethod,w+=s(h,2),w+=s(i,2),w+=s(c.crc32,4),w+=s(c.compressedSize,4),w+=s(c.uncompressedSize,4),w+=s(m.length,2),w+=s(t.length,2);var x=f.LOCAL_FILE_HEADER+w+m+t,y=f.CENTRAL_FILE_HEADER+"\x00"+w+s(o.length,2)+"\x00\x00\x00\x00"+(j===!0?"\x00\x00\x00":"\x00\x00\x00\x00")+s(g,4)+m+t+o;return{fileRecord:x,dirRecord:y,compressedObject:c}},A={load:function(){throw new Error("Load method is not defined. Is the file jszip-load.js included ?")},filter:function(a){var b,c,d,e,f=[];for(b in this.files)this.files.hasOwnProperty(b)&&(d=this.files[b],e=new r(d.name,d._data,t(d.options)),c=b.slice(this.root.length,b.length),b.slice(0,this.root.length)===this.root&&a(c,e)&&f.push(e));return f},file:function(a,b,c){if(1===arguments.length){if(d.isRegExp(a)){var e=a;return this.filter(function(a,b){return!b.dir&&e.test(a)})}return this.filter(function(b,c){return!c.dir&&b===a})[0]||null}return a=this.root+a,v.call(this,a,b,c),this},folder:function(a){if(!a)return this;if(d.isRegExp(a))return this.filter(function(b,c){return c.dir&&a.test(b)});var b=this.root+a,c=x.call(this,b),e=this.clone();return e.root=c.name,e},remove:function(a){a=this.root+a;var b=this.files[a];if(b||("/"!=a.slice(-1)&&(a+="/"),b=this.files[a]),b&&!b.dir)delete this.files[a];else for(var c=this.filter(function(b,c){return c.name.slice(0,a.length)===a}),d=0;d<c.length;d++)delete this.files[c[d].name];return this},generate:function(a){a=t(a||{},{base64:!0,compression:"STORE",type:"base64",comment:null}),d.checkSupport(a.type);var b,c,e=[],g=0,j=0,k=d.transformTo("string",this.utf8encode(a.comment||this.comment||""));for(var l in this.files)if(this.files.hasOwnProperty(l)){var o=this.files[l],p=o.options.compression||a.compression.toUpperCase(),q=i[p];if(!q)throw new Error(p+" is not a valid compression method !");var r=y.call(this,o,q),u=z.call(this,l,o,r,g);g+=u.fileRecord.length+r.compressedSize,j+=u.dirRecord.length,e.push(u)}var v="";v=f.CENTRAL_DIRECTORY_END+"\x00\x00\x00\x00"+s(e.length,2)+s(e.length,2)+s(j,4)+s(g,4)+s(k.length,2)+k;var w=a.type.toLowerCase();for(b="uint8array"===w||"arraybuffer"===w||"blob"===w||"nodebuffer"===w?new n(g+j+v.length):new m(g+j+v.length),c=0;c<e.length;c++)b.append(e[c].fileRecord),b.append(e[c].compressedObject.compressedContent);for(c=0;c<e.length;c++)b.append(e[c].dirRecord);b.append(v);var x=b.finalize();switch(a.type.toLowerCase()){case"uint8array":case"arraybuffer":case"nodebuffer":return d.transformTo(a.type.toLowerCase(),x);case"blob":return d.arrayBuffer2Blob(d.transformTo("arraybuffer",x));case"base64":return a.base64?h.encode(x):x;default:return x}},crc32:function(a,b){return e(a,b)},utf8encode:function(a){return d.transformTo("string",l.utf8encode(a))},utf8decode:function(a){return l.utf8decode(a)}};b.exports=A},{"./base64":1,"./compressedObject":2,"./compressions":3,"./crc32":4,"./defaults":6,"./nodeBuffer":11,"./signature":14,"./stringWriter":16,"./support":17,"./uint8ArrayWriter":19,"./utf8":20,"./utils":21}],14:[function(a,b,c){"use strict";c.LOCAL_FILE_HEADER="PK",c.CENTRAL_FILE_HEADER="PK",c.CENTRAL_DIRECTORY_END="PK",c.ZIP64_CENTRAL_DIRECTORY_LOCATOR="PK",c.ZIP64_CENTRAL_DIRECTORY_END="PK",c.DATA_DESCRIPTOR="PK\b"},{}],15:[function(a,b){"use strict";function c(a,b){this.data=a,b||(this.data=e.string2binary(this.data)),this.length=this.data.length,this.index=0}var d=a("./dataReader"),e=a("./utils");c.prototype=new d,c.prototype.byteAt=function(a){return this.data.charCodeAt(a)},c.prototype.lastIndexOfSignature=function(a){return this.data.lastIndexOf(a)},c.prototype.readData=function(a){this.checkOffset(a);var b=this.data.slice(this.index,this.index+a);return this.index+=a,b},b.exports=c},{"./dataReader":5,"./utils":21}],16:[function(a,b){"use strict";var c=a("./utils"),d=function(){this.data=[]};d.prototype={append:function(a){a=c.transformTo("string",a),this.data.push(a)},finalize:function(){return this.data.join("")}},b.exports=d},{"./utils":21}],17:[function(a,b,c){(function(a){"use strict";if(c.base64=!0,c.array=!0,c.string=!0,c.arraybuffer="undefined"!=typeof ArrayBuffer&&"undefined"!=typeof Uint8Array,c.nodebuffer="undefined"!=typeof a,c.uint8array="undefined"!=typeof Uint8Array,"undefined"==typeof ArrayBuffer)c.blob=!1;else{var b=new ArrayBuffer(0);try{c.blob=0===new Blob([b],{type:"application/zip"}).size}catch(d){try{var e=window.BlobBuilder||window.WebKitBlobBuilder||window.MozBlobBuilder||window.MSBlobBuilder,f=new e;f.append(b),c.blob=0===f.getBlob("application/zip").size}catch(d){c.blob=!1}}}}).call(this,"undefined"!=typeof Buffer?Buffer:void 0)},{}],18:[function(a,b){"use strict";function c(a){a&&(this.data=a,this.length=this.data.length,this.index=0)}var d=a("./dataReader");c.prototype=new d,c.prototype.byteAt=function(a){return this.data[a]},c.prototype.lastIndexOfSignature=function(a){for(var b=a.charCodeAt(0),c=a.charCodeAt(1),d=a.charCodeAt(2),e=a.charCodeAt(3),f=this.length-4;f>=0;--f)if(this.data[f]===b&&this.data[f+1]===c&&this.data[f+2]===d&&this.data[f+3]===e)return f;return-1},c.prototype.readData=function(a){if(this.checkOffset(a),0===a)return new Uint8Array(0);var b=this.data.subarray(this.index,this.index+a);return this.index+=a,b},b.exports=c},{"./dataReader":5}],19:[function(a,b){"use strict";var c=a("./utils"),d=function(a){this.data=new Uint8Array(a),this.index=0};d.prototype={append:function(a){0!==a.length&&(a=c.transformTo("uint8array",a),this.data.set(a,this.index),this.index+=a.length)},finalize:function(){return this.data}},b.exports=d},{"./utils":21}],20:[function(a,b,c){"use strict";for(var d=a("./utils"),e=a("./support"),f=a("./nodeBuffer"),g=new Array(256),h=0;256>h;h++)g[h]=h>=252?6:h>=248?5:h>=240?4:h>=224?3:h>=192?2:1;g[254]=g[254]=1;var i=function(a){var b,c,d,f,g,h=a.length,i=0;for(f=0;h>f;f++)c=a.charCodeAt(f),55296===(64512&c)&&h>f+1&&(d=a.charCodeAt(f+1),56320===(64512&d)&&(c=65536+(c-55296<<10)+(d-56320),f++)),i+=128>c?1:2048>c?2:65536>c?3:4;for(b=e.uint8array?new Uint8Array(i):new Array(i),g=0,f=0;i>g;f++)c=a.charCodeAt(f),55296===(64512&c)&&h>f+1&&(d=a.charCodeAt(f+1),56320===(64512&d)&&(c=65536+(c-55296<<10)+(d-56320),f++)),128>c?b[g++]=c:2048>c?(b[g++]=192|c>>>6,b[g++]=128|63&c):65536>c?(b[g++]=224|c>>>12,b[g++]=128|c>>>6&63,b[g++]=128|63&c):(b[g++]=240|c>>>18,b[g++]=128|c>>>12&63,b[g++]=128|c>>>6&63,b[g++]=128|63&c);return b},j=function(a,b){var c;for(b=b||a.length,b>a.length&&(b=a.length),c=b-1;c>=0&&128===(192&a[c]);)c--;return 0>c?b:0===c?b:c+g[a[c]]>b?c:b},k=function(a){var b,c,e,f,h=a.length,i=new Array(2*h);for(c=0,b=0;h>b;)if(e=a[b++],128>e)i[c++]=e;else if(f=g[e],f>4)i[c++]=65533,b+=f-1;else{for(e&=2===f?31:3===f?15:7;f>1&&h>b;)e=e<<6|63&a[b++],f--;f>1?i[c++]=65533:65536>e?i[c++]=e:(e-=65536,i[c++]=55296|e>>10&1023,i[c++]=56320|1023&e)}return i.length!==c&&(i.subarray?i=i.subarray(0,c):i.length=c),d.applyFromCharCode(i)};c.utf8encode=function(a){return e.nodebuffer?f(a,"utf-8"):i(a)},c.utf8decode=function(a){if(e.nodebuffer)return d.transformTo("nodebuffer",a).toString("utf-8");a=d.transformTo(e.uint8array?"uint8array":"array",a);for(var b=[],c=0,f=a.length,g=65536;f>c;){var h=j(a,Math.min(c+g,f));b.push(e.uint8array?k(a.subarray(c,h)):k(a.slice(c,h))),c=h}return b.join("")}},{"./nodeBuffer":11,"./support":17,"./utils":21}],21:[function(a,b,c){"use strict";function d(a){return a}function e(a,b){for(var c=0;c<a.length;++c)b[c]=255&a.charCodeAt(c);return b}function f(a){var b=65536,d=[],e=a.length,f=c.getTypeOf(a),g=0,h=!0;try{switch(f){case"uint8array":String.fromCharCode.apply(null,new Uint8Array(0));break;case"nodebuffer":String.fromCharCode.apply(null,j(0))}}catch(i){h=!1}if(!h){for(var k="",l=0;l<a.length;l++)k+=String.fromCharCode(a[l]);return k}for(;e>g&&b>1;)try{d.push("array"===f||"nodebuffer"===f?String.fromCharCode.apply(null,a.slice(g,Math.min(g+b,e))):String.fromCharCode.apply(null,a.subarray(g,Math.min(g+b,e)))),g+=b}catch(i){b=Math.floor(b/2)}return d.join("")}function g(a,b){for(var c=0;c<a.length;c++)b[c]=a[c];return b}var h=a("./support"),i=a("./compressions"),j=a("./nodeBuffer");c.string2binary=function(a){for(var b="",c=0;c<a.length;c++)b+=String.fromCharCode(255&a.charCodeAt(c));return b},c.arrayBuffer2Blob=function(a){c.checkSupport("blob");try{return new Blob([a],{type:"application/zip"})}catch(b){try{var d=window.BlobBuilder||window.WebKitBlobBuilder||window.MozBlobBuilder||window.MSBlobBuilder,e=new d;return e.append(a),e.getBlob("application/zip")}catch(b){throw new Error("Bug : can't construct the Blob.")}}},c.applyFromCharCode=f;var k={};k.string={string:d,array:function(a){return e(a,new Array(a.length))},arraybuffer:function(a){return k.string.uint8array(a).buffer},uint8array:function(a){return e(a,new Uint8Array(a.length))},nodebuffer:function(a){return e(a,j(a.length))}},k.array={string:f,array:d,arraybuffer:function(a){return new Uint8Array(a).buffer},uint8array:function(a){return new Uint8Array(a)},nodebuffer:function(a){return j(a)}},k.arraybuffer={string:function(a){return f(new Uint8Array(a))},array:function(a){return g(new Uint8Array(a),new Array(a.byteLength))},arraybuffer:d,uint8array:function(a){return new Uint8Array(a)},nodebuffer:function(a){return j(new Uint8Array(a))}},k.uint8array={string:f,array:function(a){return g(a,new Array(a.length))},arraybuffer:function(a){return a.buffer},uint8array:d,nodebuffer:function(a){return j(a)}},k.nodebuffer={string:f,array:function(a){return g(a,new Array(a.length))},arraybuffer:function(a){return k.nodebuffer.uint8array(a).buffer},uint8array:function(a){return g(a,new Uint8Array(a.length))},nodebuffer:d},c.transformTo=function(a,b){if(b||(b=""),!a)return b;c.checkSupport(a);var d=c.getTypeOf(b),e=k[d][a](b);return e},c.getTypeOf=function(a){return"string"==typeof a?"string":"[object Array]"===Object.prototype.toString.call(a)?"array":h.nodebuffer&&j.test(a)?"nodebuffer":h.uint8array&&a instanceof Uint8Array?"uint8array":h.arraybuffer&&a instanceof ArrayBuffer?"arraybuffer":void 0},c.checkSupport=function(a){var b=h[a.toLowerCase()];if(!b)throw new Error(a+" is not supported by this browser")},c.MAX_VALUE_16BITS=65535,c.MAX_VALUE_32BITS=-1,c.pretty=function(a){var b,c,d="";for(c=0;c<(a||"").length;c++)b=a.charCodeAt(c),d+="\\x"+(16>b?"0":"")+b.toString(16).toUpperCase();return d},c.findCompression=function(a){for(var b in i)if(i.hasOwnProperty(b)&&i[b].magic===a)return i[b];return null},c.isRegExp=function(a){return"[object RegExp]"===Object.prototype.toString.call(a)}},{"./compressions":3,"./nodeBuffer":11,"./support":17}],22:[function(a,b){"use strict";function c(a,b){this.files=[],this.loadOptions=b,a&&this.load(a)}var d=a("./stringReader"),e=a("./nodeBufferReader"),f=a("./uint8ArrayReader"),g=a("./utils"),h=a("./signature"),i=a("./zipEntry"),j=a("./support"),k=a("./object");c.prototype={checkSignature:function(a){var b=this.reader.readString(4);if(b!==a)throw new Error("Corrupted zip or bug : unexpected signature ("+g.pretty(b)+", expected "+g.pretty(a)+")")},readBlockEndOfCentral:function(){this.diskNumber=this.reader.readInt(2),this.diskWithCentralDirStart=this.reader.readInt(2),this.centralDirRecordsOnThisDisk=this.reader.readInt(2),this.centralDirRecords=this.reader.readInt(2),this.centralDirSize=this.reader.readInt(4),this.centralDirOffset=this.reader.readInt(4),this.zipCommentLength=this.reader.readInt(2),this.zipComment=this.reader.readString(this.zipCommentLength),this.zipComment=k.utf8decode(this.zipComment)},readBlockZip64EndOfCentral:function(){this.zip64EndOfCentralSize=this.reader.readInt(8),this.versionMadeBy=this.reader.readString(2),this.versionNeeded=this.reader.readInt(2),this.diskNumber=this.reader.readInt(4),this.diskWithCentralDirStart=this.reader.readInt(4),this.centralDirRecordsOnThisDisk=this.reader.readInt(8),this.centralDirRecords=this.reader.readInt(8),this.centralDirSize=this.reader.readInt(8),this.centralDirOffset=this.reader.readInt(8),this.zip64ExtensibleData={};for(var a,b,c,d=this.zip64EndOfCentralSize-44,e=0;d>e;)a=this.reader.readInt(2),b=this.reader.readInt(4),c=this.reader.readString(b),this.zip64ExtensibleData[a]={id:a,length:b,value:c}},readBlockZip64EndOfCentralLocator:function(){if(this.diskWithZip64CentralDirStart=this.reader.readInt(4),this.relativeOffsetEndOfZip64CentralDir=this.reader.readInt(8),this.disksCount=this.reader.readInt(4),this.disksCount>1)throw new Error("Multi-volumes zip are not supported")},readLocalFiles:function(){var a,b;for(a=0;a<this.files.length;a++)b=this.files[a],this.reader.setIndex(b.localHeaderOffset),this.checkSignature(h.LOCAL_FILE_HEADER),b.readLocalPart(this.reader),b.handleUTF8()},readCentralDir:function(){var a;for(this.reader.setIndex(this.centralDirOffset);this.reader.readString(4)===h.CENTRAL_FILE_HEADER;)a=new i({zip64:this.zip64},this.loadOptions),a.readCentralPart(this.reader),this.files.push(a)},readEndOfCentral:function(){var a=this.reader.lastIndexOfSignature(h.CENTRAL_DIRECTORY_END);if(-1===a)throw new Error("Corrupted zip : can't find end of central directory");if(this.reader.setIndex(a),this.checkSignature(h.CENTRAL_DIRECTORY_END),this.readBlockEndOfCentral(),this.diskNumber===g.MAX_VALUE_16BITS||this.diskWithCentralDirStart===g.MAX_VALUE_16BITS||this.centralDirRecordsOnThisDisk===g.MAX_VALUE_16BITS||this.centralDirRecords===g.MAX_VALUE_16BITS||this.centralDirSize===g.MAX_VALUE_32BITS||this.centralDirOffset===g.MAX_VALUE_32BITS){if(this.zip64=!0,a=this.reader.lastIndexOfSignature(h.ZIP64_CENTRAL_DIRECTORY_LOCATOR),-1===a)throw new Error("Corrupted zip : can't find the ZIP64 end of central directory locator");this.reader.setIndex(a),this.checkSignature(h.ZIP64_CENTRAL_DIRECTORY_LOCATOR),this.readBlockZip64EndOfCentralLocator(),this.reader.setIndex(this.relativeOffsetEndOfZip64CentralDir),this.checkSignature(h.ZIP64_CENTRAL_DIRECTORY_END),this.readBlockZip64EndOfCentral()}},prepareReader:function(a){var b=g.getTypeOf(a);this.reader="string"!==b||j.uint8array?"nodebuffer"===b?new e(a):new f(g.transformTo("uint8array",a)):new d(a,this.loadOptions.optimizedBinaryString)},load:function(a){this.prepareReader(a),this.readEndOfCentral(),this.readCentralDir(),this.readLocalFiles()}},b.exports=c},{"./nodeBufferReader":12,"./object":13,"./signature":14,"./stringReader":15,"./support":17,"./uint8ArrayReader":18,"./utils":21,"./zipEntry":23}],23:[function(a,b){"use strict";function c(a,b){this.options=a,this.loadOptions=b}var d=a("./stringReader"),e=a("./utils"),f=a("./compressedObject"),g=a("./object");c.prototype={isEncrypted:function(){return 1===(1&this.bitFlag)},useUTF8:function(){return 2048===(2048&this.bitFlag)},prepareCompressedContent:function(a,b,c){return function(){var d=a.index;a.setIndex(b);var e=a.readData(c);return a.setIndex(d),e}},prepareContent:function(a,b,c,d,f){return function(){var a=e.transformTo(d.uncompressInputType,this.getCompressedContent()),b=d.uncompress(a);if(b.length!==f)throw new Error("Bug : uncompressed data size mismatch");return b}},readLocalPart:function(a){var b,c;if(a.skip(22),this.fileNameLength=a.readInt(2),c=a.readInt(2),this.fileName=a.readString(this.fileNameLength),a.skip(c),-1==this.compressedSize||-1==this.uncompressedSize)throw new Error("Bug or corrupted zip : didn't get enough informations from the central directory (compressedSize == -1 || uncompressedSize == -1)");if(b=e.findCompression(this.compressionMethod),null===b)throw new Error("Corrupted zip : compression "+e.pretty(this.compressionMethod)+" unknown (inner file : "+this.fileName+")");if(this.decompressed=new f,this.decompressed.compressedSize=this.compressedSize,this.decompressed.uncompressedSize=this.uncompressedSize,this.decompressed.crc32=this.crc32,this.decompressed.compressionMethod=this.compressionMethod,this.decompressed.getCompressedContent=this.prepareCompressedContent(a,a.index,this.compressedSize,b),this.decompressed.getContent=this.prepareContent(a,a.index,this.compressedSize,b,this.uncompressedSize),this.loadOptions.checkCRC32&&(this.decompressed=e.transformTo("string",this.decompressed.getContent()),g.crc32(this.decompressed)!==this.crc32))throw new Error("Corrupted zip : CRC32 mismatch")},readCentralPart:function(a){if(this.versionMadeBy=a.readString(2),this.versionNeeded=a.readInt(2),this.bitFlag=a.readInt(2),this.compressionMethod=a.readString(2),this.date=a.readDate(),this.crc32=a.readInt(4),this.compressedSize=a.readInt(4),this.uncompressedSize=a.readInt(4),this.fileNameLength=a.readInt(2),this.extraFieldsLength=a.readInt(2),this.fileCommentLength=a.readInt(2),this.diskNumberStart=a.readInt(2),this.internalFileAttributes=a.readInt(2),this.externalFileAttributes=a.readInt(4),this.localHeaderOffset=a.readInt(4),this.isEncrypted())throw new Error("Encrypted zip are not supported");this.fileName=a.readString(this.fileNameLength),this.readExtraFields(a),this.parseZIP64ExtraField(a),this.fileComment=a.readString(this.fileCommentLength),this.dir=16&this.externalFileAttributes?!0:!1},parseZIP64ExtraField:function(){if(this.extraFields[1]){var a=new d(this.extraFields[1].value);this.uncompressedSize===e.MAX_VALUE_32BITS&&(this.uncompressedSize=a.readInt(8)),this.compressedSize===e.MAX_VALUE_32BITS&&(this.compressedSize=a.readInt(8)),this.localHeaderOffset===e.MAX_VALUE_32BITS&&(this.localHeaderOffset=a.readInt(8)),this.diskNumberStart===e.MAX_VALUE_32BITS&&(this.diskNumberStart=a.readInt(4))}},readExtraFields:function(a){var b,c,d,e=a.index;for(this.extraFields=this.extraFields||{};a.index<e+this.extraFieldsLength;)b=a.readInt(2),c=a.readInt(2),d=a.readString(c),this.extraFields[b]={id:b,length:c,value:d}},handleUTF8:function(){if(this.useUTF8())this.fileName=g.utf8decode(this.fileName),this.fileComment=g.utf8decode(this.fileComment);else{var a=this.findExtraFieldUnicodePath();null!==a&&(this.fileName=a);var b=this.findExtraFieldUnicodeComment();null!==b&&(this.fileComment=b)}},findExtraFieldUnicodePath:function(){var a=this.extraFields[28789];if(a){var b=new d(a.value);return 1!==b.readInt(1)?null:g.crc32(this.fileName)!==b.readInt(4)?null:g.utf8decode(b.readString(a.length-5))}return null},findExtraFieldUnicodeComment:function(){var a=this.extraFields[25461];if(a){var b=new d(a.value);return 1!==b.readInt(1)?null:g.crc32(this.fileComment)!==b.readInt(4)?null:g.utf8decode(b.readString(a.length-5))}return null}},b.exports=c},{"./compressedObject":2,"./object":13,"./stringReader":15,"./utils":21}],24:[function(a,b){"use strict";var c=a("./lib/utils/common").assign,d=a("./lib/deflate"),e=a("./lib/inflate"),f=a("./lib/zlib/constants"),g={};c(g,d,e,f),b.exports=g},{"./lib/deflate":25,"./lib/inflate":26,"./lib/utils/common":27,"./lib/zlib/constants":30}],25:[function(a,b,c){"use strict";function d(a,b){var c=new s(b);if(c.push(a,!0),c.err)throw c.msg;return c.result}function e(a,b){return b=b||{},b.raw=!0,d(a,b)}function f(a,b){return b=b||{},b.gzip=!0,d(a,b)}var g=a("./zlib/deflate.js"),h=a("./utils/common"),i=a("./utils/strings"),j=a("./zlib/messages"),k=a("./zlib/zstream"),l=0,m=4,n=0,o=1,p=-1,q=0,r=8,s=function(a){this.options=h.assign({level:p,method:r,chunkSize:16384,windowBits:15,memLevel:8,strategy:q,to:""},a||{});var b=this.options;b.raw&&b.windowBits>0?b.windowBits=-b.windowBits:b.gzip&&b.windowBits>0&&b.windowBits<16&&(b.windowBits+=16),this.err=0,this.msg="",this.ended=!1,this.chunks=[],this.strm=new k,this.strm.avail_out=0;var c=g.deflateInit2(this.strm,b.level,b.method,b.windowBits,b.memLevel,b.strategy);if(c!==n)throw new Error(j[c]);b.header&&g.deflateSetHeader(this.strm,b.header)
+};s.prototype.push=function(a,b){var c,d,e=this.strm,f=this.options.chunkSize;if(this.ended)return!1;d=b===~~b?b:b===!0?m:l,e.input="string"==typeof a?i.string2buf(a):a,e.next_in=0,e.avail_in=e.input.length;do{if(0===e.avail_out&&(e.output=new h.Buf8(f),e.next_out=0,e.avail_out=f),c=g.deflate(e,d),c!==o&&c!==n)return this.onEnd(c),this.ended=!0,!1;(0===e.avail_out||0===e.avail_in&&d===m)&&this.onData("string"===this.options.to?i.buf2binstring(h.shrinkBuf(e.output,e.next_out)):h.shrinkBuf(e.output,e.next_out))}while((e.avail_in>0||0===e.avail_out)&&c!==o);return d===m?(c=g.deflateEnd(this.strm),this.onEnd(c),this.ended=!0,c===n):!0},s.prototype.onData=function(a){this.chunks.push(a)},s.prototype.onEnd=function(a){a===n&&(this.result="string"===this.options.to?this.chunks.join(""):h.flattenChunks(this.chunks)),this.chunks=[],this.err=a,this.msg=this.strm.msg},c.Deflate=s,c.deflate=d,c.deflateRaw=e,c.gzip=f},{"./utils/common":27,"./utils/strings":28,"./zlib/deflate.js":32,"./zlib/messages":37,"./zlib/zstream":39}],26:[function(a,b,c){"use strict";function d(a,b){var c=new m(b);if(c.push(a,!0),c.err)throw c.msg;return c.result}function e(a,b){return b=b||{},b.raw=!0,d(a,b)}var f=a("./zlib/inflate.js"),g=a("./utils/common"),h=a("./utils/strings"),i=a("./zlib/constants"),j=a("./zlib/messages"),k=a("./zlib/zstream"),l=a("./zlib/gzheader"),m=function(a){this.options=g.assign({chunkSize:16384,windowBits:0,to:""},a||{});var b=this.options;b.raw&&b.windowBits>=0&&b.windowBits<16&&(b.windowBits=-b.windowBits,0===b.windowBits&&(b.windowBits=-15)),!(b.windowBits>=0&&b.windowBits<16)||a&&a.windowBits||(b.windowBits+=32),b.windowBits>15&&b.windowBits<48&&0===(15&b.windowBits)&&(b.windowBits|=15),this.err=0,this.msg="",this.ended=!1,this.chunks=[],this.strm=new k,this.strm.avail_out=0;var c=f.inflateInit2(this.strm,b.windowBits);if(c!==i.Z_OK)throw new Error(j[c]);this.header=new l,f.inflateGetHeader(this.strm,this.header)};m.prototype.push=function(a,b){var c,d,e,j,k,l=this.strm,m=this.options.chunkSize;if(this.ended)return!1;d=b===~~b?b:b===!0?i.Z_FINISH:i.Z_NO_FLUSH,l.input="string"==typeof a?h.binstring2buf(a):a,l.next_in=0,l.avail_in=l.input.length;do{if(0===l.avail_out&&(l.output=new g.Buf8(m),l.next_out=0,l.avail_out=m),c=f.inflate(l,i.Z_NO_FLUSH),c!==i.Z_STREAM_END&&c!==i.Z_OK)return this.onEnd(c),this.ended=!0,!1;l.next_out&&(0===l.avail_out||c===i.Z_STREAM_END||0===l.avail_in&&d===i.Z_FINISH)&&("string"===this.options.to?(e=h.utf8border(l.output,l.next_out),j=l.next_out-e,k=h.buf2string(l.output,e),l.next_out=j,l.avail_out=m-j,j&&g.arraySet(l.output,l.output,e,j,0),this.onData(k)):this.onData(g.shrinkBuf(l.output,l.next_out)))}while(l.avail_in>0&&c!==i.Z_STREAM_END);return c===i.Z_STREAM_END&&(d=i.Z_FINISH),d===i.Z_FINISH?(c=f.inflateEnd(this.strm),this.onEnd(c),this.ended=!0,c===i.Z_OK):!0},m.prototype.onData=function(a){this.chunks.push(a)},m.prototype.onEnd=function(a){a===i.Z_OK&&(this.result="string"===this.options.to?this.chunks.join(""):g.flattenChunks(this.chunks)),this.chunks=[],this.err=a,this.msg=this.strm.msg},c.Inflate=m,c.inflate=d,c.inflateRaw=e,c.ungzip=d},{"./utils/common":27,"./utils/strings":28,"./zlib/constants":30,"./zlib/gzheader":33,"./zlib/inflate.js":35,"./zlib/messages":37,"./zlib/zstream":39}],27:[function(a,b,c){"use strict";var d="undefined"!=typeof Uint8Array&&"undefined"!=typeof Uint16Array&&"undefined"!=typeof Int32Array;c.assign=function(a){for(var b=Array.prototype.slice.call(arguments,1);b.length;){var c=b.shift();if(c){if("object"!=typeof c)throw new TypeError(c+"must be non-object");for(var d in c)c.hasOwnProperty(d)&&(a[d]=c[d])}}return a},c.shrinkBuf=function(a,b){return a.length===b?a:a.subarray?a.subarray(0,b):(a.length=b,a)};var e={arraySet:function(a,b,c,d,e){if(b.subarray&&a.subarray)return void a.set(b.subarray(c,c+d),e);for(var f=0;d>f;f++)a[e+f]=b[c+f]},flattenChunks:function(a){var b,c,d,e,f,g;for(d=0,b=0,c=a.length;c>b;b++)d+=a[b].length;for(g=new Uint8Array(d),e=0,b=0,c=a.length;c>b;b++)f=a[b],g.set(f,e),e+=f.length;return g}},f={arraySet:function(a,b,c,d,e){for(var f=0;d>f;f++)a[e+f]=b[c+f]},flattenChunks:function(a){return[].concat.apply([],a)}};c.setTyped=function(a){a?(c.Buf8=Uint8Array,c.Buf16=Uint16Array,c.Buf32=Int32Array,c.assign(c,e)):(c.Buf8=Array,c.Buf16=Array,c.Buf32=Array,c.assign(c,f))},c.setTyped(d)},{}],28:[function(a,b,c){"use strict";function d(a,b){if(65537>b&&(a.subarray&&g||!a.subarray&&f))return String.fromCharCode.apply(null,e.shrinkBuf(a,b));for(var c="",d=0;b>d;d++)c+=String.fromCharCode(a[d]);return c}var e=a("./common"),f=!0,g=!0;try{String.fromCharCode.apply(null,[0])}catch(h){f=!1}try{String.fromCharCode.apply(null,new Uint8Array(1))}catch(h){g=!1}for(var i=new e.Buf8(256),j=0;256>j;j++)i[j]=j>=252?6:j>=248?5:j>=240?4:j>=224?3:j>=192?2:1;i[254]=i[254]=1,c.string2buf=function(a){var b,c,d,f,g,h=a.length,i=0;for(f=0;h>f;f++)c=a.charCodeAt(f),55296===(64512&c)&&h>f+1&&(d=a.charCodeAt(f+1),56320===(64512&d)&&(c=65536+(c-55296<<10)+(d-56320),f++)),i+=128>c?1:2048>c?2:65536>c?3:4;for(b=new e.Buf8(i),g=0,f=0;i>g;f++)c=a.charCodeAt(f),55296===(64512&c)&&h>f+1&&(d=a.charCodeAt(f+1),56320===(64512&d)&&(c=65536+(c-55296<<10)+(d-56320),f++)),128>c?b[g++]=c:2048>c?(b[g++]=192|c>>>6,b[g++]=128|63&c):65536>c?(b[g++]=224|c>>>12,b[g++]=128|c>>>6&63,b[g++]=128|63&c):(b[g++]=240|c>>>18,b[g++]=128|c>>>12&63,b[g++]=128|c>>>6&63,b[g++]=128|63&c);return b},c.buf2binstring=function(a){return d(a,a.length)},c.binstring2buf=function(a){for(var b=new e.Buf8(a.length),c=0,d=b.length;d>c;c++)b[c]=a.charCodeAt(c);return b},c.buf2string=function(a,b){var c,e,f,g,h=b||a.length,j=new Array(2*h);for(e=0,c=0;h>c;)if(f=a[c++],128>f)j[e++]=f;else if(g=i[f],g>4)j[e++]=65533,c+=g-1;else{for(f&=2===g?31:3===g?15:7;g>1&&h>c;)f=f<<6|63&a[c++],g--;g>1?j[e++]=65533:65536>f?j[e++]=f:(f-=65536,j[e++]=55296|f>>10&1023,j[e++]=56320|1023&f)}return d(j,e)},c.utf8border=function(a,b){var c;for(b=b||a.length,b>a.length&&(b=a.length),c=b-1;c>=0&&128===(192&a[c]);)c--;return 0>c?b:0===c?b:c+i[a[c]]>b?c:b}},{"./common":27}],29:[function(a,b){"use strict";function c(a,b,c,d){for(var e=65535&a|0,f=a>>>16&65535|0,g=0;0!==c;){g=c>2e3?2e3:c,c-=g;do e=e+b[d++]|0,f=f+e|0;while(--g);e%=65521,f%=65521}return e|f<<16|0}b.exports=c},{}],30:[function(a,b){b.exports={Z_NO_FLUSH:0,Z_PARTIAL_FLUSH:1,Z_SYNC_FLUSH:2,Z_FULL_FLUSH:3,Z_FINISH:4,Z_BLOCK:5,Z_TREES:6,Z_OK:0,Z_STREAM_END:1,Z_NEED_DICT:2,Z_ERRNO:-1,Z_STREAM_ERROR:-2,Z_DATA_ERROR:-3,Z_BUF_ERROR:-5,Z_NO_COMPRESSION:0,Z_BEST_SPEED:1,Z_BEST_COMPRESSION:9,Z_DEFAULT_COMPRESSION:-1,Z_FILTERED:1,Z_HUFFMAN_ONLY:2,Z_RLE:3,Z_FIXED:4,Z_DEFAULT_STRATEGY:0,Z_BINARY:0,Z_TEXT:1,Z_UNKNOWN:2,Z_DEFLATED:8}},{}],31:[function(a,b){"use strict";function c(){for(var a,b=[],c=0;256>c;c++){a=c;for(var d=0;8>d;d++)a=1&a?3988292384^a>>>1:a>>>1;b[c]=a}return b}function d(a,b,c,d){var f=e,g=d+c;a=-1^a;for(var h=d;g>h;h++)a=a>>>8^f[255&(a^b[h])];return-1^a}var e=c();b.exports=d},{}],32:[function(a,b,c){"use strict";function d(a,b){return a.msg=G[b],b}function e(a){return(a<<1)-(a>4?9:0)}function f(a){for(var b=a.length;--b>=0;)a[b]=0}function g(a){var b=a.state,c=b.pending;c>a.avail_out&&(c=a.avail_out),0!==c&&(C.arraySet(a.output,b.pending_buf,b.pending_out,c,a.next_out),a.next_out+=c,b.pending_out+=c,a.total_out+=c,a.avail_out-=c,b.pending-=c,0===b.pending&&(b.pending_out=0))}function h(a,b){D._tr_flush_block(a,a.block_start>=0?a.block_start:-1,a.strstart-a.block_start,b),a.block_start=a.strstart,g(a.strm)}function i(a,b){a.pending_buf[a.pending++]=b}function j(a,b){a.pending_buf[a.pending++]=b>>>8&255,a.pending_buf[a.pending++]=255&b}function k(a,b,c,d){var e=a.avail_in;return e>d&&(e=d),0===e?0:(a.avail_in-=e,C.arraySet(b,a.input,a.next_in,e,c),1===a.state.wrap?a.adler=E(a.adler,b,e,c):2===a.state.wrap&&(a.adler=F(a.adler,b,e,c)),a.next_in+=e,a.total_in+=e,e)}function l(a,b){var c,d,e=a.max_chain_length,f=a.strstart,g=a.prev_length,h=a.nice_match,i=a.strstart>a.w_size-jb?a.strstart-(a.w_size-jb):0,j=a.window,k=a.w_mask,l=a.prev,m=a.strstart+ib,n=j[f+g-1],o=j[f+g];a.prev_length>=a.good_match&&(e>>=2),h>a.lookahead&&(h=a.lookahead);do if(c=b,j[c+g]===o&&j[c+g-1]===n&&j[c]===j[f]&&j[++c]===j[f+1]){f+=2,c++;do;while(j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&j[++f]===j[++c]&&m>f);if(d=ib-(m-f),f=m-ib,d>g){if(a.match_start=b,g=d,d>=h)break;n=j[f+g-1],o=j[f+g]}}while((b=l[b&k])>i&&0!==--e);return g<=a.lookahead?g:a.lookahead}function m(a){var b,c,d,e,f,g=a.w_size;do{if(e=a.window_size-a.lookahead-a.strstart,a.strstart>=g+(g-jb)){C.arraySet(a.window,a.window,g,g,0),a.match_start-=g,a.strstart-=g,a.block_start-=g,c=a.hash_size,b=c;do d=a.head[--b],a.head[b]=d>=g?d-g:0;while(--c);c=g,b=c;do d=a.prev[--b],a.prev[b]=d>=g?d-g:0;while(--c);e+=g}if(0===a.strm.avail_in)break;if(c=k(a.strm,a.window,a.strstart+a.lookahead,e),a.lookahead+=c,a.lookahead+a.insert>=hb)for(f=a.strstart-a.insert,a.ins_h=a.window[f],a.ins_h=(a.ins_h<<a.hash_shift^a.window[f+1])&a.hash_mask;a.insert&&(a.ins_h=(a.ins_h<<a.hash_shift^a.window[f+hb-1])&a.hash_mask,a.prev[f&a.w_mask]=a.head[a.ins_h],a.head[a.ins_h]=f,f++,a.insert--,!(a.lookahead+a.insert<hb)););}while(a.lookahead<jb&&0!==a.strm.avail_in)}function n(a,b){var c=65535;for(c>a.pending_buf_size-5&&(c=a.pending_buf_size-5);;){if(a.lookahead<=1){if(m(a),0===a.lookahead&&b===H)return sb;if(0===a.lookahead)break}a.strstart+=a.lookahead,a.lookahead=0;var d=a.block_start+c;if((0===a.strstart||a.strstart>=d)&&(a.lookahead=a.strstart-d,a.strstart=d,h(a,!1),0===a.strm.avail_out))return sb;if(a.strstart-a.block_start>=a.w_size-jb&&(h(a,!1),0===a.strm.avail_out))return sb}return a.insert=0,b===K?(h(a,!0),0===a.strm.avail_out?ub:vb):a.strstart>a.block_start&&(h(a,!1),0===a.strm.avail_out)?sb:sb}function o(a,b){for(var c,d;;){if(a.lookahead<jb){if(m(a),a.lookahead<jb&&b===H)return sb;if(0===a.lookahead)break}if(c=0,a.lookahead>=hb&&(a.ins_h=(a.ins_h<<a.hash_shift^a.window[a.strstart+hb-1])&a.hash_mask,c=a.prev[a.strstart&a.w_mask]=a.head[a.ins_h],a.head[a.ins_h]=a.strstart),0!==c&&a.strstart-c<=a.w_size-jb&&(a.match_length=l(a,c)),a.match_length>=hb)if(d=D._tr_tally(a,a.strstart-a.match_start,a.match_length-hb),a.lookahead-=a.match_length,a.match_length<=a.max_lazy_match&&a.lookahead>=hb){a.match_length--;do a.strstart++,a.ins_h=(a.ins_h<<a.hash_shift^a.window[a.strstart+hb-1])&a.hash_mask,c=a.prev[a.strstart&a.w_mask]=a.head[a.ins_h],a.head[a.ins_h]=a.strstart;while(0!==--a.match_length);a.strstart++}else a.strstart+=a.match_length,a.match_length=0,a.ins_h=a.window[a.strstart],a.ins_h=(a.ins_h<<a.hash_shift^a.window[a.strstart+1])&a.hash_mask;else d=D._tr_tally(a,0,a.window[a.strstart]),a.lookahead--,a.strstart++;if(d&&(h(a,!1),0===a.strm.avail_out))return sb}return a.insert=a.strstart<hb-1?a.strstart:hb-1,b===K?(h(a,!0),0===a.strm.avail_out?ub:vb):a.last_lit&&(h(a,!1),0===a.strm.avail_out)?sb:tb}function p(a,b){for(var c,d,e;;){if(a.lookahead<jb){if(m(a),a.lookahead<jb&&b===H)return sb;if(0===a.lookahead)break}if(c=0,a.lookahead>=hb&&(a.ins_h=(a.ins_h<<a.hash_shift^a.window[a.strstart+hb-1])&a.hash_mask,c=a.prev[a.strstart&a.w_mask]=a.head[a.ins_h],a.head[a.ins_h]=a.strstart),a.prev_length=a.match_length,a.prev_match=a.match_start,a.match_length=hb-1,0!==c&&a.prev_length<a.max_lazy_match&&a.strstart-c<=a.w_size-jb&&(a.match_length=l(a,c),a.match_length<=5&&(a.strategy===S||a.match_length===hb&&a.strstart-a.match_start>4096)&&(a.match_length=hb-1)),a.prev_length>=hb&&a.match_length<=a.prev_length){e=a.strstart+a.lookahead-hb,d=D._tr_tally(a,a.strstart-1-a.prev_match,a.prev_length-hb),a.lookahead-=a.prev_length-1,a.prev_length-=2;do++a.strstart<=e&&(a.ins_h=(a.ins_h<<a.hash_shift^a.window[a.strstart+hb-1])&a.hash_mask,c=a.prev[a.strstart&a.w_mask]=a.head[a.ins_h],a.head[a.ins_h]=a.strstart);while(0!==--a.prev_length);if(a.match_available=0,a.match_length=hb-1,a.strstart++,d&&(h(a,!1),0===a.strm.avail_out))return sb}else if(a.match_available){if(d=D._tr_tally(a,0,a.window[a.strstart-1]),d&&h(a,!1),a.strstart++,a.lookahead--,0===a.strm.avail_out)return sb}else a.match_available=1,a.strstart++,a.lookahead--}return a.match_available&&(d=D._tr_tally(a,0,a.window[a.strstart-1]),a.match_available=0),a.insert=a.strstart<hb-1?a.strstart:hb-1,b===K?(h(a,!0),0===a.strm.avail_out?ub:vb):a.last_lit&&(h(a,!1),0===a.strm.avail_out)?sb:tb}function q(a,b){for(var c,d,e,f,g=a.window;;){if(a.lookahead<=ib){if(m(a),a.lookahead<=ib&&b===H)return sb;if(0===a.lookahead)break}if(a.match_length=0,a.lookahead>=hb&&a.strstart>0&&(e=a.strstart-1,d=g[e],d===g[++e]&&d===g[++e]&&d===g[++e])){f=a.strstart+ib;do;while(d===g[++e]&&d===g[++e]&&d===g[++e]&&d===g[++e]&&d===g[++e]&&d===g[++e]&&d===g[++e]&&d===g[++e]&&f>e);a.match_length=ib-(f-e),a.match_length>a.lookahead&&(a.match_length=a.lookahead)}if(a.match_length>=hb?(c=D._tr_tally(a,1,a.match_length-hb),a.lookahead-=a.match_length,a.strstart+=a.match_length,a.match_length=0):(c=D._tr_tally(a,0,a.window[a.strstart]),a.lookahead--,a.strstart++),c&&(h(a,!1),0===a.strm.avail_out))return sb}return a.insert=0,b===K?(h(a,!0),0===a.strm.avail_out?ub:vb):a.last_lit&&(h(a,!1),0===a.strm.avail_out)?sb:tb}function r(a,b){for(var c;;){if(0===a.lookahead&&(m(a),0===a.lookahead)){if(b===H)return sb;break}if(a.match_length=0,c=D._tr_tally(a,0,a.window[a.strstart]),a.lookahead--,a.strstart++,c&&(h(a,!1),0===a.strm.avail_out))return sb}return a.insert=0,b===K?(h(a,!0),0===a.strm.avail_out?ub:vb):a.last_lit&&(h(a,!1),0===a.strm.avail_out)?sb:tb}function s(a){a.window_size=2*a.w_size,f(a.head),a.max_lazy_match=B[a.level].max_lazy,a.good_match=B[a.level].good_length,a.nice_match=B[a.level].nice_length,a.max_chain_length=B[a.level].max_chain,a.strstart=0,a.block_start=0,a.lookahead=0,a.insert=0,a.match_length=a.prev_length=hb-1,a.match_available=0,a.ins_h=0}function t(){this.strm=null,this.status=0,this.pending_buf=null,this.pending_buf_size=0,this.pending_out=0,this.pending=0,this.wrap=0,this.gzhead=null,this.gzindex=0,this.method=Y,this.last_flush=-1,this.w_size=0,this.w_bits=0,this.w_mask=0,this.window=null,this.window_size=0,this.prev=null,this.head=null,this.ins_h=0,this.hash_size=0,this.hash_bits=0,this.hash_mask=0,this.hash_shift=0,this.block_start=0,this.match_length=0,this.prev_match=0,this.match_available=0,this.strstart=0,this.match_start=0,this.lookahead=0,this.prev_length=0,this.max_chain_length=0,this.max_lazy_match=0,this.level=0,this.strategy=0,this.good_match=0,this.nice_match=0,this.dyn_ltree=new C.Buf16(2*fb),this.dyn_dtree=new C.Buf16(2*(2*db+1)),this.bl_tree=new C.Buf16(2*(2*eb+1)),f(this.dyn_ltree),f(this.dyn_dtree),f(this.bl_tree),this.l_desc=null,this.d_desc=null,this.bl_desc=null,this.bl_count=new C.Buf16(gb+1),this.heap=new C.Buf16(2*cb+1),f(this.heap),this.heap_len=0,this.heap_max=0,this.depth=new C.Buf16(2*cb+1),f(this.depth),this.l_buf=0,this.lit_bufsize=0,this.last_lit=0,this.d_buf=0,this.opt_len=0,this.static_len=0,this.matches=0,this.insert=0,this.bi_buf=0,this.bi_valid=0}function u(a){var b;return a&&a.state?(a.total_in=a.total_out=0,a.data_type=X,b=a.state,b.pending=0,b.pending_out=0,b.wrap<0&&(b.wrap=-b.wrap),b.status=b.wrap?lb:qb,a.adler=2===b.wrap?0:1,b.last_flush=H,D._tr_init(b),M):d(a,O)}function v(a){var b=u(a);return b===M&&s(a.state),b}function w(a,b){return a&&a.state?2!==a.state.wrap?O:(a.state.gzhead=b,M):O}function x(a,b,c,e,f,g){if(!a)return O;var h=1;if(b===R&&(b=6),0>e?(h=0,e=-e):e>15&&(h=2,e-=16),1>f||f>Z||c!==Y||8>e||e>15||0>b||b>9||0>g||g>V)return d(a,O);8===e&&(e=9);var i=new t;return a.state=i,i.strm=a,i.wrap=h,i.gzhead=null,i.w_bits=e,i.w_size=1<<i.w_bits,i.w_mask=i.w_size-1,i.hash_bits=f+7,i.hash_size=1<<i.hash_bits,i.hash_mask=i.hash_size-1,i.hash_shift=~~((i.hash_bits+hb-1)/hb),i.window=new C.Buf8(2*i.w_size),i.head=new C.Buf16(i.hash_size),i.prev=new C.Buf16(i.w_size),i.lit_bufsize=1<<f+6,i.pending_buf_size=4*i.lit_bufsize,i.pending_buf=new C.Buf8(i.pending_buf_size),i.d_buf=i.lit_bufsize>>1,i.l_buf=3*i.lit_bufsize,i.level=b,i.strategy=g,i.method=c,v(a)}function y(a,b){return x(a,b,Y,$,_,W)}function z(a,b){var c,h,k,l;if(!a||!a.state||b>L||0>b)return a?d(a,O):O;if(h=a.state,!a.output||!a.input&&0!==a.avail_in||h.status===rb&&b!==K)return d(a,0===a.avail_out?Q:O);if(h.strm=a,c=h.last_flush,h.last_flush=b,h.status===lb)if(2===h.wrap)a.adler=0,i(h,31),i(h,139),i(h,8),h.gzhead?(i(h,(h.gzhead.text?1:0)+(h.gzhead.hcrc?2:0)+(h.gzhead.extra?4:0)+(h.gzhead.name?8:0)+(h.gzhead.comment?16:0)),i(h,255&h.gzhead.time),i(h,h.gzhead.time>>8&255),i(h,h.gzhead.time>>16&255),i(h,h.gzhead.time>>24&255),i(h,9===h.level?2:h.strategy>=T||h.level<2?4:0),i(h,255&h.gzhead.os),h.gzhead.extra&&h.gzhead.extra.length&&(i(h,255&h.gzhead.extra.length),i(h,h.gzhead.extra.length>>8&255)),h.gzhead.hcrc&&(a.adler=F(a.adler,h.pending_buf,h.pending,0)),h.gzindex=0,h.status=mb):(i(h,0),i(h,0),i(h,0),i(h,0),i(h,0),i(h,9===h.level?2:h.strategy>=T||h.level<2?4:0),i(h,wb),h.status=qb);else{var m=Y+(h.w_bits-8<<4)<<8,n=-1;n=h.strategy>=T||h.level<2?0:h.level<6?1:6===h.level?2:3,m|=n<<6,0!==h.strstart&&(m|=kb),m+=31-m%31,h.status=qb,j(h,m),0!==h.strstart&&(j(h,a.adler>>>16),j(h,65535&a.adler)),a.adler=1}if(h.status===mb)if(h.gzhead.extra){for(k=h.pending;h.gzindex<(65535&h.gzhead.extra.length)&&(h.pending!==h.pending_buf_size||(h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),g(a),k=h.pending,h.pending!==h.pending_buf_size));)i(h,255&h.gzhead.extra[h.gzindex]),h.gzindex++;h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),h.gzindex===h.gzhead.extra.length&&(h.gzindex=0,h.status=nb)}else h.status=nb;if(h.status===nb)if(h.gzhead.name){k=h.pending;do{if(h.pending===h.pending_buf_size&&(h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),g(a),k=h.pending,h.pending===h.pending_buf_size)){l=1;break}l=h.gzindex<h.gzhead.name.length?255&h.gzhead.name.charCodeAt(h.gzindex++):0,i(h,l)}while(0!==l);h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),0===l&&(h.gzindex=0,h.status=ob)}else h.status=ob;if(h.status===ob)if(h.gzhead.comment){k=h.pending;do{if(h.pending===h.pending_buf_size&&(h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),g(a),k=h.pending,h.pending===h.pending_buf_size)){l=1;break}l=h.gzindex<h.gzhead.comment.length?255&h.gzhead.comment.charCodeAt(h.gzindex++):0,i(h,l)}while(0!==l);h.gzhead.hcrc&&h.pending>k&&(a.adler=F(a.adler,h.pending_buf,h.pending-k,k)),0===l&&(h.status=pb)}else h.status=pb;if(h.status===pb&&(h.gzhead.hcrc?(h.pending+2>h.pending_buf_size&&g(a),h.pending+2<=h.pending_buf_size&&(i(h,255&a.adler),i(h,a.adler>>8&255),a.adler=0,h.status=qb)):h.status=qb),0!==h.pending){if(g(a),0===a.avail_out)return h.last_flush=-1,M}else if(0===a.avail_in&&e(b)<=e(c)&&b!==K)return d(a,Q);if(h.status===rb&&0!==a.avail_in)return d(a,Q);if(0!==a.avail_in||0!==h.lookahead||b!==H&&h.status!==rb){var o=h.strategy===T?r(h,b):h.strategy===U?q(h,b):B[h.level].func(h,b);if((o===ub||o===vb)&&(h.status=rb),o===sb||o===ub)return 0===a.avail_out&&(h.last_flush=-1),M;if(o===tb&&(b===I?D._tr_align(h):b!==L&&(D._tr_stored_block(h,0,0,!1),b===J&&(f(h.head),0===h.lookahead&&(h.strstart=0,h.block_start=0,h.insert=0))),g(a),0===a.avail_out))return h.last_flush=-1,M}return b!==K?M:h.wrap<=0?N:(2===h.wrap?(i(h,255&a.adler),i(h,a.adler>>8&255),i(h,a.adler>>16&255),i(h,a.adler>>24&255),i(h,255&a.total_in),i(h,a.total_in>>8&255),i(h,a.total_in>>16&255),i(h,a.total_in>>24&255)):(j(h,a.adler>>>16),j(h,65535&a.adler)),g(a),h.wrap>0&&(h.wrap=-h.wrap),0!==h.pending?M:N)}function A(a){var b;return a&&a.state?(b=a.state.status,b!==lb&&b!==mb&&b!==nb&&b!==ob&&b!==pb&&b!==qb&&b!==rb?d(a,O):(a.state=null,b===qb?d(a,P):M)):O}var B,C=a("../utils/common"),D=a("./trees"),E=a("./adler32"),F=a("./crc32"),G=a("./messages"),H=0,I=1,J=3,K=4,L=5,M=0,N=1,O=-2,P=-3,Q=-5,R=-1,S=1,T=2,U=3,V=4,W=0,X=2,Y=8,Z=9,$=15,_=8,ab=29,bb=256,cb=bb+1+ab,db=30,eb=19,fb=2*cb+1,gb=15,hb=3,ib=258,jb=ib+hb+1,kb=32,lb=42,mb=69,nb=73,ob=91,pb=103,qb=113,rb=666,sb=1,tb=2,ub=3,vb=4,wb=3,xb=function(a,b,c,d,e){this.good_length=a,this.max_lazy=b,this.nice_length=c,this.max_chain=d,this.func=e};B=[new xb(0,0,0,0,n),new xb(4,4,8,4,o),new xb(4,5,16,8,o),new xb(4,6,32,32,o),new xb(4,4,16,16,p),new xb(8,16,32,32,p),new xb(8,16,128,128,p),new xb(8,32,128,256,p),new xb(32,128,258,1024,p),new xb(32,258,258,4096,p)],c.deflateInit=y,c.deflateInit2=x,c.deflateReset=v,c.deflateResetKeep=u,c.deflateSetHeader=w,c.deflate=z,c.deflateEnd=A,c.deflateInfo="pako deflate (from Nodeca project)"},{"../utils/common":27,"./adler32":29,"./crc32":31,"./messages":37,"./trees":38}],33:[function(a,b){"use strict";function c(){this.text=0,this.time=0,this.xflags=0,this.os=0,this.extra=null,this.extra_len=0,this.name="",this.comment="",this.hcrc=0,this.done=!1}b.exports=c},{}],34:[function(a,b){"use strict";var c=30,d=12;b.exports=function(a,b){var e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C;e=a.state,f=a.next_in,B=a.input,g=f+(a.avail_in-5),h=a.next_out,C=a.output,i=h-(b-a.avail_out),j=h+(a.avail_out-257),k=e.dmax,l=e.wsize,m=e.whave,n=e.wnext,o=e.window,p=e.hold,q=e.bits,r=e.lencode,s=e.distcode,t=(1<<e.lenbits)-1,u=(1<<e.distbits)-1;a:do{15>q&&(p+=B[f++]<<q,q+=8,p+=B[f++]<<q,q+=8),v=r[p&t];b:for(;;){if(w=v>>>24,p>>>=w,q-=w,w=v>>>16&255,0===w)C[h++]=65535&v;else{if(!(16&w)){if(0===(64&w)){v=r[(65535&v)+(p&(1<<w)-1)];continue b}if(32&w){e.mode=d;break a}a.msg="invalid literal/length code",e.mode=c;break a}x=65535&v,w&=15,w&&(w>q&&(p+=B[f++]<<q,q+=8),x+=p&(1<<w)-1,p>>>=w,q-=w),15>q&&(p+=B[f++]<<q,q+=8,p+=B[f++]<<q,q+=8),v=s[p&u];c:for(;;){if(w=v>>>24,p>>>=w,q-=w,w=v>>>16&255,!(16&w)){if(0===(64&w)){v=s[(65535&v)+(p&(1<<w)-1)];continue c}a.msg="invalid distance code",e.mode=c;break a}if(y=65535&v,w&=15,w>q&&(p+=B[f++]<<q,q+=8,w>q&&(p+=B[f++]<<q,q+=8)),y+=p&(1<<w)-1,y>k){a.msg="invalid distance too far back",e.mode=c;break a}if(p>>>=w,q-=w,w=h-i,y>w){if(w=y-w,w>m&&e.sane){a.msg="invalid distance too far back",e.mode=c;break a}if(z=0,A=o,0===n){if(z+=l-w,x>w){x-=w;do C[h++]=o[z++];while(--w);z=h-y,A=C}}else if(w>n){if(z+=l+n-w,w-=n,x>w){x-=w;do C[h++]=o[z++];while(--w);if(z=0,x>n){w=n,x-=w;do C[h++]=o[z++];while(--w);z=h-y,A=C}}}else if(z+=n-w,x>w){x-=w;do C[h++]=o[z++];while(--w);z=h-y,A=C}for(;x>2;)C[h++]=A[z++],C[h++]=A[z++],C[h++]=A[z++],x-=3;x&&(C[h++]=A[z++],x>1&&(C[h++]=A[z++]))}else{z=h-y;do C[h++]=C[z++],C[h++]=C[z++],C[h++]=C[z++],x-=3;while(x>2);x&&(C[h++]=C[z++],x>1&&(C[h++]=C[z++]))}break}}break}}while(g>f&&j>h);x=q>>3,f-=x,q-=x<<3,p&=(1<<q)-1,a.next_in=f,a.next_out=h,a.avail_in=g>f?5+(g-f):5-(f-g),a.avail_out=j>h?257+(j-h):257-(h-j),e.hold=p,e.bits=q}},{}],35:[function(a,b,c){"use strict";function d(a){return(a>>>24&255)+(a>>>8&65280)+((65280&a)<<8)+((255&a)<<24)}function e(){this.mode=0,this.last=!1,this.wrap=0,this.havedict=!1,this.flags=0,this.dmax=0,this.check=0,this.total=0,this.head=null,this.wbits=0,this.wsize=0,this.whave=0,this.wnext=0,this.window=null,this.hold=0,this.bits=0,this.length=0,this.offset=0,this.extra=0,this.lencode=null,this.distcode=null,this.lenbits=0,this.distbits=0,this.ncode=0,this.nlen=0,this.ndist=0,this.have=0,this.next=null,this.lens=new r.Buf16(320),this.work=new r.Buf16(288),this.lendyn=null,this.distdyn=null,this.sane=0,this.back=0,this.was=0}function f(a){var b;return a&&a.state?(b=a.state,a.total_in=a.total_out=b.total=0,a.msg="",b.wrap&&(a.adler=1&b.wrap),b.mode=K,b.last=0,b.havedict=0,b.dmax=32768,b.head=null,b.hold=0,b.bits=0,b.lencode=b.lendyn=new r.Buf32(ob),b.distcode=b.distdyn=new r.Buf32(pb),b.sane=1,b.back=-1,C):F}function g(a){var b;return a&&a.state?(b=a.state,b.wsize=0,b.whave=0,b.wnext=0,f(a)):F}function h(a,b){var c,d;return a&&a.state?(d=a.state,0>b?(c=0,b=-b):(c=(b>>4)+1,48>b&&(b&=15)),b&&(8>b||b>15)?F:(null!==d.window&&d.wbits!==b&&(d.window=null),d.wrap=c,d.wbits=b,g(a))):F}function i(a,b){var c,d;return a?(d=new e,a.state=d,d.window=null,c=h(a,b),c!==C&&(a.state=null),c):F}function j(a){return i(a,rb)}function k(a){if(sb){var b;for(p=new r.Buf32(512),q=new r.Buf32(32),b=0;144>b;)a.lens[b++]=8;for(;256>b;)a.lens[b++]=9;for(;280>b;)a.lens[b++]=7;for(;288>b;)a.lens[b++]=8;for(v(x,a.lens,0,288,p,0,a.work,{bits:9}),b=0;32>b;)a.lens[b++]=5;v(y,a.lens,0,32,q,0,a.work,{bits:5}),sb=!1}a.lencode=p,a.lenbits=9,a.distcode=q,a.distbits=5}function l(a,b,c,d){var e,f=a.state;return null===f.window&&(f.wsize=1<<f.wbits,f.wnext=0,f.whave=0,f.window=new r.Buf8(f.wsize)),d>=f.wsize?(r.arraySet(f.window,b,c-f.wsize,f.wsize,0),f.wnext=0,f.whave=f.wsize):(e=f.wsize-f.wnext,e>d&&(e=d),r.arraySet(f.window,b,c-d,e,f.wnext),d-=e,d?(r.arraySet(f.window,b,c-d,d,0),f.wnext=d,f.whave=f.wsize):(f.wnext+=e,f.wnext===f.wsize&&(f.wnext=0),f.whave<f.wsize&&(f.whave+=e))),0}function m(a,b){var c,e,f,g,h,i,j,m,n,o,p,q,ob,pb,qb,rb,sb,tb,ub,vb,wb,xb,yb,zb,Ab=0,Bb=new r.Buf8(4),Cb=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];if(!a||!a.state||!a.output||!a.input&&0!==a.avail_in)return F;c=a.state,c.mode===V&&(c.mode=W),h=a.next_out,f=a.output,j=a.avail_out,g=a.next_in,e=a.input,i=a.avail_in,m=c.hold,n=c.bits,o=i,p=j,xb=C;a:for(;;)switch(c.mode){case K:if(0===c.wrap){c.mode=W;break}for(;16>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(2&c.wrap&&35615===m){c.check=0,Bb[0]=255&m,Bb[1]=m>>>8&255,c.check=t(c.check,Bb,2,0),m=0,n=0,c.mode=L;break}if(c.flags=0,c.head&&(c.head.done=!1),!(1&c.wrap)||(((255&m)<<8)+(m>>8))%31){a.msg="incorrect header check",c.mode=lb;break}if((15&m)!==J){a.msg="unknown compression method",c.mode=lb;break}if(m>>>=4,n-=4,wb=(15&m)+8,0===c.wbits)c.wbits=wb;else if(wb>c.wbits){a.msg="invalid window size",c.mode=lb;break}c.dmax=1<<wb,a.adler=c.check=1,c.mode=512&m?T:V,m=0,n=0;break;case L:for(;16>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(c.flags=m,(255&c.flags)!==J){a.msg="unknown compression method",c.mode=lb;break}if(57344&c.flags){a.msg="unknown header flags set",c.mode=lb;break}c.head&&(c.head.text=m>>8&1),512&c.flags&&(Bb[0]=255&m,Bb[1]=m>>>8&255,c.check=t(c.check,Bb,2,0)),m=0,n=0,c.mode=M;case M:for(;32>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.head&&(c.head.time=m),512&c.flags&&(Bb[0]=255&m,Bb[1]=m>>>8&255,Bb[2]=m>>>16&255,Bb[3]=m>>>24&255,c.check=t(c.check,Bb,4,0)),m=0,n=0,c.mode=N;case N:for(;16>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.head&&(c.head.xflags=255&m,c.head.os=m>>8),512&c.flags&&(Bb[0]=255&m,Bb[1]=m>>>8&255,c.check=t(c.check,Bb,2,0)),m=0,n=0,c.mode=O;case O:if(1024&c.flags){for(;16>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.length=m,c.head&&(c.head.extra_len=m),512&c.flags&&(Bb[0]=255&m,Bb[1]=m>>>8&255,c.check=t(c.check,Bb,2,0)),m=0,n=0}else c.head&&(c.head.extra=null);c.mode=P;case P:if(1024&c.flags&&(q=c.length,q>i&&(q=i),q&&(c.head&&(wb=c.head.extra_len-c.length,c.head.extra||(c.head.extra=new Array(c.head.extra_len)),r.arraySet(c.head.extra,e,g,q,wb)),512&c.flags&&(c.check=t(c.check,e,q,g)),i-=q,g+=q,c.length-=q),c.length))break a;c.length=0,c.mode=Q;case Q:if(2048&c.flags){if(0===i)break a;q=0;do wb=e[g+q++],c.head&&wb&&c.length<65536&&(c.head.name+=String.fromCharCode(wb));while(wb&&i>q);if(512&c.flags&&(c.check=t(c.check,e,q,g)),i-=q,g+=q,wb)break a}else c.head&&(c.head.name=null);c.length=0,c.mode=R;case R:if(4096&c.flags){if(0===i)break a;q=0;do wb=e[g+q++],c.head&&wb&&c.length<65536&&(c.head.comment+=String.fromCharCode(wb));while(wb&&i>q);if(512&c.flags&&(c.check=t(c.check,e,q,g)),i-=q,g+=q,wb)break a}else c.head&&(c.head.comment=null);c.mode=S;case S:if(512&c.flags){for(;16>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(m!==(65535&c.check)){a.msg="header crc mismatch",c.mode=lb;break}m=0,n=0}c.head&&(c.head.hcrc=c.flags>>9&1,c.head.done=!0),a.adler=c.check=0,c.mode=V;break;case T:for(;32>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}a.adler=c.check=d(m),m=0,n=0,c.mode=U;case U:if(0===c.havedict)return a.next_out=h,a.avail_out=j,a.next_in=g,a.avail_in=i,c.hold=m,c.bits=n,E;a.adler=c.check=1,c.mode=V;case V:if(b===A||b===B)break a;case W:if(c.last){m>>>=7&n,n-=7&n,c.mode=ib;break}for(;3>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}switch(c.last=1&m,m>>>=1,n-=1,3&m){case 0:c.mode=X;break;case 1:if(k(c),c.mode=bb,b===B){m>>>=2,n-=2;break a}break;case 2:c.mode=$;break;case 3:a.msg="invalid block type",c.mode=lb}m>>>=2,n-=2;break;case X:for(m>>>=7&n,n-=7&n;32>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if((65535&m)!==(m>>>16^65535)){a.msg="invalid stored block lengths",c.mode=lb;break}if(c.length=65535&m,m=0,n=0,c.mode=Y,b===B)break a;case Y:c.mode=Z;case Z:if(q=c.length){if(q>i&&(q=i),q>j&&(q=j),0===q)break a;r.arraySet(f,e,g,q,h),i-=q,g+=q,j-=q,h+=q,c.length-=q;break}c.mode=V;break;case $:for(;14>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(c.nlen=(31&m)+257,m>>>=5,n-=5,c.ndist=(31&m)+1,m>>>=5,n-=5,c.ncode=(15&m)+4,m>>>=4,n-=4,c.nlen>286||c.ndist>30){a.msg="too many length or distance symbols",c.mode=lb;break}c.have=0,c.mode=_;case _:for(;c.have<c.ncode;){for(;3>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.lens[Cb[c.have++]]=7&m,m>>>=3,n-=3}for(;c.have<19;)c.lens[Cb[c.have++]]=0;if(c.lencode=c.lendyn,c.lenbits=7,yb={bits:c.lenbits},xb=v(w,c.lens,0,19,c.lencode,0,c.work,yb),c.lenbits=yb.bits,xb){a.msg="invalid code lengths set",c.mode=lb;break}c.have=0,c.mode=ab;case ab:for(;c.have<c.nlen+c.ndist;){for(;Ab=c.lencode[m&(1<<c.lenbits)-1],qb=Ab>>>24,rb=Ab>>>16&255,sb=65535&Ab,!(n>=qb);){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(16>sb)m>>>=qb,n-=qb,c.lens[c.have++]=sb;else{if(16===sb){for(zb=qb+2;zb>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(m>>>=qb,n-=qb,0===c.have){a.msg="invalid bit length repeat",c.mode=lb;break}wb=c.lens[c.have-1],q=3+(3&m),m>>>=2,n-=2}else if(17===sb){for(zb=qb+3;zb>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}m>>>=qb,n-=qb,wb=0,q=3+(7&m),m>>>=3,n-=3}else{for(zb=qb+7;zb>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}m>>>=qb,n-=qb,wb=0,q=11+(127&m),m>>>=7,n-=7}if(c.have+q>c.nlen+c.ndist){a.msg="invalid bit length repeat",c.mode=lb;break}for(;q--;)c.lens[c.have++]=wb}}if(c.mode===lb)break;if(0===c.lens[256]){a.msg="invalid code -- missing end-of-block",c.mode=lb;break}if(c.lenbits=9,yb={bits:c.lenbits},xb=v(x,c.lens,0,c.nlen,c.lencode,0,c.work,yb),c.lenbits=yb.bits,xb){a.msg="invalid literal/lengths set",c.mode=lb;break}if(c.distbits=6,c.distcode=c.distdyn,yb={bits:c.distbits},xb=v(y,c.lens,c.nlen,c.ndist,c.distcode,0,c.work,yb),c.distbits=yb.bits,xb){a.msg="invalid distances set",c.mode=lb;break}if(c.mode=bb,b===B)break a;case bb:c.mode=cb;case cb:if(i>=6&&j>=258){a.next_out=h,a.avail_out=j,a.next_in=g,a.avail_in=i,c.hold=m,c.bits=n,u(a,p),h=a.next_out,f=a.output,j=a.avail_out,g=a.next_in,e=a.input,i=a.avail_in,m=c.hold,n=c.bits,c.mode===V&&(c.back=-1);break}for(c.back=0;Ab=c.lencode[m&(1<<c.lenbits)-1],qb=Ab>>>24,rb=Ab>>>16&255,sb=65535&Ab,!(n>=qb);){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(rb&&0===(240&rb)){for(tb=qb,ub=rb,vb=sb;Ab=c.lencode[vb+((m&(1<<tb+ub)-1)>>tb)],qb=Ab>>>24,rb=Ab>>>16&255,sb=65535&Ab,!(n>=tb+qb);){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}m>>>=tb,n-=tb,c.back+=tb}if(m>>>=qb,n-=qb,c.back+=qb,c.length=sb,0===rb){c.mode=hb;break}if(32&rb){c.back=-1,c.mode=V;break}if(64&rb){a.msg="invalid literal/length code",c.mode=lb;break}c.extra=15&rb,c.mode=db;case db:if(c.extra){for(zb=c.extra;zb>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.length+=m&(1<<c.extra)-1,m>>>=c.extra,n-=c.extra,c.back+=c.extra}c.was=c.length,c.mode=eb;case eb:for(;Ab=c.distcode[m&(1<<c.distbits)-1],qb=Ab>>>24,rb=Ab>>>16&255,sb=65535&Ab,!(n>=qb);){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(0===(240&rb)){for(tb=qb,ub=rb,vb=sb;Ab=c.distcode[vb+((m&(1<<tb+ub)-1)>>tb)],qb=Ab>>>24,rb=Ab>>>16&255,sb=65535&Ab,!(n>=tb+qb);){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}m>>>=tb,n-=tb,c.back+=tb}if(m>>>=qb,n-=qb,c.back+=qb,64&rb){a.msg="invalid distance code",c.mode=lb;break}c.offset=sb,c.extra=15&rb,c.mode=fb;case fb:if(c.extra){for(zb=c.extra;zb>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}c.offset+=m&(1<<c.extra)-1,m>>>=c.extra,n-=c.extra,c.back+=c.extra}if(c.offset>c.dmax){a.msg="invalid distance too far back",c.mode=lb;break}c.mode=gb;case gb:if(0===j)break a;
+if(q=p-j,c.offset>q){if(q=c.offset-q,q>c.whave&&c.sane){a.msg="invalid distance too far back",c.mode=lb;break}q>c.wnext?(q-=c.wnext,ob=c.wsize-q):ob=c.wnext-q,q>c.length&&(q=c.length),pb=c.window}else pb=f,ob=h-c.offset,q=c.length;q>j&&(q=j),j-=q,c.length-=q;do f[h++]=pb[ob++];while(--q);0===c.length&&(c.mode=cb);break;case hb:if(0===j)break a;f[h++]=c.length,j--,c.mode=cb;break;case ib:if(c.wrap){for(;32>n;){if(0===i)break a;i--,m|=e[g++]<<n,n+=8}if(p-=j,a.total_out+=p,c.total+=p,p&&(a.adler=c.check=c.flags?t(c.check,f,p,h-p):s(c.check,f,p,h-p)),p=j,(c.flags?m:d(m))!==c.check){a.msg="incorrect data check",c.mode=lb;break}m=0,n=0}c.mode=jb;case jb:if(c.wrap&&c.flags){for(;32>n;){if(0===i)break a;i--,m+=e[g++]<<n,n+=8}if(m!==(4294967295&c.total)){a.msg="incorrect length check",c.mode=lb;break}m=0,n=0}c.mode=kb;case kb:xb=D;break a;case lb:xb=G;break a;case mb:return H;case nb:default:return F}return a.next_out=h,a.avail_out=j,a.next_in=g,a.avail_in=i,c.hold=m,c.bits=n,(c.wsize||p!==a.avail_out&&c.mode<lb&&(c.mode<ib||b!==z))&&l(a,a.output,a.next_out,p-a.avail_out)?(c.mode=mb,H):(o-=a.avail_in,p-=a.avail_out,a.total_in+=o,a.total_out+=p,c.total+=p,c.wrap&&p&&(a.adler=c.check=c.flags?t(c.check,f,p,a.next_out-p):s(c.check,f,p,a.next_out-p)),a.data_type=c.bits+(c.last?64:0)+(c.mode===V?128:0)+(c.mode===bb||c.mode===Y?256:0),(0===o&&0===p||b===z)&&xb===C&&(xb=I),xb)}function n(a){if(!a||!a.state)return F;var b=a.state;return b.window&&(b.window=null),a.state=null,C}function o(a,b){var c;return a&&a.state?(c=a.state,0===(2&c.wrap)?F:(c.head=b,b.done=!1,C)):F}var p,q,r=a("../utils/common"),s=a("./adler32"),t=a("./crc32"),u=a("./inffast"),v=a("./inftrees"),w=0,x=1,y=2,z=4,A=5,B=6,C=0,D=1,E=2,F=-2,G=-3,H=-4,I=-5,J=8,K=1,L=2,M=3,N=4,O=5,P=6,Q=7,R=8,S=9,T=10,U=11,V=12,W=13,X=14,Y=15,Z=16,$=17,_=18,ab=19,bb=20,cb=21,db=22,eb=23,fb=24,gb=25,hb=26,ib=27,jb=28,kb=29,lb=30,mb=31,nb=32,ob=852,pb=592,qb=15,rb=qb,sb=!0;c.inflateReset=g,c.inflateReset2=h,c.inflateResetKeep=f,c.inflateInit=j,c.inflateInit2=i,c.inflate=m,c.inflateEnd=n,c.inflateGetHeader=o,c.inflateInfo="pako inflate (from Nodeca project)"},{"../utils/common":27,"./adler32":29,"./crc32":31,"./inffast":34,"./inftrees":36}],36:[function(a,b){"use strict";var c=a("../utils/common"),d=15,e=852,f=592,g=0,h=1,i=2,j=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258,0,0],k=[16,16,16,16,16,16,16,16,17,17,17,17,18,18,18,18,19,19,19,19,20,20,20,20,21,21,21,21,16,72,78],l=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577,0,0],m=[16,16,16,16,17,17,18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,29,64,64];b.exports=function(a,b,n,o,p,q,r,s){var t,u,v,w,x,y,z,A,B,C=s.bits,D=0,E=0,F=0,G=0,H=0,I=0,J=0,K=0,L=0,M=0,N=null,O=0,P=new c.Buf16(d+1),Q=new c.Buf16(d+1),R=null,S=0;for(D=0;d>=D;D++)P[D]=0;for(E=0;o>E;E++)P[b[n+E]]++;for(H=C,G=d;G>=1&&0===P[G];G--);if(H>G&&(H=G),0===G)return p[q++]=20971520,p[q++]=20971520,s.bits=1,0;for(F=1;G>F&&0===P[F];F++);for(F>H&&(H=F),K=1,D=1;d>=D;D++)if(K<<=1,K-=P[D],0>K)return-1;if(K>0&&(a===g||1!==G))return-1;for(Q[1]=0,D=1;d>D;D++)Q[D+1]=Q[D]+P[D];for(E=0;o>E;E++)0!==b[n+E]&&(r[Q[b[n+E]]++]=E);if(a===g?(N=R=r,y=19):a===h?(N=j,O-=257,R=k,S-=257,y=256):(N=l,R=m,y=-1),M=0,E=0,D=F,x=q,I=H,J=0,v=-1,L=1<<H,w=L-1,a===h&&L>e||a===i&&L>f)return 1;for(var T=0;;){T++,z=D-J,r[E]<y?(A=0,B=r[E]):r[E]>y?(A=R[S+r[E]],B=N[O+r[E]]):(A=96,B=0),t=1<<D-J,u=1<<I,F=u;do u-=t,p[x+(M>>J)+u]=z<<24|A<<16|B|0;while(0!==u);for(t=1<<D-1;M&t;)t>>=1;if(0!==t?(M&=t-1,M+=t):M=0,E++,0===--P[D]){if(D===G)break;D=b[n+r[E]]}if(D>H&&(M&w)!==v){for(0===J&&(J=H),x+=F,I=D-J,K=1<<I;G>I+J&&(K-=P[I+J],!(0>=K));)I++,K<<=1;if(L+=1<<I,a===h&&L>e||a===i&&L>f)return 1;v=M&w,p[v]=H<<24|I<<16|x-q|0}}return 0!==M&&(p[x+M]=D-J<<24|64<<16|0),s.bits=H,0}},{"../utils/common":27}],37:[function(a,b){"use strict";b.exports={2:"need dictionary",1:"stream end",0:"","-1":"file error","-2":"stream error","-3":"data error","-4":"insufficient memory","-5":"buffer error","-6":"incompatible version"}},{}],38:[function(a,b,c){"use strict";function d(a){for(var b=a.length;--b>=0;)a[b]=0}function e(a){return 256>a?gb[a]:gb[256+(a>>>7)]}function f(a,b){a.pending_buf[a.pending++]=255&b,a.pending_buf[a.pending++]=b>>>8&255}function g(a,b,c){a.bi_valid>V-c?(a.bi_buf|=b<<a.bi_valid&65535,f(a,a.bi_buf),a.bi_buf=b>>V-a.bi_valid,a.bi_valid+=c-V):(a.bi_buf|=b<<a.bi_valid&65535,a.bi_valid+=c)}function h(a,b,c){g(a,c[2*b],c[2*b+1])}function i(a,b){var c=0;do c|=1&a,a>>>=1,c<<=1;while(--b>0);return c>>>1}function j(a){16===a.bi_valid?(f(a,a.bi_buf),a.bi_buf=0,a.bi_valid=0):a.bi_valid>=8&&(a.pending_buf[a.pending++]=255&a.bi_buf,a.bi_buf>>=8,a.bi_valid-=8)}function k(a,b){var c,d,e,f,g,h,i=b.dyn_tree,j=b.max_code,k=b.stat_desc.static_tree,l=b.stat_desc.has_stree,m=b.stat_desc.extra_bits,n=b.stat_desc.extra_base,o=b.stat_desc.max_length,p=0;for(f=0;U>=f;f++)a.bl_count[f]=0;for(i[2*a.heap[a.heap_max]+1]=0,c=a.heap_max+1;T>c;c++)d=a.heap[c],f=i[2*i[2*d+1]+1]+1,f>o&&(f=o,p++),i[2*d+1]=f,d>j||(a.bl_count[f]++,g=0,d>=n&&(g=m[d-n]),h=i[2*d],a.opt_len+=h*(f+g),l&&(a.static_len+=h*(k[2*d+1]+g)));if(0!==p){do{for(f=o-1;0===a.bl_count[f];)f--;a.bl_count[f]--,a.bl_count[f+1]+=2,a.bl_count[o]--,p-=2}while(p>0);for(f=o;0!==f;f--)for(d=a.bl_count[f];0!==d;)e=a.heap[--c],e>j||(i[2*e+1]!==f&&(a.opt_len+=(f-i[2*e+1])*i[2*e],i[2*e+1]=f),d--)}}function l(a,b,c){var d,e,f=new Array(U+1),g=0;for(d=1;U>=d;d++)f[d]=g=g+c[d-1]<<1;for(e=0;b>=e;e++){var h=a[2*e+1];0!==h&&(a[2*e]=i(f[h]++,h))}}function m(){var a,b,c,d,e,f=new Array(U+1);for(c=0,d=0;O-1>d;d++)for(ib[d]=c,a=0;a<1<<_[d];a++)hb[c++]=d;for(hb[c-1]=d,e=0,d=0;16>d;d++)for(jb[d]=e,a=0;a<1<<ab[d];a++)gb[e++]=d;for(e>>=7;R>d;d++)for(jb[d]=e<<7,a=0;a<1<<ab[d]-7;a++)gb[256+e++]=d;for(b=0;U>=b;b++)f[b]=0;for(a=0;143>=a;)eb[2*a+1]=8,a++,f[8]++;for(;255>=a;)eb[2*a+1]=9,a++,f[9]++;for(;279>=a;)eb[2*a+1]=7,a++,f[7]++;for(;287>=a;)eb[2*a+1]=8,a++,f[8]++;for(l(eb,Q+1,f),a=0;R>a;a++)fb[2*a+1]=5,fb[2*a]=i(a,5);kb=new nb(eb,_,P+1,Q,U),lb=new nb(fb,ab,0,R,U),mb=new nb(new Array(0),bb,0,S,W)}function n(a){var b;for(b=0;Q>b;b++)a.dyn_ltree[2*b]=0;for(b=0;R>b;b++)a.dyn_dtree[2*b]=0;for(b=0;S>b;b++)a.bl_tree[2*b]=0;a.dyn_ltree[2*X]=1,a.opt_len=a.static_len=0,a.last_lit=a.matches=0}function o(a){a.bi_valid>8?f(a,a.bi_buf):a.bi_valid>0&&(a.pending_buf[a.pending++]=a.bi_buf),a.bi_buf=0,a.bi_valid=0}function p(a,b,c,d){o(a),d&&(f(a,c),f(a,~c)),E.arraySet(a.pending_buf,a.window,b,c,a.pending),a.pending+=c}function q(a,b,c,d){var e=2*b,f=2*c;return a[e]<a[f]||a[e]===a[f]&&d[b]<=d[c]}function r(a,b,c){for(var d=a.heap[c],e=c<<1;e<=a.heap_len&&(e<a.heap_len&&q(b,a.heap[e+1],a.heap[e],a.depth)&&e++,!q(b,d,a.heap[e],a.depth));)a.heap[c]=a.heap[e],c=e,e<<=1;a.heap[c]=d}function s(a,b,c){var d,f,i,j,k=0;if(0!==a.last_lit)do d=a.pending_buf[a.d_buf+2*k]<<8|a.pending_buf[a.d_buf+2*k+1],f=a.pending_buf[a.l_buf+k],k++,0===d?h(a,f,b):(i=hb[f],h(a,i+P+1,b),j=_[i],0!==j&&(f-=ib[i],g(a,f,j)),d--,i=e(d),h(a,i,c),j=ab[i],0!==j&&(d-=jb[i],g(a,d,j)));while(k<a.last_lit);h(a,X,b)}function t(a,b){var c,d,e,f=b.dyn_tree,g=b.stat_desc.static_tree,h=b.stat_desc.has_stree,i=b.stat_desc.elems,j=-1;for(a.heap_len=0,a.heap_max=T,c=0;i>c;c++)0!==f[2*c]?(a.heap[++a.heap_len]=j=c,a.depth[c]=0):f[2*c+1]=0;for(;a.heap_len<2;)e=a.heap[++a.heap_len]=2>j?++j:0,f[2*e]=1,a.depth[e]=0,a.opt_len--,h&&(a.static_len-=g[2*e+1]);for(b.max_code=j,c=a.heap_len>>1;c>=1;c--)r(a,f,c);e=i;do c=a.heap[1],a.heap[1]=a.heap[a.heap_len--],r(a,f,1),d=a.heap[1],a.heap[--a.heap_max]=c,a.heap[--a.heap_max]=d,f[2*e]=f[2*c]+f[2*d],a.depth[e]=(a.depth[c]>=a.depth[d]?a.depth[c]:a.depth[d])+1,f[2*c+1]=f[2*d+1]=e,a.heap[1]=e++,r(a,f,1);while(a.heap_len>=2);a.heap[--a.heap_max]=a.heap[1],k(a,b),l(f,j,a.bl_count)}function u(a,b,c){var d,e,f=-1,g=b[1],h=0,i=7,j=4;for(0===g&&(i=138,j=3),b[2*(c+1)+1]=65535,d=0;c>=d;d++)e=g,g=b[2*(d+1)+1],++h<i&&e===g||(j>h?a.bl_tree[2*e]+=h:0!==e?(e!==f&&a.bl_tree[2*e]++,a.bl_tree[2*Y]++):10>=h?a.bl_tree[2*Z]++:a.bl_tree[2*$]++,h=0,f=e,0===g?(i=138,j=3):e===g?(i=6,j=3):(i=7,j=4))}function v(a,b,c){var d,e,f=-1,i=b[1],j=0,k=7,l=4;for(0===i&&(k=138,l=3),d=0;c>=d;d++)if(e=i,i=b[2*(d+1)+1],!(++j<k&&e===i)){if(l>j){do h(a,e,a.bl_tree);while(0!==--j)}else 0!==e?(e!==f&&(h(a,e,a.bl_tree),j--),h(a,Y,a.bl_tree),g(a,j-3,2)):10>=j?(h(a,Z,a.bl_tree),g(a,j-3,3)):(h(a,$,a.bl_tree),g(a,j-11,7));j=0,f=e,0===i?(k=138,l=3):e===i?(k=6,l=3):(k=7,l=4)}}function w(a){var b;for(u(a,a.dyn_ltree,a.l_desc.max_code),u(a,a.dyn_dtree,a.d_desc.max_code),t(a,a.bl_desc),b=S-1;b>=3&&0===a.bl_tree[2*cb[b]+1];b--);return a.opt_len+=3*(b+1)+5+5+4,b}function x(a,b,c,d){var e;for(g(a,b-257,5),g(a,c-1,5),g(a,d-4,4),e=0;d>e;e++)g(a,a.bl_tree[2*cb[e]+1],3);v(a,a.dyn_ltree,b-1),v(a,a.dyn_dtree,c-1)}function y(a){var b,c=4093624447;for(b=0;31>=b;b++,c>>>=1)if(1&c&&0!==a.dyn_ltree[2*b])return G;if(0!==a.dyn_ltree[18]||0!==a.dyn_ltree[20]||0!==a.dyn_ltree[26])return H;for(b=32;P>b;b++)if(0!==a.dyn_ltree[2*b])return H;return G}function z(a){pb||(m(),pb=!0),a.l_desc=new ob(a.dyn_ltree,kb),a.d_desc=new ob(a.dyn_dtree,lb),a.bl_desc=new ob(a.bl_tree,mb),a.bi_buf=0,a.bi_valid=0,n(a)}function A(a,b,c,d){g(a,(J<<1)+(d?1:0),3),p(a,b,c,!0)}function B(a){g(a,K<<1,3),h(a,X,eb),j(a)}function C(a,b,c,d){var e,f,h=0;a.level>0?(a.strm.data_type===I&&(a.strm.data_type=y(a)),t(a,a.l_desc),t(a,a.d_desc),h=w(a),e=a.opt_len+3+7>>>3,f=a.static_len+3+7>>>3,e>=f&&(e=f)):e=f=c+5,e>=c+4&&-1!==b?A(a,b,c,d):a.strategy===F||f===e?(g(a,(K<<1)+(d?1:0),3),s(a,eb,fb)):(g(a,(L<<1)+(d?1:0),3),x(a,a.l_desc.max_code+1,a.d_desc.max_code+1,h+1),s(a,a.dyn_ltree,a.dyn_dtree)),n(a),d&&o(a)}function D(a,b,c){return a.pending_buf[a.d_buf+2*a.last_lit]=b>>>8&255,a.pending_buf[a.d_buf+2*a.last_lit+1]=255&b,a.pending_buf[a.l_buf+a.last_lit]=255&c,a.last_lit++,0===b?a.dyn_ltree[2*c]++:(a.matches++,b--,a.dyn_ltree[2*(hb[c]+P+1)]++,a.dyn_dtree[2*e(b)]++),a.last_lit===a.lit_bufsize-1}var E=a("../utils/common"),F=4,G=0,H=1,I=2,J=0,K=1,L=2,M=3,N=258,O=29,P=256,Q=P+1+O,R=30,S=19,T=2*Q+1,U=15,V=16,W=7,X=256,Y=16,Z=17,$=18,_=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0],ab=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13],bb=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7],cb=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15],db=512,eb=new Array(2*(Q+2));d(eb);var fb=new Array(2*R);d(fb);var gb=new Array(db);d(gb);var hb=new Array(N-M+1);d(hb);var ib=new Array(O);d(ib);var jb=new Array(R);d(jb);var kb,lb,mb,nb=function(a,b,c,d,e){this.static_tree=a,this.extra_bits=b,this.extra_base=c,this.elems=d,this.max_length=e,this.has_stree=a&&a.length},ob=function(a,b){this.dyn_tree=a,this.max_code=0,this.stat_desc=b},pb=!1;c._tr_init=z,c._tr_stored_block=A,c._tr_flush_block=C,c._tr_tally=D,c._tr_align=B},{"../utils/common":27}],39:[function(a,b){"use strict";function c(){this.input=null,this.next_in=0,this.avail_in=0,this.total_in=0,this.output=null,this.next_out=0,this.avail_out=0,this.total_out=0,this.msg="",this.state=null,this.data_type=2,this.adler=0}b.exports=c},{}]},{},[9])(9)});
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+if (!Object.keys) {
+  Object.keys = (function () {
+    var hasOwnProperty = Object.prototype.hasOwnProperty,
+        hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString'),
+        dontEnums = [
+          'toString',
+          'toLocaleString',
+          'valueOf',
+          'hasOwnProperty',
+          'isPrototypeOf',
+          'propertyIsEnumerable',
+          'constructor'
+        ],
+        dontEnumsLength = dontEnums.length;
 
-    } else if(static_lenb == opt_lenb) {
-	zip_send_bits((zip_STATIC_TREES<<1)+eof, 3);
-	zip_compress_block(zip_static_ltree, zip_static_dtree);
-    } else {
-	zip_send_bits((zip_DYN_TREES<<1)+eof, 3);
-	zip_send_all_trees(zip_l_desc.max_code+1,
-			   zip_d_desc.max_code+1,
-			   max_blindex+1);
-	zip_compress_block(zip_dyn_ltree, zip_dyn_dtree);
-    }
+    return function (obj) {
+      if (typeof obj !== 'object' && typeof obj !== 'function' || obj === null) throw new TypeError('Object.keys called on non-object');
 
-    zip_init_block();
+      var result = [];
 
-    if(eof != 0)
-	zip_bi_windup();
+      for (var prop in obj) {
+        if (hasOwnProperty.call(obj, prop)) result.push(prop);
+      }
+
+      if (hasDontEnumBug) {
+        for (var i=0; i < dontEnumsLength; i++) {
+          if (hasOwnProperty.call(obj, dontEnums[i])) result.push(dontEnums[i]);
+        }
+      }
+      return result;
+    };
+  })();
 }
 
-/* ==========================================================================
- * Save the match info and tally the frequency counts. Return true if
- * the current block must be flushed.
- */
-var zip_ct_tally = function(
-	dist, // distance of matched string
-	lc) { // match length-MIN_MATCH or unmatched char (if dist==0)
-    zip_l_buf[zip_last_lit++] = lc;
-    if(dist == 0) {
-	// lc is the unmatched char
-	zip_dyn_ltree[lc].fc++;
-    } else {
-	// Here, lc is the match length - MIN_MATCH
-	dist--;		    // dist = match distance - 1
-//      Assert((ush)dist < (ush)MAX_DIST &&
-//	     (ush)lc <= (ush)(MAX_MATCH-MIN_MATCH) &&
-//	     (ush)D_CODE(dist) < (ush)D_CODES,  "ct_tally: bad match");
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/filter
+if (!Array.prototype.filter)
+{
+  Array.prototype.filter = function(fun /*, thisp */)
+  {
+    "use strict";
 
-	zip_dyn_ltree[zip_length_code[lc]+zip_LITERALS+1].fc++;
-	zip_dyn_dtree[zip_D_CODE(dist)].fc++;
+    if (this == null)
+      throw new TypeError();
 
-	zip_d_buf[zip_last_dist++] = dist;
-	zip_flags |= zip_flag_bit;
-    }
-    zip_flag_bit <<= 1;
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
 
-    // Output the flags if they fill a byte
-    if((zip_last_lit & 7) == 0) {
-	zip_flag_buf[zip_last_flags++] = zip_flags;
-	zip_flags = 0;
-	zip_flag_bit = 1;
-    }
-    // Try to guess if it is profitable to stop the current block here
-    if(zip_compr_level > 2 && (zip_last_lit & 0xfff) == 0) {
-	// Compute an upper bound for the compressed length
-	var out_length = zip_last_lit * 8;
-	var in_length = zip_strstart - zip_block_start;
-	var dcode;
-
-	for(dcode = 0; dcode < zip_D_CODES; dcode++) {
-	    out_length += zip_dyn_dtree[dcode].fc * (5 + zip_extra_dbits[dcode]);
-	}
-	out_length >>= 3;
-//      Trace((stderr,"\nlast_lit %u, last_dist %u, in %ld, out ~%ld(%ld%%) ",
-//	     encoder->last_lit, encoder->last_dist, in_length, out_length,
-//	     100L - out_length*100L/in_length));
-	if(zip_last_dist < parseInt(zip_last_lit/2) &&
-	   out_length < parseInt(in_length/2))
-	    return true;
-    }
-    return (zip_last_lit == zip_LIT_BUFSIZE-1 ||
-	    zip_last_dist == zip_DIST_BUFSIZE);
-    /* We avoid equality with LIT_BUFSIZE because of wraparound at 64K
-     * on 16 bit machines and because stored blocks are restricted to
-     * 64K-1 bytes.
-     */
-}
-
-  /* ==========================================================================
-   * Send the block data compressed using the given Huffman trees
-   */
-var zip_compress_block = function(
-	ltree,	// literal tree
-	dtree) {	// distance tree
-    var dist;		// distance of matched string
-    var lc;		// match length or unmatched char (if dist == 0)
-    var lx = 0;		// running index in l_buf
-    var dx = 0;		// running index in d_buf
-    var fx = 0;		// running index in flag_buf
-    var flag = 0;	// current flags
-    var code;		// the code to send
-    var extra;		// number of extra bits to send
-
-    if(zip_last_lit != 0) do {
-	if((lx & 7) == 0)
-	    flag = zip_flag_buf[fx++];
-	lc = zip_l_buf[lx++] & 0xff;
-	if((flag & 1) == 0) {
-	    zip_SEND_CODE(lc, ltree); /* send a literal byte */
-//	Tracecv(isgraph(lc), (stderr," '%c' ", lc));
-	} else {
-	    // Here, lc is the match length - MIN_MATCH
-	    code = zip_length_code[lc];
-	    zip_SEND_CODE(code+zip_LITERALS+1, ltree); // send the length code
-	    extra = zip_extra_lbits[code];
-	    if(extra != 0) {
-		lc -= zip_base_length[code];
-		zip_send_bits(lc, extra); // send the extra length bits
-	    }
-	    dist = zip_d_buf[dx++];
-	    // Here, dist is the match distance - 1
-	    code = zip_D_CODE(dist);
-//	Assert (code < D_CODES, "bad d_code");
-
-	    zip_SEND_CODE(code, dtree);	  // send the distance code
-	    extra = zip_extra_dbits[code];
-	    if(extra != 0) {
-		dist -= zip_base_dist[code];
-		zip_send_bits(dist, extra);   // send the extra distance bits
-	    }
-	} // literal or match pair ?
-	flag >>= 1;
-    } while(lx < zip_last_lit);
-
-    zip_SEND_CODE(zip_END_BLOCK, ltree);
-}
-
-/* ==========================================================================
- * Send a value on a given number of bits.
- * IN assertion: length <= 16 and value fits in length bits.
- */
-var zip_Buf_size = 16; // bit size of bi_buf
-var zip_send_bits = function(
-	value,	// value to send
-	length) {	// number of bits
-    /* If not enough room in bi_buf, use (valid) bits from bi_buf and
-     * (16 - bi_valid) bits from value, leaving (width - (16-bi_valid))
-     * unused bits in value.
-     */
-    if(zip_bi_valid > zip_Buf_size - length) {
-	zip_bi_buf |= (value << zip_bi_valid);
-	zip_put_short(zip_bi_buf);
-	zip_bi_buf = (value >> (zip_Buf_size - zip_bi_valid));
-	zip_bi_valid += length - zip_Buf_size;
-    } else {
-	zip_bi_buf |= value << zip_bi_valid;
-	zip_bi_valid += length;
-    }
-}
-
-/* ==========================================================================
- * Reverse the first len bits of a code, using straightforward code (a faster
- * method would use a table)
- * IN assertion: 1 <= len <= 15
- */
-var zip_bi_reverse = function(
-	code,	// the value to invert
-	len) {	// its bit length
-    var res = 0;
-    do {
-	res |= code & 1;
-	code >>= 1;
-	res <<= 1;
-    } while(--len > 0);
-    return res >> 1;
-}
-
-/* ==========================================================================
- * Write out any remaining bits in an incomplete byte.
- */
-var zip_bi_windup = function() {
-    if(zip_bi_valid > 8) {
-	zip_put_short(zip_bi_buf);
-    } else if(zip_bi_valid > 0) {
-	zip_put_byte(zip_bi_buf);
-    }
-    zip_bi_buf = 0;
-    zip_bi_valid = 0;
-}
-
-var zip_qoutbuf = function() {
-    if(zip_outcnt != 0) {
-	var q, i;
-	q = zip_new_queue();
-	if(zip_qhead == null)
-	    zip_qhead = zip_qtail = q;
-	else
-	    zip_qtail = zip_qtail.next = q;
-	q.len = zip_outcnt - zip_outoff;
-//      System.arraycopy(zip_outbuf, zip_outoff, q.ptr, 0, q.len);
-	for(i = 0; i < q.len; i++)
-	    q.ptr[i] = zip_outbuf[zip_outoff + i];
-	zip_outcnt = zip_outoff = 0;
-    }
-}
-
-var zip_deflate = function(str, level) {
-    var i, j;
-
-    zip_deflate_data = str;
-    zip_deflate_pos = 0;
-    if(typeof level == "undefined")
-	level = zip_DEFAULT_LEVEL;
-    zip_deflate_start(level);
-
-    var buff = new Array(1024);
-    var aout = [];
-    while((i = zip_deflate_internal(buff, 0, buff.length)) > 0) {
-	var cbuf = new Array(i);
-	for(j = 0; j < i; j++){
-	    cbuf[j] = String.fromCharCode(buff[j]);
-	}
-	aout[aout.length] = cbuf.join("");
-    }
-    zip_deflate_data = null; // G.C.
-    return aout.join("");
-}
-
-//
-// end of the script of Masanao Izumo.
-//
-
-// we add the compression method for JSZip
-if(!JSZip.compressions["DEFLATE"]) {
-  JSZip.compressions["DEFLATE"] = {
-    magic : "\x08\x00",
-    compress : zip_deflate
-  }
-} else {
-  JSZip.compressions["DEFLATE"].compress = zip_deflate;
-}
-
-})();
-
-// enforcing Stuk's coding style
-// vim: set shiftwidth=3 softtabstop=3:
-/*
- * Port of a script by Masanao Izumo.
- *
- * Only changes : wrap all the variables in a function and add the 
- * main function to JSZip (DEFLATE compression method).
- * Everything else was written by M. Izumo.
- *
- * Original code can be found here: http://www.onicos.com/staff/iz/amuse/javascript/expert/inflate.txt
- */
-
-if(!JSZip) {
-   throw "JSZip not defined";
-}
-
-/*
- * Original:
- *   http://www.onicos.com/staff/iz/amuse/javascript/expert/inflate.txt
- */
-
-(function(){
-  // the original implementation leaks a global variable.
-  // Defining the variable here doesn't break anything.
-  var zip_fixed_bd;
-
-/* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
- * Version: 1.0.0.1
- * LastModified: Dec 25 1999
- */
-
-/* Interface:
- * data = zip_inflate(src);
- */
-
-/* constant parameters */
-var zip_WSIZE = 32768;		// Sliding Window size
-var zip_STORED_BLOCK = 0;
-var zip_STATIC_TREES = 1;
-var zip_DYN_TREES    = 2;
-
-/* for inflate */
-var zip_lbits = 9; 		// bits in base literal/length lookup table
-var zip_dbits = 6; 		// bits in base distance lookup table
-var zip_INBUFSIZ = 32768;	// Input buffer size
-var zip_INBUF_EXTRA = 64;	// Extra buffer
-
-/* variables (inflate) */
-var zip_slide;
-var zip_wp;			// current position in slide
-var zip_fixed_tl = null;	// inflate static
-var zip_fixed_td;		// inflate static
-var zip_fixed_bl, fixed_bd;	// inflate static
-var zip_bit_buf;		// bit buffer
-var zip_bit_len;		// bits in bit buffer
-var zip_method;
-var zip_eof;
-var zip_copy_leng;
-var zip_copy_dist;
-var zip_tl, zip_td;	// literal/length and distance decoder tables
-var zip_bl, zip_bd;	// number of bits decoded by tl and td
-
-var zip_inflate_data;
-var zip_inflate_pos;
-
-
-/* constant tables (inflate) */
-var zip_MASK_BITS = new Array(
-    0x0000,
-    0x0001, 0x0003, 0x0007, 0x000f, 0x001f, 0x003f, 0x007f, 0x00ff,
-    0x01ff, 0x03ff, 0x07ff, 0x0fff, 0x1fff, 0x3fff, 0x7fff, 0xffff);
-// Tables for deflate from PKZIP's appnote.txt.
-var zip_cplens = new Array( // Copy lengths for literal codes 257..285
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
-    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0);
-/* note: see note #13 above about the 258 in this list. */
-var zip_cplext = new Array( // Extra bits for literal codes 257..285
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99); // 99==invalid
-var zip_cpdist = new Array( // Copy offsets for distance codes 0..29
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
-    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
-    8193, 12289, 16385, 24577);
-var zip_cpdext = new Array( // Extra bits for distance codes
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
-    7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
-    12, 12, 13, 13);
-var zip_border = new Array(  // Order of the bit length code lengths
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15);
-/* objects (inflate) */
-
-function zip_HuftList() {
-    this.next = null;
-    this.list = null;
-}
-
-function zip_HuftNode() {
-    this.e = 0; // number of extra bits or operation
-    this.b = 0; // number of bits in this code or subcode
-
-    // union
-    this.n = 0; // literal, length base, or distance base
-    this.t = null; // (zip_HuftNode) pointer to next level of table
-}
-
-function zip_HuftBuild(b,	// code lengths in bits (all assumed <= BMAX)
-		       n,	// number of codes (assumed <= N_MAX)
-		       s,	// number of simple-valued codes (0..s-1)
-		       d,	// list of base values for non-simple codes
-		       e,	// list of extra bits for non-simple codes
-		       mm	// maximum lookup bits
-		   ) {
-    this.BMAX = 16;   // maximum bit length of any code
-    this.N_MAX = 288; // maximum number of codes in any set
-    this.status = 0;	// 0: success, 1: incomplete table, 2: bad input
-    this.root = null;	// (zip_HuftList) starting table
-    this.m = 0;		// maximum lookup bits, returns actual
-
-/* Given a list of code lengths and a maximum table size, make a set of
-   tables to decode that set of codes.	Return zero on success, one if
-   the given code set is incomplete (the tables are still built in this
-   case), two if the input is invalid (all zero length codes or an
-   oversubscribed set of lengths), and three if not enough memory.
-   The code with value 256 is special, and the tables are constructed
-   so that no bits beyond that code are fetched when that code is
-   decoded. */
+    var res = [];
+    var thisp = arguments[1];
+    for (var i = 0; i < len; i++)
     {
-	var a;			// counter for codes of length k
-	var c = new Array(this.BMAX+1);	// bit length count table
-	var el;			// length of EOB code (value 256)
-	var f;			// i repeats in table every f entries
-	var g;			// maximum code length
-	var h;			// table level
-	var i;			// counter, current code
-	var j;			// counter
-	var k;			// number of bits in current code
-	var lx = new Array(this.BMAX+1);	// stack of bits per table
-	var p;			// pointer into c[], b[], or v[]
-	var pidx;		// index of p
-	var q;			// (zip_HuftNode) points to current table
-	var r = new zip_HuftNode(); // table entry for structure assignment
-	var u = new Array(this.BMAX); // zip_HuftNode[BMAX][]  table stack
-	var v = new Array(this.N_MAX); // values in order of bit length
-	var w;
-	var x = new Array(this.BMAX+1);// bit offsets, then code stack
-	var xp;			// pointer into x or c
-	var y;			// number of dummy codes added
-	var z;			// number of entries in current table
+      if (i in t)
+      {
+        var val = t[i]; // in case fun mutates this
+        if (fun.call(thisp, val, i, t))
+          res.push(val);
+      }
+    }
+
+    return res;
+  };
+}
+
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim
+if (!String.prototype.trim) {
+  String.prototype.trim = function () {
+    return this.replace(/^\s+|\s+$/g, '');
+  };
+}
+
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
+if (!Array.prototype.forEach)
+{
+  Array.prototype.forEach = function(fun /*, thisArg */)
+  {
+    "use strict";
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun !== "function")
+      throw new TypeError();
+
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t)
+        fun.call(thisArg, t[i], i, t);
+    }
+  };
+}
+
+// Production steps of ECMA-262, Edition 5, 15.4.4.19
+// Reference: http://es5.github.com/#x15.4.4.19
+if (!Array.prototype.map) {
+  Array.prototype.map = function(callback, thisArg) {
+
+    var T, A, k;
+
+    if (this == null) {
+      throw new TypeError(" this is null or not defined");
+    }
+
+    // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+    var O = Object(this);
+
+    // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+    // 3. Let len be ToUint32(lenValue).
+    var len = O.length >>> 0;
+
+    // 4. If IsCallable(callback) is false, throw a TypeError exception.
+    // See: http://es5.github.com/#x9.11
+    if (typeof callback !== "function") {
+      throw new TypeError(callback + " is not a function");
+    }
+
+    // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+    if (thisArg) {
+      T = thisArg;
+    }
+
+    // 6. Let A be a new array created as if by the expression new Array(len) where Array is
+    // the standard built-in constructor with that name and len is the value of len.
+    A = new Array(len);
+
+    // 7. Let k be 0
+    k = 0;
+
+    // 8. Repeat, while k < len
+    while(k < len) {
+
+      var kValue, mappedValue;
+
+      // a. Let Pk be ToString(k).
+      //   This is implicit for LHS operands of the in operator
+      // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+      //   This step can be combined with c
+      // c. If kPresent is true, then
+      if (k in O) {
+
+        // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+        kValue = O[ k ];
+
+        // ii. Let mappedValue be the result of calling the Call internal method of callback
+        // with T as the this value and argument list containing kValue, k, and O.
+        mappedValue = callback.call(T, kValue, k, O);
+
+        // iii. Call the DefineOwnProperty internal method of A with arguments
+        // Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
+        // and false.
+
+        // In browsers that support Object.defineProperty, use the following:
+        // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+
+        // For best browser support, use the following:
+        A[ k ] = mappedValue;
+      }
+      // d. Increase k by 1.
+      k++;
+    }
+
+    // 9. return A
+    return A;
+  };
+}
+
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf
+if (!Array.prototype.indexOf) {
+  Array.prototype.indexOf = function (searchElement, fromIndex) {
+    if ( this === undefined || this === null ) {
+      throw new TypeError( '"this" is null or not defined' );
+    }
+
+    var length = this.length >>> 0; // Hack to convert object.length to a UInt32
+
+    fromIndex = +fromIndex || 0;
+
+    if (Math.abs(fromIndex) === Infinity) {
+      fromIndex = 0;
+    }
+
+    if (fromIndex < 0) {
+      fromIndex += length;
+      if (fromIndex < 0) {
+        fromIndex = 0;
+      }
+    }
+
+    for (;fromIndex < length; fromIndex++) {
+      if (this[fromIndex] === searchElement) {
+        return fromIndex;
+      }
+    }
+
+    return -1;
+  };
+}
+// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
+
+if (! Array.isArray) {
+    Array.isArray = function(obj) {
+        return Object.prototype.toString.call(obj) === "[object Array]";
+    };
+}
+
+// https://github.com/ttaubert/node-arraybuffer-slice
+// (c) 2013 Tim Taubert <tim@timtaubert.de>
+// arraybuffer-slice may be freely distributed under the MIT license.
+
+"use strict";
+
+if (typeof ArrayBuffer !== 'undefined' && !ArrayBuffer.prototype.slice) {
+  ArrayBuffer.prototype.slice = function (begin, end) {
+    begin = (begin|0) || 0;
+    var num = this.byteLength;
+    end = end === (void 0) ? num : (end|0);
+
+    // Handle negative values.
+    if (begin < 0) begin += num;
+    if (end < 0) end += num;
+
+    if (num === 0 || begin >= num || begin >= end) {
+      return new ArrayBuffer(0);
+    }
+
+    var length = Math.min(num - begin, end - begin);
+    var target = new ArrayBuffer(length);
+    var targetArray = new Uint8Array(target);
+    targetArray.set(new Uint8Array(this, begin, length));
+    return target;
+  };
+}
+/* xls.js (C) 2013-2014 SheetJS -- http://sheetjs.com */
+var XLS={};(function make_xls(XLS){XLS.version="0.7.1";var current_codepage=1252,current_cptable;if(typeof module!=="undefined"&&typeof require!=="undefined"){if(typeof cptable==="undefined")cptable=require("./dist/cpexcel");current_cptable=cptable[current_codepage]}function reset_cp(){set_cp(1252)}function set_cp(cp){current_codepage=cp;if(typeof cptable!=="undefined")current_cptable=cptable[cp]}var _getchar=function _gc1(x){return String.fromCharCode(x)};if(typeof cptable!=="undefined")_getchar=function _gc2(x){if(current_codepage===1200)return String.fromCharCode(x);return cptable.utils.decode(current_codepage,[x&255,x>>8])[0]};var has_buf=typeof Buffer!=="undefined";function new_buf(len){return new(has_buf?Buffer:Array)(len)}var Base64=function make_b64(){var map="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";return{decode:function b64_decode(input,utf8){var o="";var c1,c2,c3;var e1,e2,e3,e4;input=input.replace(/[^A-Za-z0-9\+\/\=]/g,"");for(var i=0;i<input.length;){e1=map.indexOf(input.charAt(i++));e2=map.indexOf(input.charAt(i++));e3=map.indexOf(input.charAt(i++));e4=map.indexOf(input.charAt(i++));c1=e1<<2|e2>>4;c2=(e2&15)<<4|e3>>2;c3=(e3&3)<<6|e4;o+=String.fromCharCode(c1);if(e3!=64){o+=String.fromCharCode(c2)}if(e4!=64){o+=String.fromCharCode(c3)}}return o}}}();function s2a(s){if(has_buf)return new Buffer(s,"binary");var w=s.split("").map(function(x){return x.charCodeAt(0)&255});return w}function readIEEE754(buf,idx,isLE,nl,ml){if(isLE===undefined)isLE=true;if(!nl)nl=8;if(!ml&&nl===8)ml=52;var e,m,el=nl*8-ml-1,eMax=(1<<el)-1,eBias=eMax>>1;var bits=-7,d=isLE?-1:1,i=isLE?nl-1:0,s=buf[idx+i];i+=d;e=s&(1<<-bits)-1;s>>>=-bits;bits+=el;for(;bits>0;e=e*256+buf[idx+i],i+=d,bits-=8);m=e&(1<<-bits)-1;e>>>=-bits;bits+=ml;for(;bits>0;m=m*256+buf[idx+i],i+=d,bits-=8);if(e===eMax)return m?NaN:(s?-1:1)*Infinity;else if(e===0)e=1-eBias;else{m=m+Math.pow(2,ml);e=e-eBias}return(s?-1:1)*m*Math.pow(2,e-ml)}var chr0=/\u0000/g,chr1=/[\u0001-\u0006]/;var __toBuffer,___toBuffer;__toBuffer=___toBuffer=function toBuffer_(bufs){var x=[];for(var i=0;i<bufs[0].length;++i){x.push.apply(x,bufs[0][i])}return x};var __utf16le,___utf16le;__utf16le=___utf16le=function utf16le_(b,s,e){var ss=[];for(var i=s;i<e;i+=2)ss.push(String.fromCharCode(__readUInt16LE(b,i)));return ss.join("")};var __hexlify,___hexlify;__hexlify=___hexlify=function hexlify_(b,s,l){return b.slice(s,s+l).map(function(x){return(x<16?"0":"")+x.toString(16)}).join("")};var __utf8,___utf8;__utf8=___utf8=function(b,s,e){var ss=[];for(var i=s;i<e;i++)ss.push(String.fromCharCode(__readUInt8(b,i)));return ss.join("")};var __lpstr,___lpstr;__lpstr=___lpstr=function lpstr_(b,i){var len=__readUInt32LE(b,i);return len>0?__utf8(b,i+4,i+4+len-1):""};var __lpwstr,___lpwstr;__lpwstr=___lpwstr=function lpwstr_(b,i){var len=2*__readUInt32LE(b,i);return len>0?__utf8(b,i+4,i+4+len-1):""};var __double,___double;__double=___double=function(b,idx){return readIEEE754(b,idx)};var bconcat=function(bufs){return[].concat.apply([],bufs)};if(typeof Buffer!=="undefined"){__utf16le=function utf16le_b(b,s,e){if(!Buffer.isBuffer(b))return ___utf16le(b,s,e);return b.toString("utf16le",s,e)};__hexlify=function(b,s,l){return Buffer.isBuffer(b)?b.toString("hex",s,s+l):___hexlify(b,s,l)};__lpstr=function lpstr_b(b,i){if(!Buffer.isBuffer(b))return ___lpstr(b,i);var len=b.readUInt32LE(i);return len>0?b.toString("utf8",i+4,i+4+len-1):""};__lpwstr=function lpwstr_b(b,i){if(!Buffer.isBuffer(b))return ___lpwstr(b,i);var len=2*b.readUInt32LE(i);return b.toString("utf16le",i+4,i+4+len-1)};__utf8=function utf8_b(s,e){return this.toString("utf8",s,e)};__toBuffer=function(bufs){return bufs[0].length>0&&Buffer.isBuffer(bufs[0][0])?Buffer.concat(bufs[0]):___toBuffer(bufs)};bconcat=function(bufs){return Buffer.isBuffer(bufs[0])?Buffer.concat(bufs):[].concat.apply([],bufs)};__double=function double_(b,i){if(Buffer.isBuffer(b))return b.readDoubleLE(i);return ___double(b,i)}}var __readUInt8=function(b,idx){return b[idx]};var __readUInt16LE=function(b,idx){return b[idx+1]*(1<<8)+b[idx]};var __readInt16LE=function(b,idx){var u=b[idx+1]*(1<<8)+b[idx];return u<32768?u:(65535-u+1)*-1};var __readUInt32LE=function(b,idx){return b[idx+3]*(1<<24)+(b[idx+2]<<16)+(b[idx+1]<<8)+b[idx]};var __readInt32LE=function(b,idx){return b[idx+3]<<24|b[idx+2]<<16|b[idx+1]<<8|b[idx]};var ___unhexlify=function(s){return s.match(/../g).map(function(x){return parseInt(x,16)})};var __unhexlify=typeof Buffer!=="undefined"?function(s){return Buffer.isBuffer(s)?new Buffer(s,"hex"):___unhexlify(s)}:___unhexlify;if(typeof cptable!=="undefined"){__utf16le=function(b,s,e){return cptable.utils.decode(1200,b.slice(s,e))};__utf8=function(b,s,e){return cptable.utils.decode(65001,b.slice(s,e))};__lpstr=function(b,i){var len=__readUInt32LE(b,i);return len>0?cptable.utils.decode(current_codepage,b.slice(i+4,i+4+len-1)):""};__lpwstr=function(b,i){var len=2*__readUInt32LE(b,i);return len>0?cptable.utils.decode(1200,b.slice(i+4,i+4+len-1)):""}}function ReadShift(size,t){var o,oI,oR,oo=[],w,vv,i,loc;switch(t){case"lpstr":o=__lpstr(this,this.l);size=5+o.length;break;case"lpwstr":o=__lpwstr(this,this.l);size=5+o.length;if(o[o.length-1]=="\x00")size+=2;break;case"cstr":size=0;o="";while((w=__readUInt8(this,this.l+size++))!==0)oo.push(_getchar(w));o=oo.join("");break;case"wstr":size=0;o="";while((w=__readUInt16LE(this,this.l+size))!==0){oo.push(_getchar(w));size+=2}size+=2;o=oo.join("");break;case"dbcs":o="";loc=this.l;for(i=0;i!=size;++i){if(this.lens&&this.lens.indexOf(loc)!==-1){w=__readUInt8(this,loc);this.l=loc+1;vv=ReadShift.call(this,size-i,w?"dbcs":"sbcs");return oo.join("")+vv}oo.push(_getchar(__readUInt16LE(this,loc)));loc+=2}o=oo.join("");size*=2;break;case"sbcs":o="";loc=this.l;for(i=0;i!=size;++i){if(this.lens&&this.lens.indexOf(loc)!==-1){w=__readUInt8(this,loc);this.l=loc+1;vv=ReadShift.call(this,size-i,w?"dbcs":"sbcs");return oo.join("")+vv}oo.push(_getchar(__readUInt8(this,loc)));loc+=1}o=oo.join("");break;case"utf8":o=__utf8(this,this.l,this.l+size);break;case"utf16le":size*=2;o=__utf16le(this,this.l,this.l+size);break;default:switch(size){case 1:oI=__readUInt8(this,this.l);this.l++;return oI;case 2:oI=t!=="i"?__readUInt16LE(this,this.l):__readInt16LE(this,this.l);this.l+=2;return oI;case 4:if(t==="i"||(this[this.l+3]&128)===0){oI=__readInt32LE(this,this.l);this.l+=4;return oI}else{oR=__readUInt32LE(this,this.l);this.l+=4;return oR}break;case 8:if(t==="f"){oR=__double(this,this.l);this.l+=8;return oR}case 16:o=__hexlify(this,this.l,size);break}}this.l+=size;return o}function CheckField(hexstr,fld){var m=__hexlify(this,this.l,hexstr.length>>1);if(m!==hexstr)throw fld+"Expected "+hexstr+" saw "+m;this.l+=hexstr.length>>1}function prep_blob(blob,pos){blob.l=pos;blob.read_shift=ReadShift;blob.chk=CheckField}var SSF={};var make_ssf=function make_ssf(SSF){SSF.version="0.8.1";function _strrev(x){var o="",i=x.length-1;while(i>=0)o+=x.charAt(i--);return o}function fill(c,l){var o="";while(o.length<l)o+=c;return o}function pad0(v,d){var t=""+v;return t.length>=d?t:fill("0",d-t.length)+t}function pad_(v,d){var t=""+v;return t.length>=d?t:fill(" ",d-t.length)+t}function rpad_(v,d){var t=""+v;return t.length>=d?t:t+fill(" ",d-t.length)}function pad0r1(v,d){var t=""+Math.round(v);return t.length>=d?t:fill("0",d-t.length)+t}function pad0r2(v,d){var t=""+v;return t.length>=d?t:fill("0",d-t.length)+t}var p2_32=Math.pow(2,32);function pad0r(v,d){if(v>p2_32||v<-p2_32)return pad0r1(v,d);var i=Math.round(v);return pad0r2(i,d)}function isgeneral(s,i){return s.length>=7+i&&(s.charCodeAt(i)|32)===103&&(s.charCodeAt(i+1)|32)===101&&(s.charCodeAt(i+2)|32)===110&&(s.charCodeAt(i+3)|32)===101&&(s.charCodeAt(i+4)|32)===114&&(s.charCodeAt(i+5)|32)===97&&(s.charCodeAt(i+6)|32)===108}var opts_fmt=[["date1904",0],["output",""],["WTF",false]];function fixopts(o){for(var y=0;y!=opts_fmt.length;++y)if(o[opts_fmt[y][0]]===undefined)o[opts_fmt[y][0]]=opts_fmt[y][1]}SSF.opts=opts_fmt;var table_fmt={0:"General",1:"0",2:"0.00",3:"#,##0",4:"#,##0.00",9:"0%",10:"0.00%",11:"0.00E+00",12:"# ?/?",13:"# ??/??",14:"m/d/yy",15:"d-mmm-yy",16:"d-mmm",17:"mmm-yy",18:"h:mm AM/PM",19:"h:mm:ss AM/PM",20:"h:mm",21:"h:mm:ss",22:"m/d/yy h:mm",37:"#,##0 ;(#,##0)",38:"#,##0 ;[Red](#,##0)",39:"#,##0.00;(#,##0.00)",40:"#,##0.00;[Red](#,##0.00)",45:"mm:ss",46:"[h]:mm:ss",47:"mmss.0",48:"##0.0E+0",49:"@",56:'"上午/下午 "hh"時"mm"分"ss"秒 "',65535:"General"};var days=[["Sun","Sunday"],["Mon","Monday"],["Tue","Tuesday"],["Wed","Wednesday"],["Thu","Thursday"],["Fri","Friday"],["Sat","Saturday"]];var months=[["J","Jan","January"],["F","Feb","February"],["M","Mar","March"],["A","Apr","April"],["M","May","May"],["J","Jun","June"],["J","Jul","July"],["A","Aug","August"],["S","Sep","September"],["O","Oct","October"],["N","Nov","November"],["D","Dec","December"]];function frac(x,D,mixed){var sgn=x<0?-1:1;var B=x*sgn;var P_2=0,P_1=1,P=0;var Q_2=1,Q_1=0,Q=0;var A=Math.floor(B);while(Q_1<D){A=Math.floor(B);P=A*P_1+P_2;Q=A*Q_1+Q_2;if(B-A<5e-10)break;B=1/(B-A);P_2=P_1;P_1=P;Q_2=Q_1;Q_1=Q}if(Q>D){Q=Q_1;P=P_1}if(Q>D){Q=Q_2;P=P_2}if(!mixed)return[0,sgn*P,Q];if(Q===0)throw"Unexpected state: "+P+" "+P_1+" "+P_2+" "+Q+" "+Q_1+" "+Q_2;var q=Math.floor(sgn*P/Q);return[q,sgn*P-q*Q,Q]}function general_fmt_int(v,opts){return""+v}SSF._general_int=general_fmt_int;var general_fmt_num=function make_general_fmt_num(){var gnr1=/\.(\d*[1-9])0+$/,gnr2=/\.0*$/,gnr4=/\.(\d*[1-9])0+/,gnr5=/\.0*[Ee]/,gnr6=/(E[+-])(\d)$/;function gfn2(v){var w=v<0?12:11;var o=gfn5(v.toFixed(12));if(o.length<=w)return o;o=v.toPrecision(10);if(o.length<=w)return o;return v.toExponential(5)}function gfn3(v){var o=v.toFixed(11).replace(gnr1,".$1");if(o.length>(v<0?12:11))o=v.toPrecision(6);return o}function gfn4(o){for(var i=0;i!=o.length;++i)if((o.charCodeAt(i)|32)===101)return o.replace(gnr4,".$1").replace(gnr5,"E").replace("e","E").replace(gnr6,"$10$2");return o}function gfn5(o){return o.indexOf(".")>-1?o.replace(gnr2,"").replace(gnr1,".$1"):o}return function general_fmt_num(v,opts){var V=Math.floor(Math.log(Math.abs(v))*Math.LOG10E),o;if(V>=-4&&V<=-1)o=v.toPrecision(10+V);else if(Math.abs(V)<=9)o=gfn2(v);else if(V===10)o=v.toFixed(10).substr(0,12);else o=gfn3(v);return gfn5(gfn4(o))}}();SSF._general_num=general_fmt_num;function general_fmt(v,opts){switch(typeof v){case"string":return v;case"boolean":return v?"TRUE":"FALSE";case"number":return(v|0)===v?general_fmt_int(v,opts):general_fmt_num(v,opts)}throw new Error("unsupported value in General format: "+v)}SSF._general=general_fmt;function fix_hijri(date,o){return 0}function parse_date_code(v,opts,b2){if(v>2958465||v<0)return null;var date=v|0,time=Math.floor(86400*(v-date)),dow=0;var dout=[];var out={D:date,T:time,u:86400*(v-date)-time,y:0,m:0,d:0,H:0,M:0,S:0,q:0};if(Math.abs(out.u)<1e-6)out.u=0;fixopts(opts!=null?opts:opts=[]);if(opts.date1904)date+=1462;if(out.u>.999){out.u=0;if(++time==86400){time=0;++date}}if(date===60){dout=b2?[1317,10,29]:[1900,2,29];dow=3}else if(date===0){dout=b2?[1317,8,29]:[1900,1,0];dow=6}else{if(date>60)--date;var d=new Date(1900,0,1);d.setDate(d.getDate()+date-1);dout=[d.getFullYear(),d.getMonth()+1,d.getDate()];dow=d.getDay();if(date<60)dow=(dow+6)%7;if(b2)dow=fix_hijri(d,dout)}out.y=dout[0];out.m=dout[1];out.d=dout[2];out.S=time%60;time=Math.floor(time/60);out.M=time%60;time=Math.floor(time/60);out.H=time;out.q=dow;return out}SSF.parse_date_code=parse_date_code;function write_date(type,fmt,val,ss0){var o="",ss=0,tt=0,y=val.y,out,outl=0;switch(type){case 98:y=val.y+543;case 121:switch(fmt.length){case 1:case 2:out=y%100;outl=2;break;default:out=y%1e4;outl=4;break}break;case 109:switch(fmt.length){case 1:case 2:out=val.m;outl=fmt.length;break;case 3:return months[val.m-1][1];case 5:return months[val.m-1][0];default:return months[val.m-1][2]}break;case 100:switch(fmt.length){case 1:case 2:out=val.d;outl=fmt.length;break;case 3:return days[val.q][0];default:return days[val.q][1]}break;case 104:switch(fmt.length){case 1:case 2:out=1+(val.H+11)%12;outl=fmt.length;break;default:throw"bad hour format: "+fmt}break;case 72:switch(fmt.length){case 1:case 2:out=val.H;outl=fmt.length;break;default:throw"bad hour format: "+fmt}break;case 77:switch(fmt.length){case 1:case 2:out=val.M;outl=fmt.length;break;default:throw"bad minute format: "+fmt}break;case 115:if(val.u===0)switch(fmt){case"s":case"ss":return pad0(val.S,fmt.length);case".0":case".00":case".000":}switch(fmt){case"s":case"ss":case".0":case".00":case".000":if(ss0>=2)tt=ss0===3?1e3:100;else tt=ss0===1?10:1;ss=Math.round(tt*(val.S+val.u));if(ss>=60*tt)ss=0;if(fmt==="s")return ss===0?"0":""+ss/tt;o=pad0(ss,2+ss0);if(fmt==="ss")return o.substr(0,2);return"."+o.substr(2,fmt.length-1);default:throw"bad second format: "+fmt}case 90:switch(fmt){case"[h]":case"[hh]":out=val.D*24+val.H;break;case"[m]":case"[mm]":out=(val.D*24+val.H)*60+val.M;break;case"[s]":case"[ss]":out=((val.D*24+val.H)*60+val.M)*60+Math.round(val.S+val.u);break;default:throw"bad abstime format: "+fmt}outl=fmt.length===3?1:2;break;case 101:out=y;outl=1}if(outl>0)return pad0(out,outl);else return""}function commaify(s){if(s.length<=3)return s;var j=s.length%3,o=s.substr(0,j);for(;j!=s.length;j+=3)o+=(o.length>0?",":"")+s.substr(j,3);return o}var write_num=function make_write_num(){var pct1=/%/g;function write_num_pct(type,fmt,val){var sfmt=fmt.replace(pct1,""),mul=fmt.length-sfmt.length;return write_num(type,sfmt,val*Math.pow(10,2*mul))+fill("%",mul)}function write_num_cm(type,fmt,val){var idx=fmt.length-1;while(fmt.charCodeAt(idx-1)===44)--idx;return write_num(type,fmt.substr(0,idx),val/Math.pow(10,3*(fmt.length-idx)))}function write_num_exp(fmt,val){var o;var idx=fmt.indexOf("E")-fmt.indexOf(".")-1;if(fmt.match(/^#+0.0E\+0$/)){var period=fmt.indexOf(".");if(period===-1)period=fmt.indexOf("E");var ee=Math.floor(Math.log(Math.abs(val))*Math.LOG10E)%period;if(ee<0)ee+=period;o=(val/Math.pow(10,ee)).toPrecision(idx+1+(period+ee)%period);if(o.indexOf("e")===-1){var fakee=Math.floor(Math.log(Math.abs(val))*Math.LOG10E);if(o.indexOf(".")===-1)o=o[0]+"."+o.substr(1)+"E+"+(fakee-o.length+ee);else o+="E+"+(fakee-ee);while(o.substr(0,2)==="0."){o=o[0]+o.substr(2,period)+"."+o.substr(2+period);o=o.replace(/^0+([1-9])/,"$1").replace(/^0+\./,"0.")}o=o.replace(/\+-/,"-")}o=o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/,function($$,$1,$2,$3){return $1+$2+$3.substr(0,(period+ee)%period)+"."+$3.substr(ee)+"E"})}else o=val.toExponential(idx);if(fmt.match(/E\+00$/)&&o.match(/e[+-]\d$/))o=o.substr(0,o.length-1)+"0"+o[o.length-1];if(fmt.match(/E\-/)&&o.match(/e\+/))o=o.replace(/e\+/,"e");return o.replace("e","E")}var frac1=/# (\?+)( ?)\/( ?)(\d+)/;function write_num_f1(r,aval,sign){var den=parseInt(r[4]),rr=Math.round(aval*den),base=Math.floor(rr/den);var myn=rr-base*den,myd=den;return sign+(base===0?"":""+base)+" "+(myn===0?fill(" ",r[1].length+1+r[4].length):pad_(myn,r[1].length)+r[2]+"/"+r[3]+pad0(myd,r[4].length))}function write_num_f2(r,aval,sign){return sign+(aval===0?"":""+aval)+fill(" ",r[1].length+2+r[4].length)}var dec1=/^#*0*\.(0+)/;var closeparen=/\).*[0#]/;var phone=/\(###\) ###\\?-####/;function hashq(str){var o="",cc;for(var i=0;i!=str.length;++i)switch(cc=str.charCodeAt(i)){case 35:break;case 63:o+=" ";break;case 48:o+="0";break;default:o+=String.fromCharCode(cc)}return o}function rnd(val,d){var dd=Math.pow(10,d);return""+Math.round(val*dd)/dd}function dec(val,d){return Math.round((val-Math.floor(val))*Math.pow(10,d))}function flr(val){if(val<2147483647&&val>-2147483648)return""+(val>=0?val|0:val-1|0);return""+Math.floor(val)}function write_num_flt(type,fmt,val){if(type.charCodeAt(0)===40&&!fmt.match(closeparen)){var ffmt=fmt.replace(/\( */,"").replace(/ \)/,"").replace(/\)/,"");if(val>=0)return write_num_flt("n",ffmt,val);return"("+write_num_flt("n",ffmt,-val)+")"}if(fmt.charCodeAt(fmt.length-1)===44)return write_num_cm(type,fmt,val);if(fmt.indexOf("%")!==-1)return write_num_pct(type,fmt,val);if(fmt.indexOf("E")!==-1)return write_num_exp(fmt,val);if(fmt.charCodeAt(0)===36)return"$"+write_num_flt(type,fmt.substr(fmt[1]==" "?2:1),val);var o,oo;var r,ri,ff,aval=Math.abs(val),sign=val<0?"-":"";if(fmt.match(/^00+$/))return sign+pad0r(aval,fmt.length);if(fmt.match(/^[#?]+$/)){o=pad0r(val,0);if(o==="0")o="";return o.length>fmt.length?o:hashq(fmt.substr(0,fmt.length-o.length))+o}if((r=fmt.match(frac1))!==null)return write_num_f1(r,aval,sign);if(fmt.match(/^#+0+$/)!==null)return sign+pad0r(aval,fmt.length-fmt.indexOf("0"));if((r=fmt.match(dec1))!==null){o=rnd(val,r[1].length).replace(/^([^\.]+)$/,"$1."+r[1]).replace(/\.$/,"."+r[1]).replace(/\.(\d*)$/,function($$,$1){return"."+$1+fill("0",r[1].length-$1.length)});return fmt.indexOf("0.")!==-1?o:o.replace(/^0\./,".")}fmt=fmt.replace(/^#+([0.])/,"$1");if((r=fmt.match(/^(0*)\.(#*)$/))!==null){return sign+rnd(aval,r[2].length).replace(/\.(\d*[1-9])0*$/,".$1").replace(/^(-?\d*)$/,"$1.").replace(/^0\./,r[1].length?"0.":".")}if((r=fmt.match(/^#,##0(\.?)$/))!==null)return sign+commaify(pad0r(aval,0));if((r=fmt.match(/^#,##0\.([#0]*0)$/))!==null){return val<0?"-"+write_num_flt(type,fmt,-val):commaify(""+Math.floor(val))+"."+pad0(dec(val,r[1].length),r[1].length)}if((r=fmt.match(/^#,#*,#0/))!==null)return write_num_flt(type,fmt.replace(/^#,#*,/,""),val);if((r=fmt.match(/^([0#]+)(\\?-([0#]+))+$/))!==null){o=_strrev(write_num_flt(type,fmt.replace(/[\\-]/g,""),val));ri=0;return _strrev(_strrev(fmt.replace(/\\/g,"")).replace(/[0#]/g,function(x){return ri<o.length?o[ri++]:x==="0"?"0":""}))}if(fmt.match(phone)!==null){o=write_num_flt(type,"##########",val);return"("+o.substr(0,3)+") "+o.substr(3,3)+"-"+o.substr(6)}var oa="";if((r=fmt.match(/^([#0?]+)( ?)\/( ?)([#0?]+)/))!==null){ri=Math.min(r[4].length,7);ff=frac(aval,Math.pow(10,ri)-1,false);o=""+sign;oa=write_num("n",r[1],ff[1]);if(oa[oa.length-1]==" ")oa=oa.substr(0,oa.length-1)+"0";o+=oa+r[2]+"/"+r[3];oa=rpad_(ff[2],ri);if(oa.length<r[4].length)oa=hashq(r[4].substr(r[4].length-oa.length))+oa;o+=oa;return o}if((r=fmt.match(/^# ([#0?]+)( ?)\/( ?)([#0?]+)/))!==null){ri=Math.min(Math.max(r[1].length,r[4].length),7);ff=frac(aval,Math.pow(10,ri)-1,true);return sign+(ff[0]||(ff[1]?"":"0"))+" "+(ff[1]?pad_(ff[1],ri)+r[2]+"/"+r[3]+rpad_(ff[2],ri):fill(" ",2*ri+1+r[2].length+r[3].length))}if((r=fmt.match(/^[#0?]+$/))!==null){o=pad0r(val,0);if(fmt.length<=o.length)return o;return hashq(fmt.substr(0,fmt.length-o.length))+o}if((r=fmt.match(/^([#0?]+)\.([#0]+)$/))!==null){o=""+val.toFixed(Math.min(r[2].length,10)).replace(/([^0])0+$/,"$1");ri=o.indexOf(".");var lres=fmt.indexOf(".")-ri,rres=fmt.length-o.length-lres;return hashq(fmt.substr(0,lres)+o+fmt.substr(fmt.length-rres))}if((r=fmt.match(/^00,000\.([#0]*0)$/))!==null){ri=dec(val,r[1].length);return val<0?"-"+write_num_flt(type,fmt,-val):commaify(flr(val)).replace(/^\d,\d{3}$/,"0$&").replace(/^\d*$/,function($$){return"00,"+($$.length<3?pad0(0,3-$$.length):"")+$$})+"."+pad0(ri,r[1].length)}switch(fmt){case"#,###":var x=commaify(pad0r(aval,0));return x!=="0"?sign+x:"";default:}throw new Error("unsupported format |"+fmt+"|")}function write_num_cm2(type,fmt,val){var idx=fmt.length-1;while(fmt.charCodeAt(idx-1)===44)--idx;return write_num(type,fmt.substr(0,idx),val/Math.pow(10,3*(fmt.length-idx)))}function write_num_pct2(type,fmt,val){var sfmt=fmt.replace(pct1,""),mul=fmt.length-sfmt.length;return write_num(type,sfmt,val*Math.pow(10,2*mul))+fill("%",mul)}function write_num_exp2(fmt,val){var o;var idx=fmt.indexOf("E")-fmt.indexOf(".")-1;if(fmt.match(/^#+0.0E\+0$/)){var period=fmt.indexOf(".");if(period===-1)period=fmt.indexOf("E");var ee=Math.floor(Math.log(Math.abs(val))*Math.LOG10E)%period;if(ee<0)ee+=period;o=(val/Math.pow(10,ee)).toPrecision(idx+1+(period+ee)%period);if(!o.match(/[Ee]/)){var fakee=Math.floor(Math.log(Math.abs(val))*Math.LOG10E);if(o.indexOf(".")===-1)o=o[0]+"."+o.substr(1)+"E+"+(fakee-o.length+ee);else o+="E+"+(fakee-ee);o=o.replace(/\+-/,"-")}o=o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/,function($$,$1,$2,$3){return $1+$2+$3.substr(0,(period+ee)%period)+"."+$3.substr(ee)+"E"})}else o=val.toExponential(idx);if(fmt.match(/E\+00$/)&&o.match(/e[+-]\d$/))o=o.substr(0,o.length-1)+"0"+o[o.length-1];if(fmt.match(/E\-/)&&o.match(/e\+/))o=o.replace(/e\+/,"e");return o.replace("e","E")}function write_num_int(type,fmt,val){if(type.charCodeAt(0)===40&&!fmt.match(closeparen)){var ffmt=fmt.replace(/\( */,"").replace(/ \)/,"").replace(/\)/,"");if(val>=0)return write_num_int("n",ffmt,val);return"("+write_num_int("n",ffmt,-val)+")"}if(fmt.charCodeAt(fmt.length-1)===44)return write_num_cm2(type,fmt,val);if(fmt.indexOf("%")!==-1)return write_num_pct2(type,fmt,val);if(fmt.indexOf("E")!==-1)return write_num_exp2(fmt,val);if(fmt.charCodeAt(0)===36)return"$"+write_num_int(type,fmt.substr(fmt[1]==" "?2:1),val);var o;var r,ri,ff,aval=Math.abs(val),sign=val<0?"-":"";if(fmt.match(/^00+$/))return sign+pad0(aval,fmt.length);if(fmt.match(/^[#?]+$/)){o=""+val;if(val===0)o="";return o.length>fmt.length?o:hashq(fmt.substr(0,fmt.length-o.length))+o}if((r=fmt.match(frac1))!==null)return write_num_f2(r,aval,sign);if(fmt.match(/^#+0+$/)!==null)return sign+pad0(aval,fmt.length-fmt.indexOf("0"));if((r=fmt.match(dec1))!==null){o=(""+val).replace(/^([^\.]+)$/,"$1."+r[1]).replace(/\.$/,"."+r[1]).replace(/\.(\d*)$/,function($$,$1){return"."+$1+fill("0",r[1].length-$1.length)});return fmt.indexOf("0.")!==-1?o:o.replace(/^0\./,".")}fmt=fmt.replace(/^#+([0.])/,"$1");if((r=fmt.match(/^(0*)\.(#*)$/))!==null){return sign+(""+aval).replace(/\.(\d*[1-9])0*$/,".$1").replace(/^(-?\d*)$/,"$1.").replace(/^0\./,r[1].length?"0.":".")}if((r=fmt.match(/^#,##0(\.?)$/))!==null)return sign+commaify(""+aval);if((r=fmt.match(/^#,##0\.([#0]*0)$/))!==null){return val<0?"-"+write_num_int(type,fmt,-val):commaify(""+val)+"."+fill("0",r[1].length)}if((r=fmt.match(/^#,#*,#0/))!==null)return write_num_int(type,fmt.replace(/^#,#*,/,""),val);if((r=fmt.match(/^([0#]+)(\\?-([0#]+))+$/))!==null){o=_strrev(write_num_int(type,fmt.replace(/[\\-]/g,""),val));ri=0;return _strrev(_strrev(fmt.replace(/\\/g,"")).replace(/[0#]/g,function(x){return ri<o.length?o[ri++]:x==="0"?"0":""}))}if(fmt.match(phone)!==null){o=write_num_int(type,"##########",val);return"("+o.substr(0,3)+") "+o.substr(3,3)+"-"+o.substr(6)}var oa="";if((r=fmt.match(/^([#0?]+)( ?)\/( ?)([#0?]+)/))!==null){ri=Math.min(r[4].length,7);ff=frac(aval,Math.pow(10,ri)-1,false);o=""+sign;oa=write_num("n",r[1],ff[1]);if(oa[oa.length-1]==" ")oa=oa.substr(0,oa.length-1)+"0";o+=oa+r[2]+"/"+r[3];oa=rpad_(ff[2],ri);if(oa.length<r[4].length)oa=hashq(r[4].substr(r[4].length-oa.length))+oa;o+=oa;return o}if((r=fmt.match(/^# ([#0?]+)( ?)\/( ?)([#0?]+)/))!==null){ri=Math.min(Math.max(r[1].length,r[4].length),7);ff=frac(aval,Math.pow(10,ri)-1,true);return sign+(ff[0]||(ff[1]?"":"0"))+" "+(ff[1]?pad_(ff[1],ri)+r[2]+"/"+r[3]+rpad_(ff[2],ri):fill(" ",2*ri+1+r[2].length+r[3].length))}if((r=fmt.match(/^[#0?]+$/))!==null){o=""+val;if(fmt.length<=o.length)return o;return hashq(fmt.substr(0,fmt.length-o.length))+o}if((r=fmt.match(/^([#0]+)\.([#0]+)$/))!==null){o=""+val.toFixed(Math.min(r[2].length,10)).replace(/([^0])0+$/,"$1");ri=o.indexOf(".");var lres=fmt.indexOf(".")-ri,rres=fmt.length-o.length-lres;return hashq(fmt.substr(0,lres)+o+fmt.substr(fmt.length-rres))}if((r=fmt.match(/^00,000\.([#0]*0)$/))!==null){return val<0?"-"+write_num_int(type,fmt,-val):commaify(""+val).replace(/^\d,\d{3}$/,"0$&").replace(/^\d*$/,function($$){return"00,"+($$.length<3?pad0(0,3-$$.length):"")+$$})+"."+pad0(0,r[1].length)}switch(fmt){case"#,###":var x=commaify(""+aval);return x!=="0"?sign+x:"";default:}throw new Error("unsupported format |"+fmt+"|")}return function write_num(type,fmt,val){return(val|0)===val?write_num_int(type,fmt,val):write_num_flt(type,fmt,val)}}();function split_fmt(fmt){var out=[];var in_str=false,cc;for(var i=0,j=0;i<fmt.length;++i)switch(cc=fmt.charCodeAt(i)){case 34:in_str=!in_str;break;case 95:case 42:case 92:++i;break;case 59:out[out.length]=fmt.substr(j,i-j);j=i+1}out[out.length]=fmt.substr(j);if(in_str===true)throw new Error("Format |"+fmt+"| unterminated string ");return out}SSF._split=split_fmt;var abstime=/\[[HhMmSs]*\]/;function eval_fmt(fmt,v,opts,flen){var out=[],o="",i=0,c="",lst="t",q,dt,j,cc;var hr="H";while(i<fmt.length){switch(c=fmt[i]){case"G":if(!isgeneral(fmt,i))throw new Error("unrecognized character "+c+" in "+fmt);out[out.length]={t:"G",v:"General"};i+=7;break;case'"':for(o="";(cc=fmt.charCodeAt(++i))!==34&&i<fmt.length;)o+=String.fromCharCode(cc);out[out.length]={t:"t",v:o};++i;break;case"\\":var w=fmt[++i],t=w==="("||w===")"?w:"t";out[out.length]={t:t,v:w};++i;break;case"_":out[out.length]={t:"t",v:" "};i+=2;break;case"@":out[out.length]={t:"T",v:v};++i;break;case"B":case"b":if(fmt[i+1]==="1"||fmt[i+1]==="2"){if(dt==null){dt=parse_date_code(v,opts,fmt[i+1]==="2");if(dt==null)return""}out[out.length]={t:"X",v:fmt.substr(i,2)};lst=c;i+=2;break}case"M":case"D":case"Y":case"H":case"S":case"E":c=c.toLowerCase();case"m":case"d":case"y":case"h":case"s":case"e":case"g":if(v<0)return"";if(dt==null){dt=parse_date_code(v,opts);if(dt==null)return""}o=c;while(++i<fmt.length&&fmt[i].toLowerCase()===c)o+=c;if(c==="m"&&lst.toLowerCase()==="h")c="M";if(c==="h")c=hr;out[out.length]={t:c,v:o};lst=c;break;case"A":q={t:c,v:"A"};if(dt==null)dt=parse_date_code(v,opts);if(fmt.substr(i,3)==="A/P"){if(dt!=null)q.v=dt.H>=12?"P":"A";q.t="T";hr="h";i+=3}else if(fmt.substr(i,5)==="AM/PM"){if(dt!=null)q.v=dt.H>=12?"PM":"AM";q.t="T";i+=5;hr="h"}else{q.t="t";++i}if(dt==null&&q.t==="T")return"";out[out.length]=q;lst=c;break;case"[":o=c;while(fmt[i++]!=="]"&&i<fmt.length)o+=fmt[i];if(o.substr(-1)!=="]")throw'unterminated "[" block: |'+o+"|";if(o.match(abstime)){if(dt==null){dt=parse_date_code(v,opts);if(dt==null)return""}out[out.length]={t:"Z",v:o.toLowerCase()}}else{o=""}break;case".":if(dt!=null){o=c;while((c=fmt[++i])==="0")o+=c;out[out.length]={t:"s",v:o};break}case"0":case"#":o=c;while("0#?.,E+-%".indexOf(c=fmt[++i])>-1||c=="\\"&&fmt[i+1]=="-"&&"0#".indexOf(fmt[i+2])>-1)o+=c;out[out.length]={t:"n",v:o};break;case"?":o=c;while(fmt[++i]===c)o+=c;q={t:c,v:o};out[out.length]=q;lst=c;break;case"*":++i;if(fmt[i]==" "||fmt[i]=="*")++i;break;case"(":case")":out[out.length]={t:flen===1?"t":c,v:c};++i;break;case"1":case"2":case"3":case"4":case"5":case"6":case"7":case"8":case"9":o=c;while("0123456789".indexOf(fmt[++i])>-1)o+=fmt[i];out[out.length]={t:"D",v:o};break;case" ":out[out.length]={t:c,v:c};++i;break;default:if(",$-+/():!^&'~{}<>=€acfijklopqrtuvwxz".indexOf(c)===-1)throw new Error("unrecognized character "+c+" in "+fmt);out[out.length]={t:"t",v:c};++i;break}}var bt=0,ss0=0,ssm;for(i=out.length-1,lst="t";i>=0;--i){switch(out[i].t){case"h":case"H":out[i].t=hr;lst="h";if(bt<1)bt=1;break;case"s":if(ssm=out[i].v.match(/\.0+$/))ss0=Math.max(ss0,ssm[0].length-1);if(bt<3)bt=3;case"d":case"y":case"M":case"e":lst=out[i].t;break;case"m":if(lst==="s"){out[i].t="M";if(bt<2)bt=2}break;case"X":if(out[i].v==="B2");break;case"Z":if(bt<1&&out[i].v.match(/[Hh]/))bt=1;if(bt<2&&out[i].v.match(/[Mm]/))bt=2;if(bt<3&&out[i].v.match(/[Ss]/))bt=3}}switch(bt){case 0:break;case 1:if(dt.u>=.5){dt.u=0;++dt.S}if(dt.S>=60){dt.S=0;++dt.M}if(dt.M>=60){dt.M=0;++dt.H}break;case 2:if(dt.u>=.5){dt.u=0;++dt.S}if(dt.S>=60){dt.S=0;++dt.M}break}var nstr="",jj;for(i=0;i<out.length;++i){switch(out[i].t){case"t":case"T":case" ":case"D":break;case"X":out[i]=undefined;break;case"d":case"m":case"y":case"h":case"H":case"M":case"s":case"e":case"b":case"Z":out[i].v=write_date(out[i].t.charCodeAt(0),out[i].v,dt,ss0);out[i].t="t";break;case"n":case"(":case"?":jj=i+1;while(out[jj]!=null&&((c=out[jj].t)==="?"||c==="D"||(c===" "||c==="t")&&out[jj+1]!=null&&(out[jj+1].t==="?"||out[jj+1].t==="t"&&out[jj+1].v==="/")||out[i].t==="("&&(c===" "||c==="n"||c===")")||c==="t"&&(out[jj].v==="/"||"$€".indexOf(out[jj].v)>-1||out[jj].v===" "&&out[jj+1]!=null&&out[jj+1].t=="?"))){out[i].v+=out[jj].v;out[jj]=undefined;++jj}nstr+=out[i].v;i=jj-1;break;case"G":out[i].t="t";out[i].v=general_fmt(v,opts);break}}var vv="",myv,ostr;if(nstr.length>0){myv=v<0&&nstr.charCodeAt(0)===45?-v:v;ostr=write_num(nstr.charCodeAt(0)===40?"(":"n",nstr,myv);jj=ostr.length-1;var decpt=out.length;for(i=0;i<out.length;++i)if(out[i]!=null&&out[i].v.indexOf(".")>-1){decpt=i;break}var lasti=out.length;if(decpt===out.length&&ostr.indexOf("E")===-1){for(i=out.length-1;i>=0;--i){if(out[i]==null||"n?(".indexOf(out[i].t)===-1)continue;if(jj>=out[i].v.length-1){jj-=out[i].v.length;out[i].v=ostr.substr(jj+1,out[i].v.length)}else if(jj<0)out[i].v="";else{out[i].v=ostr.substr(0,jj+1);jj=-1}out[i].t="t";lasti=i}if(jj>=0&&lasti<out.length)out[lasti].v=ostr.substr(0,jj+1)+out[lasti].v}else if(decpt!==out.length&&ostr.indexOf("E")===-1){jj=ostr.indexOf(".")-1;for(i=decpt;i>=0;--i){if(out[i]==null||"n?(".indexOf(out[i].t)===-1)continue;j=out[i].v.indexOf(".")>-1&&i===decpt?out[i].v.indexOf(".")-1:out[i].v.length-1;vv=out[i].v.substr(j+1);for(;j>=0;--j){if(jj>=0&&(out[i].v[j]==="0"||out[i].v[j]==="#"))vv=ostr[jj--]+vv}out[i].v=vv;out[i].t="t";lasti=i}if(jj>=0&&lasti<out.length)out[lasti].v=ostr.substr(0,jj+1)+out[lasti].v;jj=ostr.indexOf(".")+1;for(i=decpt;i<out.length;++i){if(out[i]==null||"n?(".indexOf(out[i].t)===-1&&i!==decpt)continue;j=out[i].v.indexOf(".")>-1&&i===decpt?out[i].v.indexOf(".")+1:0;vv=out[i].v.substr(0,j);for(;j<out[i].v.length;++j){if(jj<ostr.length)vv+=ostr[jj++]}out[i].v=vv;out[i].t="t";lasti=i}}}for(i=0;i<out.length;++i)if(out[i]!=null&&"n(?".indexOf(out[i].t)>-1){myv=flen>1&&v<0&&i>0&&out[i-1].v==="-"?-v:v;out[i].v=write_num(out[i].t,out[i].v,myv);out[i].t="t"}var retval="";for(i=0;i!==out.length;++i)if(out[i]!=null)retval+=out[i].v;return retval}SSF._eval=eval_fmt;var cfregex=/\[[=<>]/;var cfregex2=/\[([=<>]*)(-?\d+\.?\d*)\]/;function chkcond(v,rr){if(rr==null)return false;var thresh=parseFloat(rr[2]);switch(rr[1]){case"=":if(v==thresh)return true;break;case">":if(v>thresh)return true;break;case"<":if(v<thresh)return true;break;case"<>":if(v!=thresh)return true;break;case">=":if(v>=thresh)return true;break;case"<=":if(v<=thresh)return true;break}return false}function choose_fmt(f,v){var fmt=split_fmt(f);var l=fmt.length,lat=fmt[l-1].indexOf("@");if(l<4&&lat>-1)--l;if(fmt.length>4)throw"cannot find right format for |"+fmt+"|";if(typeof v!=="number")return[4,fmt.length===4||lat>-1?fmt[fmt.length-1]:"@"];switch(fmt.length){case 1:fmt=lat>-1?["General","General","General",fmt[0]]:[fmt[0],fmt[0],fmt[0],"@"];break;case 2:fmt=lat>-1?[fmt[0],fmt[0],fmt[0],fmt[1]]:[fmt[0],fmt[1],fmt[0],"@"];break;case 3:fmt=lat>-1?[fmt[0],fmt[1],fmt[0],fmt[2]]:[fmt[0],fmt[1],fmt[2],"@"];break;case 4:break}var ff=v>0?fmt[0]:v<0?fmt[1]:fmt[2];if(fmt[0].indexOf("[")===-1&&fmt[1].indexOf("[")===-1)return[l,ff];if(fmt[0].match(cfregex)!=null||fmt[1].match(cfregex)!=null){var m1=fmt[0].match(cfregex2);var m2=fmt[1].match(cfregex2);return chkcond(v,m1)?[l,fmt[0]]:chkcond(v,m2)?[l,fmt[1]]:[l,fmt[m1!=null&&m2!=null?2:1]]}return[l,ff]}function format(fmt,v,o){fixopts(o!=null?o:o=[]);var sfmt="";switch(typeof fmt){case"string":sfmt=fmt;break;case"number":sfmt=(o.table!=null?o.table:table_fmt)[fmt];break}if(isgeneral(sfmt,0))return general_fmt(v,o);var f=choose_fmt(sfmt,v);if(isgeneral(f[1]))return general_fmt(v,o);if(v===true)v="TRUE";else if(v===false)v="FALSE";else if(v===""||v==null)return"";return eval_fmt(f[1],v,o,f[0])}SSF._table=table_fmt;SSF.load=function load_entry(fmt,idx){table_fmt[idx]=fmt};SSF.format=format;SSF.get_table=function get_table(){return table_fmt};SSF.load_table=function load_table(tbl){for(var i=0;i!=392;++i)if(tbl[i]!==undefined)SSF.load(tbl[i],i)}};make_ssf(SSF);{var VT_EMPTY=0;var VT_NULL=1;var VT_I2=2;var VT_I4=3;var VT_R4=4;var VT_R8=5;var VT_CY=6;var VT_DATE=7;var VT_BSTR=8;var VT_ERROR=10;var VT_BOOL=11;var VT_VARIANT=12;var VT_DECIMAL=14;var VT_I1=16;var VT_UI1=17;var VT_UI2=18;var VT_UI4=19;var VT_I8=20;var VT_UI8=21;var VT_INT=22;var VT_UINT=23;var VT_LPSTR=30;var VT_LPWSTR=31;var VT_FILETIME=64;var VT_BLOB=65;var VT_STREAM=66;var VT_STORAGE=67;var VT_STREAMED_Object=68;
+var VT_STORED_Object=69;var VT_BLOB_Object=70;var VT_CF=71;var VT_CLSID=72;var VT_VERSIONED_STREAM=73;var VT_VECTOR=4096;var VT_ARRAY=8192;var VT_STRING=80;var VT_USTR=81;var VT_CUSTOM=[VT_STRING,VT_USTR]}var DocSummaryPIDDSI={1:{n:"CodePage",t:VT_I2},2:{n:"Category",t:VT_STRING},3:{n:"PresentationFormat",t:VT_STRING},4:{n:"ByteCount",t:VT_I4},5:{n:"LineCount",t:VT_I4},6:{n:"ParagraphCount",t:VT_I4},7:{n:"SlideCount",t:VT_I4},8:{n:"NoteCount",t:VT_I4},9:{n:"HiddenCount",t:VT_I4},10:{n:"MultimediaClipCount",t:VT_I4},11:{n:"Scale",t:VT_BOOL},12:{n:"HeadingPair",t:VT_VECTOR|VT_VARIANT},13:{n:"DocParts",t:VT_VECTOR|VT_LPSTR},14:{n:"Manager",t:VT_STRING},15:{n:"Company",t:VT_STRING},16:{n:"LinksDirty",t:VT_BOOL},17:{n:"CharacterCount",t:VT_I4},19:{n:"SharedDoc",t:VT_BOOL},22:{n:"HLinksChanged",t:VT_BOOL},23:{n:"AppVersion",t:VT_I4,p:"version"},26:{n:"ContentType",t:VT_STRING},27:{n:"ContentStatus",t:VT_STRING},28:{n:"Language",t:VT_STRING},29:{n:"Version",t:VT_STRING},255:{}};var SummaryPIDSI={1:{n:"CodePage",t:VT_I2},2:{n:"Title",t:VT_STRING},3:{n:"Subject",t:VT_STRING},4:{n:"Author",t:VT_STRING},5:{n:"Keywords",t:VT_STRING},6:{n:"Comments",t:VT_STRING},7:{n:"Template",t:VT_STRING},8:{n:"LastAuthor",t:VT_STRING},9:{n:"RevNumber",t:VT_STRING},10:{n:"EditTime",t:VT_FILETIME},11:{n:"LastPrinted",t:VT_FILETIME},12:{n:"CreatedDate",t:VT_FILETIME},13:{n:"ModifiedDate",t:VT_FILETIME},14:{n:"PageCount",t:VT_I4},15:{n:"WordCount",t:VT_I4},16:{n:"CharCount",t:VT_I4},17:{n:"Thumbnail",t:VT_CF},18:{n:"ApplicationName",t:VT_LPSTR},19:{n:"DocumentSecurity",t:VT_I4},255:{}};var SpecialProperties={2147483648:{n:"Locale",t:VT_UI4},2147483651:{n:"Behavior",t:VT_UI4},1768515945:{}};(function(){for(var y in SpecialProperties)if(SpecialProperties.hasOwnProperty(y))DocSummaryPIDDSI[y]=SummaryPIDSI[y]=SpecialProperties[y]})();function parse_FILETIME(blob){var dwLowDateTime=blob.read_shift(4),dwHighDateTime=blob.read_shift(4);return new Date((dwHighDateTime/1e7*Math.pow(2,32)+dwLowDateTime/1e7-11644473600)*1e3).toISOString().replace(/\.000/,"")}function parse_lpstr(blob,type,pad){var str=blob.read_shift(0,"lpstr");if(pad)blob.l+=4-(str.length+1&3)&3;return str}function parse_lpwstr(blob,type,pad){var str=blob.read_shift(0,"lpwstr");if(pad)blob.l+=4-(str.length+1&3)&3;return str}function parse_VtStringBase(blob,stringType,pad){if(stringType===31)return parse_lpwstr(blob);return parse_lpstr(blob,stringType,pad)}function parse_VtString(blob,t,pad){return parse_VtStringBase(blob,t,pad===false?0:4)}function parse_VtUnalignedString(blob,t){if(!t)throw new Error("dafuq?");return parse_VtStringBase(blob,t,0)}function parse_VtVecUnalignedLpstrValue(blob){var length=blob.read_shift(4);var ret=[];for(var i=0;i!=length;++i)ret[i]=blob.read_shift(0,"lpstr");return ret}function parse_VtVecUnalignedLpstr(blob){return parse_VtVecUnalignedLpstrValue(blob)}function parse_VtHeadingPair(blob){var headingString=parse_TypedPropertyValue(blob,VT_USTR);var headerParts=parse_TypedPropertyValue(blob,VT_I4);return[headingString,headerParts]}function parse_VtVecHeadingPairValue(blob){var cElements=blob.read_shift(4);var out=[];for(var i=0;i!=cElements/2;++i)out.push(parse_VtHeadingPair(blob));return out}function parse_VtVecHeadingPair(blob){return parse_VtVecHeadingPairValue(blob)}function parse_dictionary(blob,CodePage){var cnt=blob.read_shift(4);var dict={};for(var j=0;j!=cnt;++j){var pid=blob.read_shift(4);var len=blob.read_shift(4);dict[pid]=blob.read_shift(len,CodePage===1200?"utf16le":"utf8").replace(chr0,"").replace(chr1,"!")}if(blob.l&3)blob.l=blob.l>>2+1<<2;return dict}function parse_BLOB(blob){var size=blob.read_shift(4);var bytes=blob.slice(blob.l,blob.l+size);if(size&3>0)blob.l+=4-(size&3)&3;return bytes}function parse_ClipboardData(blob){var o={};o.Size=blob.read_shift(4);blob.l+=o.Size;return o}function parse_VtVector(blob,cb){}function parse_TypedPropertyValue(blob,type,_opts){var t=blob.read_shift(2),ret,opts=_opts||{};blob.l+=2;if(type!==VT_VARIANT)if(t!==type&&VT_CUSTOM.indexOf(type)===-1)throw new Error("Expected type "+type+" saw "+t);switch(type===VT_VARIANT?t:type){case 2:ret=blob.read_shift(2,"i");if(!opts.raw)blob.l+=2;return ret;case 3:ret=blob.read_shift(4,"i");return ret;case 11:return blob.read_shift(4)!==0;case 19:ret=blob.read_shift(4);return ret;case 30:return parse_lpstr(blob,t,4).replace(chr0,"");case 31:return parse_lpwstr(blob);case 64:return parse_FILETIME(blob);case 65:return parse_BLOB(blob);case 71:return parse_ClipboardData(blob);case 80:return parse_VtString(blob,t,!opts.raw&&4).replace(chr0,"");case 81:return parse_VtUnalignedString(blob,t,4).replace(chr0,"");case 4108:return parse_VtVecHeadingPair(blob);case 4126:return parse_VtVecUnalignedLpstr(blob);default:throw new Error("TypedPropertyValue unrecognized type "+type+" "+t)}}function parse_PropertySet(blob,PIDSI){var start_addr=blob.l;var size=blob.read_shift(4);var NumProps=blob.read_shift(4);var Props=[],i=0;var CodePage=0;var Dictionary=-1,DictObj;for(i=0;i!=NumProps;++i){var PropID=blob.read_shift(4);var Offset=blob.read_shift(4);Props[i]=[PropID,Offset+start_addr]}var PropH={};for(i=0;i!=NumProps;++i){if(blob.l!==Props[i][1]){var fail=true;if(i>0&&PIDSI)switch(PIDSI[Props[i-1][0]].t){case 2:if(blob.l+2===Props[i][1]){blob.l+=2;fail=false}break;case 80:if(blob.l<=Props[i][1]){blob.l=Props[i][1];fail=false}break;case 4108:if(blob.l<=Props[i][1]){blob.l=Props[i][1];fail=false}break}if(!PIDSI&&blob.l<=Props[i][1]){fail=false;blob.l=Props[i][1]}if(fail)throw new Error("Read Error: Expected address "+Props[i][1]+" at "+blob.l+" :"+i)}if(PIDSI){var piddsi=PIDSI[Props[i][0]];PropH[piddsi.n]=parse_TypedPropertyValue(blob,piddsi.t,{raw:true});if(piddsi.p==="version")PropH[piddsi.n]=String(PropH[piddsi.n]>>16)+"."+String(PropH[piddsi.n]&65535);if(piddsi.n=="CodePage")switch(PropH[piddsi.n]){case 0:PropH[piddsi.n]=1252;case 1e4:case 1252:case 874:case 1250:case 1251:case 1253:case 1254:case 1255:case 1256:case 1257:case 1258:case 932:case 936:case 949:case 950:case 1200:case 1201:case 65e3:case-536:case 65001:case-535:set_cp(CodePage=PropH[piddsi.n]);break;default:throw new Error("Unsupported CodePage: "+PropH[piddsi.n])}}else{if(Props[i][0]===1){CodePage=PropH.CodePage=parse_TypedPropertyValue(blob,VT_I2);set_cp(CodePage);if(Dictionary!==-1){var oldpos=blob.l;blob.l=Props[Dictionary][1];DictObj=parse_dictionary(blob,CodePage);blob.l=oldpos}}else if(Props[i][0]===0){if(CodePage===0){Dictionary=i;blob.l=Props[i+1][1];continue}DictObj=parse_dictionary(blob,CodePage)}else{var name=DictObj[Props[i][0]];var val;switch(blob[blob.l]){case 65:blob.l+=4;val=parse_BLOB(blob);break;case 30:blob.l+=4;val=parse_VtString(blob,blob[blob.l-4]);break;case 31:blob.l+=4;val=parse_VtString(blob,blob[blob.l-4]);break;case 3:blob.l+=4;val=blob.read_shift(4,"i");break;case 19:blob.l+=4;val=blob.read_shift(4);break;case 5:blob.l+=4;val=blob.read_shift(8,"f");break;case 11:blob.l+=4;val=parsebool(blob,4);break;case 64:blob.l+=4;val=new Date(parse_FILETIME(blob));break;default:throw new Error("unparsed value: "+blob[blob.l])}PropH[name]=val}}}blob.l=start_addr+size;return PropH}function parse_PropertySetStream(file,PIDSI){var blob=file.content;prep_blob(blob,0);var NumSets,FMTID0,FMTID1,Offset0,Offset1;blob.chk("feff","Byte Order: ");var vers=blob.read_shift(2);var SystemIdentifier=blob.read_shift(4);blob.chk(CFB.utils.consts.HEADER_CLSID,"CLSID: ");NumSets=blob.read_shift(4);if(NumSets!==1&&NumSets!==2)throw"Unrecognized #Sets: "+NumSets;FMTID0=blob.read_shift(16);Offset0=blob.read_shift(4);if(NumSets===1&&Offset0!==blob.l)throw"Length mismatch";else if(NumSets===2){FMTID1=blob.read_shift(16);Offset1=blob.read_shift(4)}var PSet0=parse_PropertySet(blob,PIDSI);var rval={SystemIdentifier:SystemIdentifier};for(var y in PSet0)rval[y]=PSet0[y];rval.FMTID=FMTID0;if(NumSets===1)return rval;if(blob.l!==Offset1)throw"Length mismatch 2: "+blob.l+" !== "+Offset1;var PSet1;try{PSet1=parse_PropertySet(blob,null)}catch(e){}for(y in PSet1)rval[y]=PSet1[y];rval.FMTID=[FMTID0,FMTID1];return rval}var DO_NOT_EXPORT_CFB=true;var CFB=function _CFB(){var exports={};exports.version="0.10.0";function parse(file){var mver=3;var ssz=512;var nmfs=0;var ndfs=0;var dir_start=0;var minifat_start=0;var difat_start=0;var fat_addrs=[];var blob=file.slice(0,512);prep_blob(blob,0);mver=check_get_mver(blob);switch(mver){case 3:ssz=512;break;case 4:ssz=4096;break;default:throw"Major Version: Expected 3 or 4 saw "+mver}if(ssz!==512){blob=file.slice(0,ssz);prep_blob(blob,28)}var header=file.slice(0,ssz);check_shifts(blob,mver);var nds=blob.read_shift(4,"i");if(mver===3&&nds!==0)throw"# Directory Sectors: Expected 0 saw "+nds;blob.l+=4;dir_start=blob.read_shift(4,"i");blob.l+=4;blob.chk("00100000","Mini Stream Cutoff Size: ");minifat_start=blob.read_shift(4,"i");nmfs=blob.read_shift(4,"i");difat_start=blob.read_shift(4,"i");ndfs=blob.read_shift(4,"i");for(var q,j=0;j<109;++j){q=blob.read_shift(4,"i");if(q<0)break;fat_addrs[j]=q}var sectors=sectorify(file,ssz);sleuth_fat(difat_start,ndfs,sectors,ssz,fat_addrs);var sector_list=make_sector_list(sectors,dir_start,fat_addrs,ssz);sector_list[dir_start].name="!Directory";if(nmfs>0&&minifat_start!==ENDOFCHAIN)sector_list[minifat_start].name="!MiniFAT";sector_list[fat_addrs[0]].name="!FAT";var files={},Paths=[],FileIndex=[],FullPaths=[],FullPathDir={};read_directory(dir_start,sector_list,sectors,Paths,nmfs,files,FileIndex);build_full_paths(FileIndex,FullPathDir,FullPaths,Paths);var root_name=Paths.shift();Paths.root=root_name;var find_path=make_find_path(FullPaths,Paths,FileIndex,files,root_name);return{raw:{header:header,sectors:sectors},FileIndex:FileIndex,FullPaths:FullPaths,FullPathDir:FullPathDir,find:find_path}}function check_get_mver(blob){blob.chk(HEADER_SIGNATURE,"Header Signature: ");blob.chk(HEADER_CLSID,"CLSID: ");blob.l+=2;return blob.read_shift(2,"u")}function check_shifts(blob,mver){var shift=9;blob.chk("feff","Byte Order: ");switch(shift=blob.read_shift(2)){case 9:if(mver!==3)throw"MajorVersion/SectorShift Mismatch";break;case 12:if(mver!==4)throw"MajorVersion/SectorShift Mismatch";break;default:throw"Sector Shift: Expected 9 or 12 saw "+shift}blob.chk("0600","Mini Sector Shift: ");blob.chk("000000000000","Reserved: ")}function sectorify(file,ssz){var nsectors=Math.ceil(file.length/ssz)-1;var sectors=new Array(nsectors);for(var i=1;i<nsectors;++i)sectors[i-1]=file.slice(i*ssz,(i+1)*ssz);sectors[nsectors-1]=file.slice(nsectors*ssz);return sectors}function build_full_paths(FI,FPD,FP,Paths){var i=0,L=0,R=0,C=0,j=0,pl=Paths.length;var dad=new Array(pl),q=new Array(pl);for(;i<pl;++i){dad[i]=q[i]=i;FP[i]=Paths[i]}for(;j<q.length;++j){i=q[j];L=FI[i].L;R=FI[i].R;C=FI[i].C;if(dad[i]===i){if(L!==-1&&dad[L]!==L)dad[i]=dad[L];if(R!==-1&&dad[R]!==R)dad[i]=dad[R]}if(C!==-1)dad[C]=i;if(L!==-1){dad[L]=dad[i];q.push(L)}if(R!==-1){dad[R]=dad[i];q.push(R)}}for(i=1;i!==pl;++i)if(dad[i]===i){if(R!==-1&&dad[R]!==R)dad[i]=dad[R];else if(L!==-1&&dad[L]!==L)dad[i]=dad[L]}for(i=1;i<pl;++i){if(FI[i].type===0)continue;j=dad[i];if(j===0)FP[i]=FP[0]+"/"+FP[i];else while(j!==0){FP[i]=FP[j]+"/"+FP[i];j=dad[j]}dad[i]=0}FP[0]+="/";for(i=1;i<pl;++i){if(FI[i].type!==2)FP[i]+="/";FPD[FP[i]]=FI[i]}}function make_find_path(FullPaths,Paths,FileIndex,files,root_name){var UCFullPaths=new Array(FullPaths.length);var UCPaths=new Array(Paths.length),i;for(i=0;i<FullPaths.length;++i)UCFullPaths[i]=FullPaths[i].toUpperCase();for(i=0;i<Paths.length;++i)UCPaths[i]=Paths[i].toUpperCase();return function find_path(path){var k;if(path.charCodeAt(0)===47){k=true;path=root_name+path}else k=path.indexOf("/")!==-1;var UCPath=path.toUpperCase();var w=k===true?UCFullPaths.indexOf(UCPath):UCPaths.indexOf(UCPath);if(w===-1)return null;return k===true?FileIndex[w]:files[Paths[w]]}}function sleuth_fat(idx,cnt,sectors,ssz,fat_addrs){var q;if(idx===ENDOFCHAIN){if(cnt!==0)throw"DIFAT chain shorter than expected"}else if(idx!==-1){var sector=sectors[idx],m=(ssz>>>2)-1;for(var i=0;i<m;++i){if((q=__readInt32LE(sector,i*4))===ENDOFCHAIN)break;fat_addrs.push(q)}sleuth_fat(__readInt32LE(sector,ssz-4),cnt-1,sectors,ssz,fat_addrs)}}function make_sector_list(sectors,dir_start,fat_addrs,ssz){var sl=sectors.length,sector_list=new Array(sl);var chkd=new Array(sl),buf,buf_chain;var modulus=ssz-1,i,j,k,jj;for(i=0;i<sl;++i){buf=[];k=i+dir_start;if(k>=sl)k-=sl;if(chkd[k]===true)continue;buf_chain=[];for(j=k;j>=0;){chkd[j]=true;buf[buf.length]=j;buf_chain.push(sectors[j]);var addr=fat_addrs[Math.floor(j*4/ssz)];jj=j*4&modulus;if(ssz<4+jj)throw"FAT boundary crossed: "+j+" 4 "+ssz;j=__readInt32LE(sectors[addr],jj)}sector_list[k]={nodes:buf,data:__toBuffer([buf_chain])}}return sector_list}function read_directory(dir_start,sector_list,sectors,Paths,nmfs,files,FileIndex){var blob;var minifat_store=0,pl=Paths.length?2:0;var sector=sector_list[dir_start].data;var i=0,namelen=0,name,o,ctime,mtime;for(;i<sector.length;i+=128){blob=sector.slice(i,i+128);prep_blob(blob,64);namelen=blob.read_shift(2);if(namelen===0)continue;name=__utf16le(blob,0,namelen-pl).replace(chr0,"").replace(chr1,"!");Paths.push(name);o={name:name,type:blob.read_shift(1),color:blob.read_shift(1),L:blob.read_shift(4,"i"),R:blob.read_shift(4,"i"),C:blob.read_shift(4,"i"),clsid:blob.read_shift(16),state:blob.read_shift(4,"i")};ctime=blob.read_shift(2)+blob.read_shift(2)+blob.read_shift(2)+blob.read_shift(2);if(ctime!==0){o.ctime=ctime;o.ct=read_date(blob,blob.l-8)}mtime=blob.read_shift(2)+blob.read_shift(2)+blob.read_shift(2)+blob.read_shift(2);if(mtime!==0){o.mtime=mtime;o.mt=read_date(blob,blob.l-8)}o.start=blob.read_shift(4,"i");o.size=blob.read_shift(4,"i");if(o.type===5){minifat_store=o.start;if(nmfs>0&&minifat_store!==ENDOFCHAIN)sector_list[minifat_store].name="!StreamData"}else if(o.size>=4096){o.storage="fat";if(sector_list[o.start]===undefined)if((o.start+=dir_start)>=sectors.length)o.start-=sectors.length;sector_list[o.start].name=o.name;o.content=sector_list[o.start].data.slice(0,o.size);prep_blob(o.content,0)}else{o.storage="minifat";if(minifat_store!==ENDOFCHAIN&&o.start!==ENDOFCHAIN){o.content=sector_list[minifat_store].data.slice(o.start*MSSZ,o.start*MSSZ+o.size);prep_blob(o.content,0)}}files[name]=o;FileIndex.push(o)}}function read_date(blob,offset){return new Date((__readUInt32LE(blob,offset+4)/1e7*Math.pow(2,32)+__readUInt32LE(blob,offset)/1e7-11644473600)*1e3)}var fs;function readFileSync(filename){if(fs===undefined)fs=require("fs");return parse(fs.readFileSync(filename))}function readSync(blob,options){switch(options!==undefined&&options.type!==undefined?options.type:"base64"){case"file":return readFileSync(blob);case"base64":return parse(s2a(Base64.decode(blob)));case"binary":return parse(s2a(blob))}return parse(blob)}var MSSZ=64;var ENDOFCHAIN=-2;var HEADER_SIGNATURE="d0cf11e0a1b11ae1";var HEADER_CLSID="00000000000000000000000000000000";var consts={MAXREGSECT:-6,DIFSECT:-4,FATSECT:-3,ENDOFCHAIN:ENDOFCHAIN,FREESECT:-1,HEADER_SIGNATURE:HEADER_SIGNATURE,HEADER_MINOR_VERSION:"3e00",MAXREGSID:-6,NOSTREAM:-1,HEADER_CLSID:HEADER_CLSID,EntryTypes:["unknown","storage","stream","lockbytes","property","root"]};exports.read=readSync;exports.parse=parse;exports.utils={ReadShift:ReadShift,CheckField:CheckField,prep_blob:prep_blob,bconcat:bconcat,consts:consts};return exports}();if(typeof require!=="undefined"&&typeof module!=="undefined"&&typeof DO_NOT_EXPORT_CFB==="undefined"){module.exports=CFB}function parsenoop(blob,length){blob.read_shift(length);return}function parsenoop2(blob,length){blob.read_shift(length);return null}function parslurp(blob,length,cb){var arr=[],target=blob.l+length;while(blob.l<target)arr.push(cb(blob,target-blob.l));if(target!==blob.l)throw new Error("Slurp error");return arr}function parslurp2(blob,length,cb){var arr=[],target=blob.l+length,len=blob.read_shift(2);while(len--!==0)arr.push(cb(blob,target-blob.l));if(target!==blob.l)throw new Error("Slurp error");return arr}function parsebool(blob,length){return blob.read_shift(length)===1}function parseuint16(blob){return blob.read_shift(2,"u")}function parseuint16a(blob,length){return parslurp(blob,length,parseuint16)}var parse_Boolean=parsebool;function parse_Bes(blob){var v=blob.read_shift(1),t=blob.read_shift(1);return t===1?BERR[v]:v===1}function parse_ShortXLUnicodeString(blob,length,opts){var cch=blob.read_shift(1);var width=1,encoding="sbcs";if(opts===undefined||opts.biff!==5){var fHighByte=blob.read_shift(1);if(fHighByte){width=2;encoding="dbcs"}}return cch?blob.read_shift(cch,encoding):""}function parse_XLUnicodeRichExtendedString(blob){var cch=blob.read_shift(2),flags=blob.read_shift(1);var fHighByte=flags&1,fExtSt=flags&4,fRichSt=flags&8;var width=1+(flags&1);var cRun,cbExtRst;var z={};if(fRichSt)cRun=blob.read_shift(2);if(fExtSt)cbExtRst=blob.read_shift(4);var encoding=flags&1?"dbcs":"sbcs";var msg=cch===0?"":blob.read_shift(cch,encoding);if(fRichSt)blob.l+=4*cRun;if(fExtSt)blob.l+=cbExtRst;z.t=msg;if(!fRichSt){z.raw="<t>"+z.t+"</t>";z.r=z.t}return z}function parse_XLUnicodeStringNoCch(blob,cch,opts){var retval;var fHighByte=blob.read_shift(1);if(fHighByte===0){retval=blob.read_shift(cch,"sbcs")}else{retval=blob.read_shift(cch,"dbcs")}return retval}function parse_XLUnicodeString(blob,length,opts){var cch=blob.read_shift(opts!==undefined&&opts.biff===5?1:2);if(cch===0){blob.l++;return""}return parse_XLUnicodeStringNoCch(blob,cch,opts)}function parse_XLUnicodeString2(blob,length,opts){if(opts.biff!==5)return parse_XLUnicodeString(blob,length,opts);var cch=blob.read_shift(1);if(cch===0){blob.l++;return""}return blob.read_shift(cch,"sbcs")}function parse_Xnum(blob){return blob.read_shift(8,"f")}var parse_ControlInfo=parsenoop;var parse_URLMoniker=function(blob,length){var len=blob.read_shift(4),start=blob.l;var extra=false;if(len>24){blob.l+=len-24;if(blob.read_shift(16)==="795881f43b1d7f48af2c825dc4852763")extra=true;blob.l=start}var url=blob.read_shift((extra?len-24:len)>>1,"utf16le").replace(chr0,"");if(extra)blob.l+=24;return url};var parse_FileMoniker=function(blob,length){var cAnti=blob.read_shift(2);var ansiLength=blob.read_shift(4);var ansiPath=blob.read_shift(ansiLength,"cstr");var endServer=blob.read_shift(2);var versionNumber=blob.read_shift(2);var cbUnicodePathSize=blob.read_shift(4);if(cbUnicodePathSize===0)return ansiPath.replace(/\\/g,"/");var cbUnicodePathBytes=blob.read_shift(4);var usKeyValue=blob.read_shift(2);var unicodePath=blob.read_shift(cbUnicodePathBytes>>1,"utf16le").replace(chr0,"");return unicodePath};var parse_HyperlinkMoniker=function(blob,length){var clsid=blob.read_shift(16);length-=16;switch(clsid){case"e0c9ea79f9bace118c8200aa004ba90b":return parse_URLMoniker(blob,length);case"0303000000000000c000000000000046":return parse_FileMoniker(blob,length);default:throw"unsupported moniker "+clsid}};var parse_HyperlinkString=function(blob,length){var len=blob.read_shift(4);var o=blob.read_shift(len,"utf16le").replace(chr0,"");return o};var parse_Hyperlink=function(blob,length){var end=blob.l+length;var sVer=blob.read_shift(4);if(sVer!==2)throw new Error("Unrecognized streamVersion: "+sVer);var flags=blob.read_shift(2);blob.l+=2;var displayName,targetFrameName,moniker,oleMoniker,location,guid,fileTime;if(flags&16)displayName=parse_HyperlinkString(blob,end-blob.l);if(flags&128)targetFrameName=parse_HyperlinkString(blob,end-blob.l);if((flags&257)===257)moniker=parse_HyperlinkString(blob,end-blob.l);if((flags&257)===1)oleMoniker=parse_HyperlinkMoniker(blob,end-blob.l);if(flags&8)location=parse_HyperlinkString(blob,end-blob.l);if(flags&32)guid=blob.read_shift(16);if(flags&64)fileTime=parse_FILETIME(blob,8);blob.l=end;var target=targetFrameName||moniker||oleMoniker;if(location)target+="#"+location;return{Target:target}};function isval(x){return x!==undefined&&x!==null}function keys(o){return Object.keys(o)}function evert(obj,arr){var o={};var K=keys(obj);for(var i=0;i<K.length;++i){var k=K[i];if(!arr)o[obj[k]]=k;else(o[obj[k]]=o[obj[k]]||[]).push(k)}return o}function parse_Cell(blob,length){var rw=blob.read_shift(2);var col=blob.read_shift(2);var ixfe=blob.read_shift(2);return{r:rw,c:col,ixfe:ixfe}}function parse_frtHeader(blob){var rt=blob.read_shift(2);var flags=blob.read_shift(2);blob.l+=8;return{type:rt,flags:flags}}function parse_OptXLUnicodeString(blob,length,opts){return length===0?"":parse_XLUnicodeString2(blob,length,opts)}var HIDEOBJENUM=["SHOWALL","SHOWPLACEHOLDER","HIDEALL"];var parse_HideObjEnum=parseuint16;function parse_XTI(blob,length){var iSupBook=blob.read_shift(2),itabFirst=blob.read_shift(2,"i"),itabLast=blob.read_shift(2,"i");return[iSupBook,itabFirst,itabLast]}function parse_RkNumber(blob){var b=blob.slice(blob.l,blob.l+4);var fX100=b[0]&1,fInt=b[0]&2;blob.l+=4;b[0]&=~3;var RK=fInt===0?__double([0,0,0,0,b[0],b[1],b[2],b[3]],0):__readInt32LE(b,0)>>2;return fX100?RK/100:RK}function parse_RkRec(blob,length){var ixfe=blob.read_shift(2);var RK=parse_RkNumber(blob);return[ixfe,RK]}function parse_AddinUdf(blob,length){blob.l+=4;length-=4;var l=blob.l+length;var udfName=parse_ShortXLUnicodeString(blob,length);var cb=blob.read_shift(2);l-=blob.l;if(cb!==l)throw"Malformed AddinUdf: padding = "+l+" != "+cb;blob.l+=cb;return udfName}function parse_Ref8U(blob,length){var rwFirst=blob.read_shift(2);var rwLast=blob.read_shift(2);var colFirst=blob.read_shift(2);var colLast=blob.read_shift(2);return{s:{c:colFirst,r:rwFirst},e:{c:colLast,r:rwLast}}}function parse_RefU(blob,length){var rwFirst=blob.read_shift(2);var rwLast=blob.read_shift(2);var colFirst=blob.read_shift(1);var colLast=blob.read_shift(1);return{s:{c:colFirst,r:rwFirst},e:{c:colLast,r:rwLast}}}var parse_Ref=parse_RefU;function parse_FtCmo(blob,length){blob.l+=4;var ot=blob.read_shift(2);var id=blob.read_shift(2);var flags=blob.read_shift(2);blob.l+=12;return[id,ot,flags]}function parse_FtNts(blob,length){var out={};blob.l+=4;blob.l+=16;out.fSharedNote=blob.read_shift(2);blob.l+=4;return out}function parse_FtCf(blob,length){var out={};blob.l+=4;blob.cf=blob.read_shift(2);return out}var FtTab={21:parse_FtCmo,19:parsenoop,18:function(blob,length){blob.l+=12},17:function(blob,length){blob.l+=8},16:parsenoop,15:parsenoop,13:parse_FtNts,12:function(blob,length){blob.l+=24},11:function(blob,length){blob.l+=10},10:function(blob,length){blob.l+=16},9:parsenoop,8:function(blob,length){blob.l+=6},7:parse_FtCf,6:function(blob,length){blob.l+=6},4:parsenoop,0:function(blob,length){blob.l+=4}};function parse_FtArray(blob,length,ot){var s=blob.l;var fts=[];while(blob.l<s+length){var ft=blob.read_shift(2);blob.l-=2;try{fts.push(FtTab[ft](blob,s+length-blob.l))}catch(e){blob.l=s+length;return fts}}if(blob.l!=s+length)blob.l=s+length;return fts}var parse_FontIndex=parseuint16;function parse_BOF(blob,length){var o={};o.BIFFVer=blob.read_shift(2);length-=2;if(o.BIFFVer!==1536&&o.BIFFVer!==1280)throw"Unexpected BIFF Ver "+o.BIFFVer;blob.read_shift(length);return o}function parse_InterfaceHdr(blob,length){if(length===0)return 1200;var q;if((q=blob.read_shift(2))!==1200)throw"InterfaceHdr codePage "+q;return 1200}function parse_WriteAccess(blob,length,opts){if(opts.enc){blob.l+=length;return""}var l=blob.l;var UserName=parse_XLUnicodeString(blob,0,opts);blob.read_shift(length+l-blob.l);return UserName}function parse_BoundSheet8(blob,length,opts){var pos=blob.read_shift(4);var hidden=blob.read_shift(1)>>6;var dt=blob.read_shift(1);switch(dt){case 0:dt="Worksheet";break;case 1:dt="Macrosheet";break;case 2:dt="Chartsheet";break;case 6:dt="VBAModule";break}var name=parse_ShortXLUnicodeString(blob,0,opts);return{pos:pos,hs:hidden,dt:dt,name:name}}function parse_SST(blob,length){var cnt=blob.read_shift(4);var ucnt=blob.read_shift(4);var strs=[];for(var i=0;i!=ucnt;++i){strs.push(parse_XLUnicodeRichExtendedString(blob))}strs.Count=cnt;strs.Unique=ucnt;return strs}function parse_ExtSST(blob,length){var extsst={};extsst.dsst=blob.read_shift(2);blob.l+=length-2;return extsst}function parse_Row(blob,length){var rw=blob.read_shift(2),col=blob.read_shift(2),Col=blob.read_shift(2),rht=blob.read_shift(2);blob.read_shift(4);var flags=blob.read_shift(1);blob.read_shift(1);blob.read_shift(2);return{r:rw,c:col,cnt:Col-col}}function parse_ForceFullCalculation(blob,length){var header=parse_frtHeader(blob);if(header.type!=2211)throw"Invalid Future Record "+header.type;var fullcalc=blob.read_shift(4);return fullcalc!==0}var parse_CompressPictures=parsenoop2;function parse_RecalcId(blob,length){blob.read_shift(2);return blob.read_shift(4)}function parse_DefaultRowHeight(blob,length){var f=blob.read_shift(2),miyRw;miyRw=blob.read_shift(2);var fl={Unsynced:f&1,DyZero:(f&2)>>1,ExAsc:(f&4)>>2,ExDsc:(f&8)>>3};return[fl,miyRw]}function parse_Window1(blob,length){var xWn=blob.read_shift(2),yWn=blob.read_shift(2),dxWn=blob.read_shift(2),dyWn=blob.read_shift(2);var flags=blob.read_shift(2),iTabCur=blob.read_shift(2),iTabFirst=blob.read_shift(2);var ctabSel=blob.read_shift(2),wTabRatio=blob.read_shift(2);return{Pos:[xWn,yWn],Dim:[dxWn,dyWn],Flags:flags,CurTab:iTabCur,FirstTab:iTabFirst,Selected:ctabSel,TabRatio:wTabRatio}}function parse_Font(blob,length,opts){blob.l+=14;var name=parse_ShortXLUnicodeString(blob,0,opts);return name}function parse_LabelSst(blob,length){var cell=parse_Cell(blob);cell.isst=blob.read_shift(4);return cell}function parse_Label(blob,length,opts){var cell=parse_Cell(blob,6);var str=parse_XLUnicodeString(blob,length-6,opts);cell.val=str;return cell}function parse_Format(blob,length,opts){var ifmt=blob.read_shift(2);var fmtstr=parse_XLUnicodeString2(blob,0,opts);return[ifmt,fmtstr]}function parse_Dimensions(blob,length){var w=length===10?2:4;var r=blob.read_shift(w),R=blob.read_shift(w),c=blob.read_shift(2),C=blob.read_shift(2);blob.l+=2;return{s:{r:r,c:c},e:{r:R,c:C}}}function parse_RK(blob,length){var rw=blob.read_shift(2),col=blob.read_shift(2);var rkrec=parse_RkRec(blob);return{r:rw,c:col,ixfe:rkrec[0],rknum:rkrec[1]}}function parse_MulRk(blob,length){var target=blob.l+length-2;var rw=blob.read_shift(2),col=blob.read_shift(2);var rkrecs=[];while(blob.l<target)rkrecs.push(parse_RkRec(blob));if(blob.l!==target)throw"MulRK read error";var lastcol=blob.read_shift(2);if(rkrecs.length!=lastcol-col+1)throw"MulRK length mismatch";return{r:rw,c:col,C:lastcol,rkrec:rkrecs}}var parse_CellXF=parsenoop;var parse_StyleXF=parsenoop;function parse_XF(blob,length){var o={};o.ifnt=blob.read_shift(2);o.ifmt=blob.read_shift(2);o.flags=blob.read_shift(2);o.fStyle=o.flags>>2&1;length-=6;o.data=o.fStyle?parse_StyleXF(blob,length):parse_CellXF(blob,length);return o}function parse_Guts(blob,length){blob.l+=4;var out=[blob.read_shift(2),blob.read_shift(2)];if(out[0]!==0)out[0]--;if(out[1]!==0)out[1]--;if(out[0]>7||out[1]>7)throw"Bad Gutters: "+out;return out}function parse_BoolErr(blob,length){var cell=parse_Cell(blob,6);var val=parse_Bes(blob,2);cell.val=val;cell.t=val===true||val===false?"b":"e";return cell}function parse_Number(blob,length){var cell=parse_Cell(blob,6);var xnum=parse_Xnum(blob,8);cell.val=xnum;return cell}var parse_XLHeaderFooter=parse_OptXLUnicodeString;function parse_SupBook(blob,length,opts){var end=blob.l+length;var ctab=blob.read_shift(2);var cch=blob.read_shift(2);var virtPath;if(cch>=1&&cch<=255)virtPath=parse_XLUnicodeStringNoCch(blob,cch);var rgst=blob.read_shift(end-blob.l);opts.sbcch=cch;return[cch,ctab,virtPath,rgst]}function parse_ExternName(blob,length,opts){var flags=blob.read_shift(2);var body;var o={fBuiltIn:flags&1,fWantAdvise:flags>>>1&1,fWantPict:flags>>>2&1,fOle:flags>>>3&1,fOleLink:flags>>>4&1,cf:flags>>>5&1023,fIcon:flags>>>15&1};if(opts.sbcch===14849)body=parse_AddinUdf(blob,length-2);o.body=body||blob.read_shift(length-2);return o}function parse_Lbl(blob,length,opts){if(opts.biff<8)return parse_Label(blob,length,opts);var target=blob.l+length;var flags=blob.read_shift(2);var chKey=blob.read_shift(1);var cch=blob.read_shift(1);var cce=blob.read_shift(2);blob.l+=2;var itab=blob.read_shift(2);blob.l+=4;var name=parse_XLUnicodeStringNoCch(blob,cch,opts);var rgce=parse_NameParsedFormula(blob,target-blob.l,opts,cce);return{chKey:chKey,Name:name,rgce:rgce}}function parse_ExternSheet(blob,length,opts){if(opts.biff<8)return parse_ShortXLUnicodeString(blob,length,opts);var o=parslurp2(blob,length,parse_XTI);var oo=[];if(opts.sbcch===1025){for(var i=0;i!=o.length;++i)oo.push(opts.snames[o[i][1]]);return oo}else return o}function parse_ShrFmla(blob,length,opts){var ref=parse_RefU(blob,6);blob.l++;var cUse=blob.read_shift(1);length-=8;return[parse_SharedParsedFormula(blob,length,opts),cUse]}function parse_Array(blob,length,opts){var ref=parse_Ref(blob,6);blob.l+=6;length-=12;return[ref,parse_ArrayParsedFormula(blob,length,opts,ref)]}function parse_MTRSettings(blob,length){var fMTREnabled=blob.read_shift(4)!==0;var fUserSetThreadCount=blob.read_shift(4)!==0;var cUserThreadCount=blob.read_shift(4);return[fMTREnabled,fUserSetThreadCount,cUserThreadCount]}function parse_NoteSh(blob,length,opts){if(opts.biff<8)return;var row=blob.read_shift(2),col=blob.read_shift(2);var flags=blob.read_shift(2),idObj=blob.read_shift(2);var stAuthor=parse_XLUnicodeString2(blob,0,opts);if(opts.biff<8)blob.read_shift(1);return[{r:row,c:col},stAuthor,idObj,flags]}function parse_Note(blob,length,opts){return parse_NoteSh(blob,length,opts)}function parse_MergeCells(blob,length){var merges=[];var cmcs=blob.read_shift(2);while(cmcs--)merges.push(parse_Ref8U(blob,length));return merges}function parse_Obj(blob,length){var cmo=parse_FtCmo(blob,22);var fts=parse_FtArray(blob,length-22,cmo[1]);return{cmo:cmo,ft:fts}}function parse_TxO(blob,length,opts){var s=blob.l;try{blob.l+=4;var ot=(opts.lastobj||{cmo:[0,0]}).cmo[1];var controlInfo;if([0,5,7,11,12,14].indexOf(ot)==-1)blob.l+=6;else controlInfo=parse_ControlInfo(blob,6,opts);var cchText=blob.read_shift(2);var cbRuns=blob.read_shift(2);var ifntEmpty=parse_FontIndex(blob,2);var len=blob.read_shift(2);blob.l+=len;var texts="";for(var i=1;i<blob.lens.length-1;++i){if(blob.l-s!=blob.lens[i])throw"TxO: bad continue record";var hdr=blob[blob.l];var t=parse_XLUnicodeStringNoCch(blob,blob.lens[i+1]-blob.lens[i]-1);texts+=t;if(texts.length>=(hdr?cchText:2*cchText))break}if(texts.length!==cchText&&texts.length!==cchText*2){throw"cchText: "+cchText+" != "+texts.length}blob.l=s+length;return{t:texts}}catch(e){blob.l=s+length;return{t:texts||""}}}var parse_HLink=function(blob,length){var ref=parse_Ref8U(blob,8);blob.l+=16;var hlink=parse_Hyperlink(blob,length-24);return[ref,hlink]};var parse_HLinkTooltip=function(blob,length){var end=blob.l+length;blob.read_shift(2);var ref=parse_Ref8U(blob,8);var wzTooltip=blob.read_shift((length-10)/2,"dbcs");wzTooltip=wzTooltip.replace(chr0,"");return[ref,wzTooltip]};function parse_Country(blob,length){var o=[],d;d=blob.read_shift(2);o[0]=CountryEnum[d]||d;d=blob.read_shift(2);o[1]=CountryEnum[d]||d;return o}var parse_Backup=parsebool;var parse_Blank=parse_Cell;var parse_BottomMargin=parse_Xnum;var parse_BuiltInFnGroupCount=parseuint16;var parse_CalcCount=parseuint16;var parse_CalcDelta=parse_Xnum;var parse_CalcIter=parsebool;var parse_CalcMode=parseuint16;var parse_CalcPrecision=parsebool;var parse_CalcRefMode=parsenoop2;var parse_CalcSaveRecalc=parsebool;var parse_CodePage=parseuint16;var parse_Compat12=parsebool;var parse_Date1904=parsebool;var parse_DefColWidth=parseuint16;var parse_DSF=parsenoop2;var parse_EntExU2=parsenoop2;var parse_EOF=parsenoop2;var parse_Excel9File=parsenoop2;var parse_FeatHdr=parsenoop2;var parse_FontX=parseuint16;var parse_Footer=parse_XLHeaderFooter;var parse_GridSet=parseuint16;var parse_HCenter=parsebool;var parse_Header=parse_XLHeaderFooter;var parse_HideObj=parse_HideObjEnum;var parse_InterfaceEnd=parsenoop2;var parse_LeftMargin=parse_Xnum;var parse_Mms=parsenoop2;var parse_ObjProtect=parsebool;var parse_Password=parseuint16;var parse_PrintGrid=parsebool;var parse_PrintRowCol=parsebool;var parse_PrintSize=parseuint16;var parse_Prot4Rev=parsebool;var parse_Prot4RevPass=parseuint16;var parse_Protect=parsebool;var parse_RefreshAll=parsebool;var parse_RightMargin=parse_Xnum;
+var parse_RRTabId=parseuint16a;var parse_ScenarioProtect=parsebool;var parse_Scl=parseuint16a;var parse_String=parse_XLUnicodeString;var parse_SxBool=parsebool;var parse_TopMargin=parse_Xnum;var parse_UsesELFs=parsebool;var parse_VCenter=parsebool;var parse_WinProtect=parsebool;var parse_WriteProtect=parsenoop;var parse_VerticalPageBreaks=parsenoop;var parse_HorizontalPageBreaks=parsenoop;var parse_Selection=parsenoop;var parse_Continue=parsenoop;var parse_Pane=parsenoop;var parse_Pls=parsenoop;var parse_DCon=parsenoop;var parse_DConRef=parsenoop;var parse_DConName=parsenoop;var parse_XCT=parsenoop;var parse_CRN=parsenoop;var parse_FileSharing=parsenoop;var parse_Uncalced=parsenoop;var parse_Template=parsenoop;var parse_Intl=parsenoop;var parse_ColInfo=parsenoop;var parse_WsBool=parsenoop;var parse_Sort=parsenoop;var parse_Palette=parsenoop;var parse_Sync=parsenoop;var parse_LPr=parsenoop;var parse_DxGCol=parsenoop;var parse_FnGroupName=parsenoop;var parse_FilterMode=parsenoop;var parse_AutoFilterInfo=parsenoop;var parse_AutoFilter=parsenoop;var parse_Setup=parsenoop;var parse_ScenMan=parsenoop;var parse_SCENARIO=parsenoop;var parse_SxView=parsenoop;var parse_Sxvd=parsenoop;var parse_SXVI=parsenoop;var parse_SxIvd=parsenoop;var parse_SXLI=parsenoop;var parse_SXPI=parsenoop;var parse_DocRoute=parsenoop;var parse_RecipName=parsenoop;var parse_MulBlank=parsenoop;var parse_SXDI=parsenoop;var parse_SXDB=parsenoop;var parse_SXFDB=parsenoop;var parse_SXDBB=parsenoop;var parse_SXNum=parsenoop;var parse_SxErr=parsenoop;var parse_SXInt=parsenoop;var parse_SXString=parsenoop;var parse_SXDtr=parsenoop;var parse_SxNil=parsenoop;var parse_SXTbl=parsenoop;var parse_SXTBRGIITM=parsenoop;var parse_SxTbpg=parsenoop;var parse_ObProj=parsenoop;var parse_SXStreamID=parsenoop;var parse_DBCell=parsenoop;var parse_SXRng=parsenoop;var parse_SxIsxoper=parsenoop;var parse_BookBool=parsenoop;var parse_DbOrParamQry=parsenoop;var parse_OleObjectSize=parsenoop;var parse_SXVS=parsenoop;var parse_BkHim=parsenoop;var parse_MsoDrawingGroup=parsenoop;var parse_MsoDrawing=parsenoop;var parse_MsoDrawingSelection=parsenoop;var parse_PhoneticInfo=parsenoop;var parse_SxRule=parsenoop;var parse_SXEx=parsenoop;var parse_SxFilt=parsenoop;var parse_SxDXF=parsenoop;var parse_SxItm=parsenoop;var parse_SxName=parsenoop;var parse_SxSelect=parsenoop;var parse_SXPair=parsenoop;var parse_SxFmla=parsenoop;var parse_SxFormat=parsenoop;var parse_SXVDEx=parsenoop;var parse_SXFormula=parsenoop;var parse_SXDBEx=parsenoop;var parse_RRDInsDel=parsenoop;var parse_RRDHead=parsenoop;var parse_RRDChgCell=parsenoop;var parse_RRDRenSheet=parsenoop;var parse_RRSort=parsenoop;var parse_RRDMove=parsenoop;var parse_RRFormat=parsenoop;var parse_RRAutoFmt=parsenoop;var parse_RRInsertSh=parsenoop;var parse_RRDMoveBegin=parsenoop;var parse_RRDMoveEnd=parsenoop;var parse_RRDInsDelBegin=parsenoop;var parse_RRDInsDelEnd=parsenoop;var parse_RRDConflict=parsenoop;var parse_RRDDefName=parsenoop;var parse_RRDRstEtxp=parsenoop;var parse_LRng=parsenoop;var parse_CUsr=parsenoop;var parse_CbUsr=parsenoop;var parse_UsrInfo=parsenoop;var parse_UsrExcl=parsenoop;var parse_FileLock=parsenoop;var parse_RRDInfo=parsenoop;var parse_BCUsrs=parsenoop;var parse_UsrChk=parsenoop;var parse_UserBView=parsenoop;var parse_UserSViewBegin=parsenoop;var parse_UserSViewEnd=parsenoop;var parse_RRDUserView=parsenoop;var parse_Qsi=parsenoop;var parse_CondFmt=parsenoop;var parse_CF=parsenoop;var parse_DVal=parsenoop;var parse_DConBin=parsenoop;var parse_Lel=parsenoop;var parse_CodeName=parse_XLUnicodeString;var parse_SXFDBType=parsenoop;var parse_ObNoMacros=parsenoop;var parse_Dv=parsenoop;var parse_Index=parsenoop;var parse_Table=parsenoop;var parse_Window2=parsenoop;var parse_Style=parsenoop;var parse_BigName=parsenoop;var parse_ContinueBigName=parsenoop;var parse_WebPub=parsenoop;var parse_QsiSXTag=parsenoop;var parse_DBQueryExt=parsenoop;var parse_ExtString=parsenoop;var parse_TxtQry=parsenoop;var parse_Qsir=parsenoop;var parse_Qsif=parsenoop;var parse_RRDTQSIF=parsenoop;var parse_OleDbConn=parsenoop;var parse_WOpt=parsenoop;var parse_SXViewEx=parsenoop;var parse_SXTH=parsenoop;var parse_SXPIEx=parsenoop;var parse_SXVDTEx=parsenoop;var parse_SXViewEx9=parsenoop;var parse_ContinueFrt=parsenoop;var parse_RealTimeData=parsenoop;var parse_ChartFrtInfo=parsenoop;var parse_FrtWrapper=parsenoop;var parse_StartBlock=parsenoop;var parse_EndBlock=parsenoop;var parse_StartObject=parsenoop;var parse_EndObject=parsenoop;var parse_CatLab=parsenoop;var parse_YMult=parsenoop;var parse_SXViewLink=parsenoop;var parse_PivotChartBits=parsenoop;var parse_FrtFontList=parsenoop;var parse_SheetExt=parsenoop;var parse_BookExt=parsenoop;var parse_SXAddl=parsenoop;var parse_CrErr=parsenoop;var parse_HFPicture=parsenoop;var parse_Feat=parsenoop;var parse_DataLabExt=parsenoop;var parse_DataLabExtContents=parsenoop;var parse_CellWatch=parsenoop;var parse_FeatHdr11=parsenoop;var parse_Feature11=parsenoop;var parse_DropDownObjIds=parsenoop;var parse_ContinueFrt11=parsenoop;var parse_DConn=parsenoop;var parse_List12=parsenoop;var parse_Feature12=parsenoop;var parse_CondFmt12=parsenoop;var parse_CF12=parsenoop;var parse_CFEx=parsenoop;var parse_XFCRC=parsenoop;var parse_XFExt=parsenoop;var parse_AutoFilter12=parsenoop;var parse_ContinueFrt12=parsenoop;var parse_MDTInfo=parsenoop;var parse_MDXStr=parsenoop;var parse_MDXTuple=parsenoop;var parse_MDXSet=parsenoop;var parse_MDXProp=parsenoop;var parse_MDXKPI=parsenoop;var parse_MDB=parsenoop;var parse_PLV=parsenoop;var parse_DXF=parsenoop;var parse_TableStyles=parsenoop;var parse_TableStyle=parsenoop;var parse_TableStyleElement=parsenoop;var parse_StyleExt=parsenoop;var parse_NamePublish=parsenoop;var parse_NameCmt=parsenoop;var parse_SortData=parsenoop;var parse_Theme=parsenoop;var parse_GUIDTypeLib=parsenoop;var parse_FnGrp12=parsenoop;var parse_NameFnGrp12=parsenoop;var parse_HeaderFooter=parsenoop;var parse_CrtLayout12=parsenoop;var parse_CrtMlFrt=parsenoop;var parse_CrtMlFrtContinue=parsenoop;var parse_ShapePropsStream=parsenoop;var parse_TextPropsStream=parsenoop;var parse_RichTextStream=parsenoop;var parse_CrtLayout12A=parsenoop;var parse_Units=parsenoop;var parse_Chart=parsenoop;var parse_Series=parsenoop;var parse_DataFormat=parsenoop;var parse_LineFormat=parsenoop;var parse_MarkerFormat=parsenoop;var parse_AreaFormat=parsenoop;var parse_PieFormat=parsenoop;var parse_AttachedLabel=parsenoop;var parse_SeriesText=parsenoop;var parse_ChartFormat=parsenoop;var parse_Legend=parsenoop;var parse_SeriesList=parsenoop;var parse_Bar=parsenoop;var parse_Line=parsenoop;var parse_Pie=parsenoop;var parse_Area=parsenoop;var parse_Scatter=parsenoop;var parse_CrtLine=parsenoop;var parse_Axis=parsenoop;var parse_Tick=parsenoop;var parse_ValueRange=parsenoop;var parse_CatSerRange=parsenoop;var parse_AxisLine=parsenoop;var parse_CrtLink=parsenoop;var parse_DefaultText=parsenoop;var parse_Text=parsenoop;var parse_ObjectLink=parsenoop;var parse_Frame=parsenoop;var parse_Begin=parsenoop;var parse_End=parsenoop;var parse_PlotArea=parsenoop;var parse_Chart3d=parsenoop;var parse_PicF=parsenoop;var parse_DropBar=parsenoop;var parse_Radar=parsenoop;var parse_Surf=parsenoop;var parse_RadarArea=parsenoop;var parse_AxisParent=parsenoop;var parse_LegendException=parsenoop;var parse_ShtProps=parsenoop;var parse_SerToCrt=parsenoop;var parse_AxesUsed=parsenoop;var parse_SBaseRef=parsenoop;var parse_SerParent=parsenoop;var parse_SerAuxTrend=parsenoop;var parse_IFmtRecord=parsenoop;var parse_Pos=parsenoop;var parse_AlRuns=parsenoop;var parse_BRAI=parsenoop;var parse_SerAuxErrBar=parsenoop;var parse_ClrtClient=parsenoop;var parse_SerFmt=parsenoop;var parse_Chart3DBarShape=parsenoop;var parse_Fbi=parsenoop;var parse_BopPop=parsenoop;var parse_AxcExt=parsenoop;var parse_Dat=parsenoop;var parse_PlotGrowth=parsenoop;var parse_SIIndex=parsenoop;var parse_GelFrame=parsenoop;var parse_BopPopCustom=parsenoop;var parse_Fbi2=parsenoop;function parse_BIFF5String(blob){var len=blob.read_shift(1);return blob.read_shift(len,"sbcs")}var _chr=function(c){return String.fromCharCode(c)};var attregexg=/([\w:]+)=((?:")([^"]*)(?:")|(?:')([^']*)(?:'))/g;var attregex=/([\w:]+)=((?:")(?:[^"]*)(?:")|(?:')(?:[^']*)(?:'))/;function parsexmltag(tag,skip_root){var words=tag.split(/\s+/);var z=[];if(!skip_root)z[0]=words[0];if(words.length===1)return z;var m=tag.match(attregexg),y,j,w,i;if(m)for(i=0;i!=m.length;++i){y=m[i].match(attregex);if((j=y[1].indexOf(":"))===-1)z[y[1]]=y[2].substr(1,y[2].length-2);else{if(y[1].substr(0,6)==="xmlns:")w="xmlns"+y[1].substr(6);else w=y[1].substr(j+1);z[w]=y[2].substr(1,y[2].length-2)}}return z}function parsexmltagobj(tag){var words=tag.split(/\s+/);var z={};if(words.length===1)return z;var m=tag.match(attregexg),y,j,w,i;if(m)for(i=0;i!=m.length;++i){y=m[i].match(attregex);if((j=y[1].indexOf(":"))===-1)z[y[1]]=y[2].substr(1,y[2].length-2);else{if(y[1].substr(0,6)==="xmlns:")w="xmlns"+y[1].substr(6);else w=y[1].substr(j+1);z[w]=y[2].substr(1,y[2].length-2)}}return z}var encodings={"&quot;":'"',"&apos;":"'","&gt;":">","&lt;":"<","&amp;":"&"};var rencoding=evert(encodings);var rencstr="&<>'\"".split("");var XML_HEADER='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';var OFFCRYPTO={};var make_offcrypto=function(O,_crypto){var crypto;if(typeof _crypto!=="undefined")crypto=_crypto;else if(typeof require!=="undefined"){try{crypto=require("cry"+"pto")}catch(e){crypto=null}}O.rc4=function(key,data){var S=new Array(256);var c=0,i=0,j=0,t=0;for(i=0;i!=256;++i)S[i]=i;for(i=0;i!=256;++i){j=j+S[i]+key[i%key.length].charCodeAt(0)&255;t=S[i];S[i]=S[j];S[j]=t}i=j=0;out=Buffer(data.length);for(c=0;c!=data.length;++c){i=i+1&255;j=(j+S[i])%256;t=S[i];S[i]=S[j];S[j]=t;out[c]=data[c]^S[S[i]+S[j]&255]}return out};if(crypto){O.md5=function(hex){return crypto.createHash("md5").update(hex).digest("hex")}}else{O.md5=function(hex){throw"unimplemented"}}};make_offcrypto(OFFCRYPTO,typeof crypto!=="undefined"?crypto:undefined);function _JS2ANSI(str){if(typeof cptable!=="undefined")return cptable.utils.encode(1252,str);return str.split("").map(function(x){return x.charCodeAt(0)})}function parse_Version(blob,length){var o={};o.Major=blob.read_shift(2);o.Minor=blob.read_shift(2);return o}function parse_EncryptionHeader(blob,length){var o={};o.Flags=blob.read_shift(4);var tmp=blob.read_shift(4);if(tmp!==0)throw"Unrecognized SizeExtra: "+tmp;o.AlgID=blob.read_shift(4);switch(o.AlgID){case 0:case 26625:case 26126:case 26127:case 26128:break;default:throw"Unrecognized encryption algorithm: "+o.AlgID}parsenoop(blob,length-12);return o}function parse_EncryptionVerifier(blob,length){return parsenoop(blob,length)}function parse_RC4CryptoHeader(blob,length){var o={};var vers=o.EncryptionVersionInfo=parse_Version(blob,4);length-=4;if(vers.Minor!=2)throw"unrecognized minor version code: "+vers.Minor;if(vers.Major>4||vers.Major<2)throw"unrecognized major version code: "+vers.Major;o.Flags=blob.read_shift(4);length-=4;var sz=blob.read_shift(4);length-=4;o.EncryptionHeader=parse_EncryptionHeader(blob,sz);length-=sz;o.EncryptionVerifier=parse_EncryptionVerifier(blob,length);return o}function parse_RC4Header(blob,length){var o={};var vers=o.EncryptionVersionInfo=parse_Version(blob,4);length-=4;if(vers.Major!=1||vers.Minor!=1)throw"unrecognized version code "+vers.Major+" : "+vers.Minor;o.Salt=blob.read_shift(16);o.EncryptedVerifier=blob.read_shift(16);o.EncryptedVerifierHash=blob.read_shift(16);return o}function crypto_CreatePasswordVerifier_Method1(Password){var Verifier=0,PasswordArray;var PasswordDecoded=_JS2ANSI(Password);var len=PasswordDecoded.length+1,i,PasswordByte;var Intermediate1,Intermediate2,Intermediate3;PasswordArray=new_buf(len);PasswordArray[0]=PasswordDecoded.length;for(i=1;i!=len;++i)PasswordArray[i]=PasswordDecoded[i-1];for(i=len-1;i>=0;--i){PasswordByte=PasswordArray[i];Intermediate1=(Verifier&16384)===0?0:1;Intermediate2=Verifier<<1&32767;Intermediate3=Intermediate1|Intermediate2;Verifier=Intermediate3^PasswordByte}return Verifier^52811}var crypto_CreateXorArray_Method1=function(){var PadArray=[187,255,255,186,255,255,185,128,0,190,15,0,191,15,0];var InitialCode=[57840,7439,52380,33984,4364,3600,61902,12606,6258,57657,54287,34041,10252,43370,20163];var XorMatrix=[44796,19929,39858,10053,20106,40212,10761,31585,63170,64933,60267,50935,40399,11199,17763,35526,1453,2906,5812,11624,23248,885,1770,3540,7080,14160,28320,56640,55369,41139,20807,41614,21821,43642,17621,28485,56970,44341,19019,38038,14605,29210,60195,50791,40175,10751,21502,43004,24537,18387,36774,3949,7898,15796,31592,63184,47201,24803,49606,37805,14203,28406,56812,17824,35648,1697,3394,6788,13576,27152,43601,17539,35078,557,1114,2228,4456,30388,60776,51953,34243,7079,14158,28316,14128,28256,56512,43425,17251,34502,7597,13105,26210,52420,35241,883,1766,3532,4129,8258,16516,33032,4657,9314,18628];var Ror=function(Byte){return(Byte/2|Byte*128)&255};var XorRor=function(byte1,byte2){return Ror(byte1^byte2)};var CreateXorKey_Method1=function(Password){var XorKey=InitialCode[Password.length-1];var CurrentElement=104;for(var i=Password.length-1;i>=0;--i){var Char=Password[i];for(var j=0;j!=7;++j){if(Char&64)XorKey^=XorMatrix[CurrentElement];Char*=2;--CurrentElement}}return XorKey};return function(password){var Password=_JS2ANSI(password);var XorKey=CreateXorKey_Method1(Password);var Index=Password.length;var ObfuscationArray=new_buf(16);for(var i=0;i!=16;++i)ObfuscationArray[i]=0;var Temp,PasswordLastChar,PadIndex;if((Index&1)===1){Temp=XorKey>>8;ObfuscationArray[Index]=XorRor(PadArray[0],Temp);--Index;Temp=XorKey&255;PasswordLastChar=Password[Password.length-1];ObfuscationArray[Index]=XorRor(PasswordLastChar,Temp)}while(Index>0){--Index;Temp=XorKey>>8;ObfuscationArray[Index]=XorRor(Password[Index],Temp);--Index;Temp=XorKey&255;ObfuscationArray[Index]=XorRor(Password[Index],Temp)}Index=15;PadIndex=15-Password.length;while(PadIndex>0){Temp=XorKey>>8;ObfuscationArray[Index]=XorRor(PadArray[PadIndex],Temp);--Index;--PadIndex;Temp=XorKey&255;ObfuscationArray[Index]=XorRor(Password[Index],Temp);--Index;--PadIndex}return ObfuscationArray}}();var crypto_DecryptData_Method1=function(password,Data,XorArrayIndex,XorArray,O){if(!O)O=Data;if(!XorArray)XorArray=crypto_CreateXorArray_Method1(password);var Index,Value;for(Index=0;Index!=Data.length;++Index){Value=Data[Index];Value^=XorArray[XorArrayIndex];Value=(Value>>5|Value<<3)&255;O[Index]=Value;++XorArrayIndex}return[O,XorArrayIndex,XorArray]};var crypto_MakeXorDecryptor=function(password){var XorArrayIndex=0,XorArray=crypto_CreateXorArray_Method1(password);return function(Data){var O=crypto_DecryptData_Method1(null,Data,XorArrayIndex,XorArray);XorArrayIndex=O[1];return O[0]}};function parse_XORObfuscation(blob,length,opts,out){var o={key:parseuint16(blob),verificationBytes:parseuint16(blob)};if(opts.password)o.verifier=crypto_CreatePasswordVerifier_Method1(opts.password);out.valid=o.verificationBytes===o.verifier;if(out.valid)out.insitu_decrypt=crypto_MakeXorDecryptor(opts.password);return o}function parse_FilePassHeader(blob,length,oo){var o=oo||{};o.Info=blob.read_shift(2);blob.l-=2;if(o.Info===1)o.Data=parse_RC4Header(blob,length);else o.Data=parse_RC4CryptoHeader(blob,length);return o}function parse_FilePass(blob,length,opts){var o={Type:blob.read_shift(2)};if(o.Type)parse_FilePassHeader(blob,length-2,o);else parse_XORObfuscation(blob,length-2,opts,o);return o}function parseread(l){return function(blob,length){blob.l+=l;return}}function parseread1(blob,length){blob.l+=1;return}function parse_ColRelU(blob,length){var c=blob.read_shift(2);return[c&16383,c>>14&1,c>>15&1]}function parse_RgceArea(blob,length){var r=blob.read_shift(2),R=blob.read_shift(2);var c=parse_ColRelU(blob,2);var C=parse_ColRelU(blob,2);return{s:{r:r,c:c[0],cRel:c[1],rRel:c[2]},e:{r:R,c:C[0],cRel:C[1],rRel:C[2]}}}function parse_RgceAreaRel(blob,length){var r=blob.read_shift(2),R=blob.read_shift(2);var c=parse_ColRelU(blob,2);var C=parse_ColRelU(blob,2);return{s:{r:r,c:c[0],cRel:c[1],rRel:c[2]},e:{r:R,c:C[0],cRel:C[1],rRel:C[2]}}}function parse_RgceLoc(blob,length){var r=blob.read_shift(2);var c=parse_ColRelU(blob,2);return{r:r,c:c[0],cRel:c[1],rRel:c[2]}}function parse_RgceLocRel(blob,length){var r=blob.read_shift(2);var cl=blob.read_shift(2);var cRel=(cl&32768)>>15,rRel=(cl&16384)>>14;cl&=16383;if(cRel!==0)while(cl>=256)cl-=256;return{r:r,c:cl,cRel:cRel,rRel:rRel}}function parse_PtgArea(blob,length){var type=(blob[blob.l++]&96)>>5;var area=parse_RgceArea(blob,8);return[type,area]}function parse_PtgArea3d(blob,length){var type=(blob[blob.l++]&96)>>5;var ixti=blob.read_shift(2);var area=parse_RgceArea(blob,8);return[type,ixti,area]}function parse_PtgAreaErr(blob,length){var type=(blob[blob.l++]&96)>>5;blob.l+=8;return[type]}function parse_PtgAreaErr3d(blob,length){var type=(blob[blob.l++]&96)>>5;var ixti=blob.read_shift(2);blob.l+=8;return[type,ixti]}function parse_PtgAreaN(blob,length){var type=(blob[blob.l++]&96)>>5;var area=parse_RgceAreaRel(blob,8);return[type,area]}function parse_PtgArray(blob,length){var type=(blob[blob.l++]&96)>>5;blob.l+=7;return[type]}function parse_PtgAttrBaxcel(blob,length){var bitSemi=blob[blob.l+1]&1;var bitBaxcel=1;blob.l+=4;return[bitSemi,bitBaxcel]}function parse_PtgAttrChoose(blob,length){blob.l+=2;var offset=blob.read_shift(2);var o=[];for(var i=0;i<=offset;++i)o.push(blob.read_shift(2));return o}function parse_PtgAttrGoto(blob,length){var bitGoto=blob[blob.l+1]&255?1:0;blob.l+=2;return[bitGoto,blob.read_shift(2)]}function parse_PtgAttrIf(blob,length){var bitIf=blob[blob.l+1]&255?1:0;blob.l+=2;return[bitIf,blob.read_shift(2)]}function parse_PtgAttrSemi(blob,length){var bitSemi=blob[blob.l+1]&255?1:0;blob.l+=4;return[bitSemi]}function parse_PtgAttrSpaceType(blob,length){var type=blob.read_shift(1),cch=blob.read_shift(1);return[type,cch]}function parse_PtgAttrSpace(blob,length){blob.read_shift(2);return parse_PtgAttrSpaceType(blob,2)}function parse_PtgAttrSpaceSemi(blob,length){blob.read_shift(2);return parse_PtgAttrSpaceType(blob,2)}function parse_PtgRef(blob,length){var ptg=blob[blob.l]&31;var type=(blob[blob.l]&96)>>5;blob.l+=1;var loc=parse_RgceLoc(blob,4);return[type,loc]}function parse_PtgRefN(blob,length){var ptg=blob[blob.l]&31;var type=(blob[blob.l]&96)>>5;blob.l+=1;var loc=parse_RgceLocRel(blob,4);return[type,loc]}function parse_PtgRef3d(blob,length){var ptg=blob[blob.l]&31;var type=(blob[blob.l]&96)>>5;blob.l+=1;var ixti=blob.read_shift(2);var loc=parse_RgceLoc(blob,4);return[type,ixti,loc]}function parse_PtgFunc(blob,length){var ptg=blob[blob.l]&31;var type=(blob[blob.l]&96)>>5;blob.l+=1;var iftab=blob.read_shift(2);return[FtabArgc[iftab],Ftab[iftab]]}function parse_PtgFuncVar(blob,length){blob.l++;var cparams=blob.read_shift(1),tab=parsetab(blob);return[cparams,(tab[0]===0?Ftab:Cetab)[tab[1]]]}function parsetab(blob,length){return[blob[blob.l+1]>>7,blob.read_shift(2)&32767]}var parse_PtgAttrSum=parseread(4);var parse_PtgConcat=parseread1;function parse_PtgExp(blob,length){blob.l++;var row=blob.read_shift(2);var col=blob.read_shift(2);return[row,col]}function parse_PtgErr(blob,length){blob.l++;return BERR[blob.read_shift(1)]}function parse_PtgInt(blob,length){blob.l++;return blob.read_shift(2)}function parse_PtgBool(blob,length){blob.l++;return blob.read_shift(1)!==0}function parse_PtgNum(blob,length){blob.l++;return parse_Xnum(blob,8)}function parse_PtgStr(blob,length){blob.l++;return parse_ShortXLUnicodeString(blob)}function parse_SerAr(blob){var val=[];switch(val[0]=blob.read_shift(1)){case 4:val[1]=parsebool(blob,1)?"TRUE":"FALSE";blob.l+=7;break;case 16:val[1]=BERR[blob[blob.l]];blob.l+=8;break;case 0:blob.l+=8;break;case 1:val[1]=parse_Xnum(blob,8);break;case 2:val[1]=parse_XLUnicodeString(blob);break}return val}function parse_PtgExtraMem(blob,cce){var count=blob.read_shift(2);var out=[];for(var i=0;i!=count;++i)out.push(parse_Ref8U(blob,8));return out}function parse_PtgExtraArray(blob){var cols=1+blob.read_shift(1);var rows=1+blob.read_shift(2);for(var i=0,o=[];i!=rows&&(o[i]=[]);++i)for(var j=0;j!=cols;++j)o[i][j]=parse_SerAr(blob);return o}function parse_PtgName(blob,length){var type=blob.read_shift(1)>>>5&3;var nameindex=blob.read_shift(4);return[type,0,nameindex]}function parse_PtgNameX(blob,length){var type=blob.read_shift(1)>>>5&3;var ixti=blob.read_shift(2);var nameindex=blob.read_shift(4);return[type,ixti,nameindex]}function parse_PtgMemArea(blob,length){var type=blob.read_shift(1)>>>5&3;blob.l+=4;var cce=blob.read_shift(2);return[type,cce]}function parse_PtgMemFunc(blob,length){var type=blob.read_shift(1)>>>5&3;var cce=blob.read_shift(2);return[type,cce]}function parse_PtgRefErr(blob,length){var type=blob.read_shift(1)>>>5&3;blob.l+=4;return[type]}var parse_PtgAdd=parseread1;var parse_PtgDiv=parseread1;var parse_PtgEq=parseread1;var parse_PtgGe=parseread1;var parse_PtgGt=parseread1;var parse_PtgIsect=parseread1;var parse_PtgLe=parseread1;var parse_PtgLt=parseread1;var parse_PtgMissArg=parseread1;var parse_PtgMul=parseread1;var parse_PtgNe=parseread1;var parse_PtgParen=parseread1;var parse_PtgPercent=parseread1;var parse_PtgPower=parseread1;var parse_PtgRange=parseread1;var parse_PtgSub=parseread1;var parse_PtgUminus=parseread1;var parse_PtgUnion=parseread1;var parse_PtgUplus=parseread1;var parse_PtgMemErr=parsenoop;var parse_PtgMemNoMem=parsenoop;var parse_PtgRefErr3d=parsenoop;var parse_PtgTbl=parsenoop;var PtgTypes={1:{n:"PtgExp",f:parse_PtgExp},2:{n:"PtgTbl",f:parse_PtgTbl},3:{n:"PtgAdd",f:parse_PtgAdd},4:{n:"PtgSub",f:parse_PtgSub},5:{n:"PtgMul",f:parse_PtgMul},6:{n:"PtgDiv",f:parse_PtgDiv},7:{n:"PtgPower",f:parse_PtgPower},8:{n:"PtgConcat",f:parse_PtgConcat},9:{n:"PtgLt",f:parse_PtgLt},10:{n:"PtgLe",f:parse_PtgLe},11:{n:"PtgEq",f:parse_PtgEq},12:{n:"PtgGe",f:parse_PtgGe},13:{n:"PtgGt",f:parse_PtgGt},14:{n:"PtgNe",f:parse_PtgNe},15:{n:"PtgIsect",f:parse_PtgIsect},16:{n:"PtgUnion",f:parse_PtgUnion},17:{n:"PtgRange",f:parse_PtgRange},18:{n:"PtgUplus",f:parse_PtgUplus},19:{n:"PtgUminus",f:parse_PtgUminus},20:{n:"PtgPercent",f:parse_PtgPercent},21:{n:"PtgParen",f:parse_PtgParen},22:{n:"PtgMissArg",f:parse_PtgMissArg},23:{n:"PtgStr",f:parse_PtgStr},28:{n:"PtgErr",f:parse_PtgErr},29:{n:"PtgBool",f:parse_PtgBool},30:{n:"PtgInt",f:parse_PtgInt},31:{n:"PtgNum",f:parse_PtgNum},32:{n:"PtgArray",f:parse_PtgArray},33:{n:"PtgFunc",f:parse_PtgFunc},34:{n:"PtgFuncVar",f:parse_PtgFuncVar},35:{n:"PtgName",f:parse_PtgName},36:{n:"PtgRef",f:parse_PtgRef},37:{n:"PtgArea",f:parse_PtgArea},38:{n:"PtgMemArea",f:parse_PtgMemArea},39:{n:"PtgMemErr",f:parse_PtgMemErr},40:{n:"PtgMemNoMem",f:parse_PtgMemNoMem},41:{n:"PtgMemFunc",f:parse_PtgMemFunc},42:{n:"PtgRefErr",f:parse_PtgRefErr},43:{n:"PtgAreaErr",f:parse_PtgAreaErr},44:{n:"PtgRefN",f:parse_PtgRefN},45:{n:"PtgAreaN",f:parse_PtgAreaN},57:{n:"PtgNameX",f:parse_PtgNameX},58:{n:"PtgRef3d",f:parse_PtgRef3d},59:{n:"PtgArea3d",f:parse_PtgArea3d},60:{n:"PtgRefErr3d",f:parse_PtgRefErr3d},61:{n:"PtgAreaErr3d",f:parse_PtgAreaErr3d},255:{}};var PtgDupes={64:32,96:32,65:33,97:33,66:34,98:34,67:35,99:35,68:36,100:36,69:37,101:37,70:38,102:38,71:39,103:39,72:40,104:40,73:41,105:41,74:42,106:42,75:43,107:43,76:44,108:44,77:45,109:45,89:57,121:57,90:58,122:58,91:59,123:59,92:60,124:60,93:61,125:61};(function(){for(var y in PtgDupes)PtgTypes[y]=PtgTypes[PtgDupes[y]]})();var Ptg18={};var Ptg19={1:{n:"PtgAttrSemi",f:parse_PtgAttrSemi},2:{n:"PtgAttrIf",f:parse_PtgAttrIf},4:{n:"PtgAttrChoose",f:parse_PtgAttrChoose},8:{n:"PtgAttrGoto",f:parse_PtgAttrGoto},16:{n:"PtgAttrSum",f:parse_PtgAttrSum},32:{n:"PtgAttrBaxcel",f:parse_PtgAttrBaxcel},64:{n:"PtgAttrSpace",f:parse_PtgAttrSpace},65:{n:"PtgAttrSpaceSemi",f:parse_PtgAttrSpaceSemi},255:{}};var rcregex=/(^|[^A-Za-z])R(\[?)(-?\d+|)\]?C(\[?)(-?\d+|)\]?/g;var rcbase;function rcfunc($$,$1,$2,$3,$4,$5){var R=$3.length>0?parseInt($3,10)|0:0,C=$5.length>0?parseInt($5,10)|0:0;if(C<0&&$4.length===0)C=0;if($4.length>0)C+=rcbase.c;if($2.length>0)R+=rcbase.r;return $1+encode_col(C)+encode_row(R)}function rc_to_a1(fstr,base){rcbase=base;return fstr.replace(rcregex,rcfunc)}function parse_Formula(blob,length,opts){var cell=parse_Cell(blob,6);var val=parse_FormulaValue(blob,8);var flags=blob.read_shift(1);blob.read_shift(1);var chn=blob.read_shift(4);var cbf="";if(opts.biff===5)blob.l+=length-20;else cbf=parse_CellParsedFormula(blob,length-20,opts);return{cell:cell,val:val[0],formula:cbf,shared:flags>>3&1,tt:val[1]}}function parse_FormulaValue(blob){var b;if(__readUInt16LE(blob,blob.l+6)!==65535)return[parse_Xnum(blob),"n"];switch(blob[blob.l]){case 0:blob.l+=8;return["String","s"];case 1:b=blob[blob.l+2]===1;blob.l+=8;return[b,"b"];case 2:b=BERR[blob[blob.l+2]];blob.l+=8;return[b,"e"];case 3:blob.l+=8;return["","s"]}}function parse_RgbExtra(blob,length,rgce,opts){if(opts.biff<8)return parsenoop(blob,length);var target=blob.l+length;var o=[];for(var i=0;i!==rgce.length;++i){switch(rgce[i][0]){case"PtgArray":rgce[i][1]=parse_PtgExtraArray(blob);o.push(rgce[i][1]);break;case"PtgMemArea":rgce[i][2]=parse_PtgExtraMem(blob,rgce[i][1]);o.push(rgce[i][2]);break;default:break}}length=target-blob.l;if(length!==0)o.push(parsenoop(blob,length));return o}function parse_NameParsedFormula(blob,length,opts,cce){var target=blob.l+length;var rgce=parse_Rgce(blob,cce);var rgcb;if(target!==blob.l)rgcb=parse_RgbExtra(blob,target-blob.l,rgce,opts);return[rgce,rgcb]}function parse_CellParsedFormula(blob,length,opts){var target=blob.l+length;var rgcb,cce=blob.read_shift(2);if(cce==65535)return[[],parsenoop(blob,length-2)];var rgce=parse_Rgce(blob,cce);if(length!==cce+2)rgcb=parse_RgbExtra(blob,length-cce-2,rgce,opts);return[rgce,rgcb]}function parse_SharedParsedFormula(blob,length,opts){var target=blob.l+length;var rgcb,cce=blob.read_shift(2);var rgce=parse_Rgce(blob,cce);if(cce==65535)return[[],parsenoop(blob,length-2)];if(length!==cce+2)rgcb=parse_RgbExtra(blob,target-cce-2,rgce,opts);return[rgce,rgcb]}function parse_ArrayParsedFormula(blob,length,opts,ref){var target=blob.l+length;var rgcb,cce=blob.read_shift(2);if(cce==65535)return[[],parsenoop(blob,length-2)];var rgce=parse_Rgce(blob,cce);if(length!==cce+2)rgcb=parse_RgbExtra(blob,target-cce-2,rgce,opts);return[rgce,rgcb]}function parse_Rgce(blob,length){var target=blob.l+length;var R,id,ptgs=[];while(target!=blob.l){length=target-blob.l;id=blob[blob.l];R=PtgTypes[id];if(id===24||id===25){id=blob[blob.l+1];R=(id===24?Ptg18:Ptg19)[id]}if(!R||!R.f){ptgs.push(parsenoop(blob,length))}else{ptgs.push([R.n,R.f(blob,length)])}}return ptgs}function mapper(x){return x.map(function f2(y){return y[1]}).join(",")}function stringify_formula(formula,range,cell,supbooks,opts){if(opts!==undefined&&opts.biff===5)return"BIFF5??";var _range=range!==undefined?range:{s:{c:0,r:0}};var stack=[],e1,e2,type,c,ixti,nameidx,r;if(!formula[0]||!formula[0][0])return"";for(var ff=0,fflen=formula[0].length;ff<fflen;++ff){var f=formula[0][ff];switch(f[0]){case"PtgUminus":stack.push("-"+stack.pop());break;case"PtgUplus":stack.push("+"+stack.pop());break;case"PtgPercent":stack.push(stack.pop()+"%");break;case"PtgAdd":e1=stack.pop();e2=stack.pop();stack.push(e2+"+"+e1);break;case"PtgSub":e1=stack.pop();e2=stack.pop();stack.push(e2+"-"+e1);break;case"PtgMul":e1=stack.pop();e2=stack.pop();stack.push(e2+"*"+e1);break;case"PtgDiv":e1=stack.pop();e2=stack.pop();stack.push(e2+"/"+e1);break;case"PtgPower":e1=stack.pop();e2=stack.pop();stack.push(e2+"^"+e1);break;case"PtgConcat":e1=stack.pop();e2=stack.pop();stack.push(e2+"&"+e1);break;case"PtgLt":e1=stack.pop();e2=stack.pop();stack.push(e2+"<"+e1);break;case"PtgLe":e1=stack.pop();e2=stack.pop();stack.push(e2+"<="+e1);break;case"PtgEq":e1=stack.pop();e2=stack.pop();stack.push(e2+"="+e1);break;case"PtgGe":e1=stack.pop();e2=stack.pop();stack.push(e2+">="+e1);break;case"PtgGt":e1=stack.pop();e2=stack.pop();stack.push(e2+">"+e1);break;case"PtgNe":e1=stack.pop();e2=stack.pop();stack.push(e2+"<>"+e1);break;case"PtgIsect":e1=stack.pop();e2=stack.pop();stack.push(e2+" "+e1);break;case"PtgUnion":e1=stack.pop();e2=stack.pop();stack.push(e2+","+e1);break;case"PtgRange":break;case"PtgAttrChoose":break;case"PtgAttrGoto":break;case"PtgAttrIf":break;case"PtgRef":type=f[1][0];c=shift_cell(decode_cell(encode_cell(f[1][1])),_range);stack.push(encode_cell(c));break;case"PtgRefN":type=f[1][0];c=shift_cell(decode_cell(encode_cell(f[1][1])),cell);stack.push(encode_cell(c));break;case"PtgRef3d":type=f[1][0];ixti=f[1][1];c=shift_cell(f[1][2],_range);stack.push(supbooks[1][ixti+1]+"!"+encode_cell(c));break;case"PtgFunc":case"PtgFuncVar":var argc=f[1][0],func=f[1][1];if(!argc)argc=0;var args=stack.slice(-argc);stack.length-=argc;if(func==="User")func=args.shift();stack.push(func+"("+args.join(",")+")");break;case"PtgBool":stack.push(f[1]?"TRUE":"FALSE");break;case"PtgInt":stack.push(f[1]);break;case"PtgNum":stack.push(String(f[1]));break;case"PtgStr":stack.push('"'+f[1]+'"');break;case"PtgErr":stack.push(f[1]);break;case"PtgArea":type=f[1][0];r=shift_range(f[1][1],_range);stack.push(encode_range(r));break;case"PtgArea3d":type=f[1][0];ixti=f[1][1];r=f[1][2];stack.push(supbooks[1][ixti+1]+"!"+encode_range(r));break;case"PtgAttrSum":stack.push("SUM("+stack.pop()+")");break;case"PtgAttrSemi":break;case"PtgName":nameidx=f[1][2];var lbl=supbooks[0][nameidx];var name=lbl.Name;if(name in XLSXFutureFunctions)name=XLSXFutureFunctions[name];stack.push(name);break;case"PtgNameX":var bookidx=f[1][1];nameidx=f[1][2];var externbook;if(supbooks[bookidx+1])externbook=supbooks[bookidx+1][nameidx];else if(supbooks[bookidx-1])externbook=supbooks[bookidx-1][nameidx];if(!externbook)externbook={body:"??NAMEX??"};stack.push(externbook.body);break;case"PtgParen":stack.push("("+stack.pop()+")");break;case"PtgRefErr":stack.push("#REF!");break;case"PtgExp":c={c:f[1][1],r:f[1][0]};var q={c:cell.c,r:cell.r};if(supbooks.sharedf[encode_cell(c)]){var parsedf=supbooks.sharedf[encode_cell(c)];stack.push(stringify_formula(parsedf,_range,q,supbooks,opts))}else{var fnd=false;for(e1=0;e1!=supbooks.arrayf.length;++e1){e2=supbooks.arrayf[e1];if(c.c<e2[0].s.c||c.c>e2[0].e.c)continue;if(c.r<e2[0].s.r||c.r>e2[0].e.r)continue;stack.push(stringify_formula(e2[1],_range,q,supbooks,opts))}if(!fnd)stack.push(f[1])}break;case"PtgArray":stack.push("{"+f[1].map(mapper).join(";")+"}");break;case"PtgMemArea":break;case"PtgAttrSpace":break;case"PtgTbl":break;case"PtgMemErr":break;case"PtgMissArg":stack.push("");break;case"PtgAreaErr":break;case"PtgAreaN":stack.push("");break;case"PtgRefErr3d":break;case"PtgMemFunc":break;default:throw"Unrecognized Formula Token: "+f}}return stack[0]}var PtgDataType={1:"REFERENCE",2:"VALUE",3:"ARRAY"};var BERR={0:"#NULL!",7:"#DIV/0!",15:"#VALUE!",23:"#REF!",29:"#NAME?",36:"#NUM!",42:"#N/A",43:"#GETTING_DATA",255:"#WTF?"};var Cetab={0:"BEEP",1:"OPEN",2:"OPEN.LINKS",3:"CLOSE.ALL",4:"SAVE",5:"SAVE.AS",6:"FILE.DELETE",7:"PAGE.SETUP",8:"PRINT",9:"PRINTER.SETUP",10:"QUIT",11:"NEW.WINDOW",12:"ARRANGE.ALL",13:"WINDOW.SIZE",14:"WINDOW.MOVE",15:"FULL",16:"CLOSE",17:"RUN",22:"SET.PRINT.AREA",23:"SET.PRINT.TITLES",24:"SET.PAGE.BREAK",25:"REMOVE.PAGE.BREAK",26:"FONT",27:"DISPLAY",28:"PROTECT.DOCUMENT",29:"PRECISION",30:"A1.R1C1",31:"CALCULATE.NOW",32:"CALCULATION",34:"DATA.FIND",35:"EXTRACT",36:"DATA.DELETE",37:"SET.DATABASE",38:"SET.CRITERIA",39:"SORT",40:"DATA.SERIES",41:"TABLE",42:"FORMAT.NUMBER",43:"ALIGNMENT",44:"STYLE",45:"BORDER",46:"CELL.PROTECTION",47:"COLUMN.WIDTH",48:"UNDO",49:"CUT",50:"COPY",51:"PASTE",52:"CLEAR",53:"PASTE.SPECIAL",54:"EDIT.DELETE",55:"INSERT",56:"FILL.RIGHT",57:"FILL.DOWN",61:"DEFINE.NAME",62:"CREATE.NAMES",63:"FORMULA.GOTO",64:"FORMULA.FIND",65:"SELECT.LAST.CELL",66:"SHOW.ACTIVE.CELL",67:"GALLERY.AREA",68:"GALLERY.BAR",69:"GALLERY.COLUMN",70:"GALLERY.LINE",71:"GALLERY.PIE",72:"GALLERY.SCATTER",73:"COMBINATION",74:"PREFERRED",75:"ADD.OVERLAY",76:"GRIDLINES",77:"SET.PREFERRED",78:"AXES",79:"LEGEND",80:"ATTACH.TEXT",81:"ADD.ARROW",82:"SELECT.CHART",83:"SELECT.PLOT.AREA",84:"PATTERNS",85:"MAIN.CHART",86:"OVERLAY",87:"SCALE",88:"FORMAT.LEGEND",89:"FORMAT.TEXT",90:"EDIT.REPEAT",91:"PARSE",92:"JUSTIFY",93:"HIDE",94:"UNHIDE",95:"WORKSPACE",96:"FORMULA",97:"FORMULA.FILL",98:"FORMULA.ARRAY",99:"DATA.FIND.NEXT",100:"DATA.FIND.PREV",101:"FORMULA.FIND.NEXT",102:"FORMULA.FIND.PREV",103:"ACTIVATE",104:"ACTIVATE.NEXT",105:"ACTIVATE.PREV",106:"UNLOCKED.NEXT",107:"UNLOCKED.PREV",108:"COPY.PICTURE",109:"SELECT",110:"DELETE.NAME",111:"DELETE.FORMAT",112:"VLINE",113:"HLINE",114:"VPAGE",115:"HPAGE",116:"VSCROLL",117:"HSCROLL",118:"ALERT",119:"NEW",120:"CANCEL.COPY",121:"SHOW.CLIPBOARD",122:"MESSAGE",124:"PASTE.LINK",125:"APP.ACTIVATE",126:"DELETE.ARROW",127:"ROW.HEIGHT",128:"FORMAT.MOVE",129:"FORMAT.SIZE",130:"FORMULA.REPLACE",131:"SEND.KEYS",132:"SELECT.SPECIAL",133:"APPLY.NAMES",134:"REPLACE.FONT",135:"FREEZE.PANES",136:"SHOW.INFO",137:"SPLIT",138:"ON.WINDOW",139:"ON.DATA",140:"DISABLE.INPUT",142:"OUTLINE",143:"LIST.NAMES",144:"FILE.CLOSE",145:"SAVE.WORKBOOK",146:"DATA.FORM",147:"COPY.CHART",148:"ON.TIME",149:"WAIT",150:"FORMAT.FONT",151:"FILL.UP",152:"FILL.LEFT",153:"DELETE.OVERLAY",155:"SHORT.MENUS",159:"SET.UPDATE.STATUS",161:"COLOR.PALETTE",162:"DELETE.STYLE",163:"WINDOW.RESTORE",164:"WINDOW.MAXIMIZE",166:"CHANGE.LINK",167:"CALCULATE.DOCUMENT",168:"ON.KEY",169:"APP.RESTORE",170:"APP.MOVE",171:"APP.SIZE",172:"APP.MINIMIZE",173:"APP.MAXIMIZE",174:"BRING.TO.FRONT",175:"SEND.TO.BACK",185:"MAIN.CHART.TYPE",186:"OVERLAY.CHART.TYPE",187:"SELECT.END",188:"OPEN.MAIL",189:"SEND.MAIL",190:"STANDARD.FONT",191:"CONSOLIDATE",192:"SORT.SPECIAL",193:"GALLERY.3D.AREA",194:"GALLERY.3D.COLUMN",195:"GALLERY.3D.LINE",196:"GALLERY.3D.PIE",197:"VIEW.3D",198:"GOAL.SEEK",199:"WORKGROUP",200:"FILL.GROUP",201:"UPDATE.LINK",202:"PROMOTE",203:"DEMOTE",204:"SHOW.DETAIL",206:"UNGROUP",207:"OBJECT.PROPERTIES",208:"SAVE.NEW.OBJECT",209:"SHARE",210:"SHARE.NAME",211:"DUPLICATE",212:"APPLY.STYLE",213:"ASSIGN.TO.OBJECT",214:"OBJECT.PROTECTION",215:"HIDE.OBJECT",216:"SET.EXTRACT",217:"CREATE.PUBLISHER",218:"SUBSCRIBE.TO",219:"ATTRIBUTES",220:"SHOW.TOOLBAR",222:"PRINT.PREVIEW",223:"EDIT.COLOR",224:"SHOW.LEVELS",225:"FORMAT.MAIN",226:"FORMAT.OVERLAY",227:"ON.RECALC",228:"EDIT.SERIES",229:"DEFINE.STYLE",240:"LINE.PRINT",243:"ENTER.DATA",249:"GALLERY.RADAR",250:"MERGE.STYLES",251:"EDITION.OPTIONS",252:"PASTE.PICTURE",253:"PASTE.PICTURE.LINK",254:"SPELLING",256:"ZOOM",259:"INSERT.OBJECT",260:"WINDOW.MINIMIZE",265:"SOUND.NOTE",266:"SOUND.PLAY",267:"FORMAT.SHAPE",268:"EXTEND.POLYGON",269:"FORMAT.AUTO",272:"GALLERY.3D.BAR",273:"GALLERY.3D.SURFACE",274:"FILL.AUTO",276:"CUSTOMIZE.TOOLBAR",277:"ADD.TOOL",278:"EDIT.OBJECT",279:"ON.DOUBLECLICK",280:"ON.ENTRY",281:"WORKBOOK.ADD",282:"WORKBOOK.MOVE",283:"WORKBOOK.COPY",284:"WORKBOOK.OPTIONS",285:"SAVE.WORKSPACE",288:"CHART.WIZARD",289:"DELETE.TOOL",290:"MOVE.TOOL",291:"WORKBOOK.SELECT",292:"WORKBOOK.ACTIVATE",293:"ASSIGN.TO.TOOL",295:"COPY.TOOL",296:"RESET.TOOL",297:"CONSTRAIN.NUMERIC",298:"PASTE.TOOL",302:"WORKBOOK.NEW",305:"SCENARIO.CELLS",306:"SCENARIO.DELETE",307:"SCENARIO.ADD",308:"SCENARIO.EDIT",309:"SCENARIO.SHOW",310:"SCENARIO.SHOW.NEXT",311:"SCENARIO.SUMMARY",312:"PIVOT.TABLE.WIZARD",313:"PIVOT.FIELD.PROPERTIES",314:"PIVOT.FIELD",315:"PIVOT.ITEM",316:"PIVOT.ADD.FIELDS",318:"OPTIONS.CALCULATION",319:"OPTIONS.EDIT",320:"OPTIONS.VIEW",321:"ADDIN.MANAGER",322:"MENU.EDITOR",323:"ATTACH.TOOLBARS",324:"VBAActivate",325:"OPTIONS.CHART",328:"VBA.INSERT.FILE",330:"VBA.PROCEDURE.DEFINITION",336:"ROUTING.SLIP",338:"ROUTE.DOCUMENT",339:"MAIL.LOGON",342:"INSERT.PICTURE",343:"EDIT.TOOL",344:"GALLERY.DOUGHNUT",350:"CHART.TREND",352:"PIVOT.ITEM.PROPERTIES",354:"WORKBOOK.INSERT",355:"OPTIONS.TRANSITION",356:"OPTIONS.GENERAL",370:"FILTER.ADVANCED",373:"MAIL.ADD.MAILER",374:"MAIL.DELETE.MAILER",375:"MAIL.REPLY",376:"MAIL.REPLY.ALL",377:"MAIL.FORWARD",378:"MAIL.NEXT.LETTER",379:"DATA.LABEL",380:"INSERT.TITLE",381:"FONT.PROPERTIES",382:"MACRO.OPTIONS",383:"WORKBOOK.HIDE",384:"WORKBOOK.UNHIDE",385:"WORKBOOK.DELETE",386:"WORKBOOK.NAME",388:"GALLERY.CUSTOM",390:"ADD.CHART.AUTOFORMAT",391:"DELETE.CHART.AUTOFORMAT",392:"CHART.ADD.DATA",393:"AUTO.OUTLINE",394:"TAB.ORDER",395:"SHOW.DIALOG",396:"SELECT.ALL",397:"UNGROUP.SHEETS",398:"SUBTOTAL.CREATE",399:"SUBTOTAL.REMOVE",400:"RENAME.OBJECT",412:"WORKBOOK.SCROLL",413:"WORKBOOK.NEXT",414:"WORKBOOK.PREV",415:"WORKBOOK.TAB.SPLIT",416:"FULL.SCREEN",417:"WORKBOOK.PROTECT",420:"SCROLLBAR.PROPERTIES",421:"PIVOT.SHOW.PAGES",422:"TEXT.TO.COLUMNS",423:"FORMAT.CHARTTYPE",424:"LINK.FORMAT",425:"TRACER.DISPLAY",430:"TRACER.NAVIGATE",431:"TRACER.CLEAR",432:"TRACER.ERROR",433:"PIVOT.FIELD.GROUP",434:"PIVOT.FIELD.UNGROUP",435:"CHECKBOX.PROPERTIES",436:"LABEL.PROPERTIES",437:"LISTBOX.PROPERTIES",438:"EDITBOX.PROPERTIES",439:"PIVOT.REFRESH",440:"LINK.COMBO",441:"OPEN.TEXT",442:"HIDE.DIALOG",443:"SET.DIALOG.FOCUS",444:"ENABLE.OBJECT",445:"PUSHBUTTON.PROPERTIES",446:"SET.DIALOG.DEFAULT",447:"FILTER",448:"FILTER.SHOW.ALL",449:"CLEAR.OUTLINE",450:"FUNCTION.WIZARD",451:"ADD.LIST.ITEM",452:"SET.LIST.ITEM",453:"REMOVE.LIST.ITEM",454:"SELECT.LIST.ITEM",455:"SET.CONTROL.VALUE",456:"SAVE.COPY.AS",458:"OPTIONS.LISTS.ADD",459:"OPTIONS.LISTS.DELETE",460:"SERIES.AXES",461:"SERIES.X",462:"SERIES.Y",463:"ERRORBAR.X",464:"ERRORBAR.Y",465:"FORMAT.CHART",466:"SERIES.ORDER",467:"MAIL.LOGOFF",468:"CLEAR.ROUTING.SLIP",469:"APP.ACTIVATE.MICROSOFT",470:"MAIL.EDIT.MAILER",471:"ON.SHEET",472:"STANDARD.WIDTH",473:"SCENARIO.MERGE",474:"SUMMARY.INFO",475:"FIND.FILE",476:"ACTIVE.CELL.FONT",477:"ENABLE.TIPWIZARD",478:"VBA.MAKE.ADDIN",480:"INSERTDATATABLE",481:"WORKGROUP.OPTIONS",482:"MAIL.SEND.MAILER",485:"AUTOCORRECT",489:"POST.DOCUMENT",491:"PICKLIST",493:"VIEW.SHOW",494:"VIEW.DEFINE",495:"VIEW.DELETE",509:"SHEET.BACKGROUND",510:"INSERT.MAP.OBJECT",511:"OPTIONS.MENONO",517:"MSOCHECKS",518:"NORMAL",519:"LAYOUT",520:"RM.PRINT.AREA",521:"CLEAR.PRINT.AREA",522:"ADD.PRINT.AREA",523:"MOVE.BRK",545:"HIDECURR.NOTE",546:"HIDEALL.NOTES",547:"DELETE.NOTE",548:"TRAVERSE.NOTES",549:"ACTIVATE.NOTES",620:"PROTECT.REVISIONS",621:"UNPROTECT.REVISIONS",647:"OPTIONS.ME",653:"WEB.PUBLISH",667:"NEWWEBQUERY",673:"PIVOT.TABLE.CHART",753:"OPTIONS.SAVE",755:"OPTIONS.SPELL",808:"HIDEALL.INKANNOTS"};
+var Ftab={0:"COUNT",1:"IF",2:"ISNA",3:"ISERROR",4:"SUM",5:"AVERAGE",6:"MIN",7:"MAX",8:"ROW",9:"COLUMN",10:"NA",11:"NPV",12:"STDEV",13:"DOLLAR",14:"FIXED",15:"SIN",16:"COS",17:"TAN",18:"ATAN",19:"PI",20:"SQRT",21:"EXP",22:"LN",23:"LOG10",24:"ABS",25:"INT",26:"SIGN",27:"ROUND",28:"LOOKUP",29:"INDEX",30:"REPT",31:"MID",32:"LEN",33:"VALUE",34:"TRUE",35:"FALSE",36:"AND",37:"OR",38:"NOT",39:"MOD",40:"DCOUNT",41:"DSUM",42:"DAVERAGE",43:"DMIN",44:"DMAX",45:"DSTDEV",46:"VAR",47:"DVAR",48:"TEXT",49:"LINEST",50:"TREND",51:"LOGEST",52:"GROWTH",53:"GOTO",54:"HALT",55:"RETURN",56:"PV",57:"FV",58:"NPER",59:"PMT",60:"RATE",61:"MIRR",62:"IRR",63:"RAND",64:"MATCH",65:"DATE",66:"TIME",67:"DAY",68:"MONTH",69:"YEAR",70:"WEEKDAY",71:"HOUR",72:"MINUTE",73:"SECOND",74:"NOW",75:"AREAS",76:"ROWS",77:"COLUMNS",78:"OFFSET",79:"ABSREF",80:"RELREF",81:"ARGUMENT",82:"SEARCH",83:"TRANSPOSE",84:"ERROR",85:"STEP",86:"TYPE",87:"ECHO",88:"SET.NAME",89:"CALLER",90:"DEREF",91:"WINDOWS",92:"SERIES",93:"DOCUMENTS",94:"ACTIVE.CELL",95:"SELECTION",96:"RESULT",97:"ATAN2",98:"ASIN",99:"ACOS",100:"CHOOSE",101:"HLOOKUP",102:"VLOOKUP",103:"LINKS",104:"INPUT",105:"ISREF",106:"GET.FORMULA",107:"GET.NAME",108:"SET.VALUE",109:"LOG",110:"EXEC",111:"CHAR",112:"LOWER",113:"UPPER",114:"PROPER",115:"LEFT",116:"RIGHT",117:"EXACT",118:"TRIM",119:"REPLACE",120:"SUBSTITUTE",121:"CODE",122:"NAMES",123:"DIRECTORY",124:"FIND",125:"CELL",126:"ISERR",127:"ISTEXT",128:"ISNUMBER",129:"ISBLANK",130:"T",131:"N",132:"FOPEN",133:"FCLOSE",134:"FSIZE",135:"FREADLN",136:"FREAD",137:"FWRITELN",138:"FWRITE",139:"FPOS",140:"DATEVALUE",141:"TIMEVALUE",142:"SLN",143:"SYD",144:"DDB",145:"GET.DEF",146:"REFTEXT",147:"TEXTREF",148:"INDIRECT",149:"REGISTER",150:"CALL",151:"ADD.BAR",152:"ADD.MENU",153:"ADD.COMMAND",154:"ENABLE.COMMAND",155:"CHECK.COMMAND",156:"RENAME.COMMAND",157:"SHOW.BAR",158:"DELETE.MENU",159:"DELETE.COMMAND",160:"GET.CHART.ITEM",161:"DIALOG.BOX",162:"CLEAN",163:"MDETERM",164:"MINVERSE",165:"MMULT",166:"FILES",167:"IPMT",168:"PPMT",169:"COUNTA",170:"CANCEL.KEY",171:"FOR",172:"WHILE",173:"BREAK",174:"NEXT",175:"INITIATE",176:"REQUEST",177:"POKE",178:"EXECUTE",179:"TERMINATE",180:"RESTART",181:"HELP",182:"GET.BAR",183:"PRODUCT",184:"FACT",185:"GET.CELL",186:"GET.WORKSPACE",187:"GET.WINDOW",188:"GET.DOCUMENT",189:"DPRODUCT",190:"ISNONTEXT",191:"GET.NOTE",192:"NOTE",193:"STDEVP",194:"VARP",195:"DSTDEVP",196:"DVARP",197:"TRUNC",198:"ISLOGICAL",199:"DCOUNTA",200:"DELETE.BAR",201:"UNREGISTER",204:"USDOLLAR",205:"FINDB",206:"SEARCHB",207:"REPLACEB",208:"LEFTB",209:"RIGHTB",210:"MIDB",211:"LENB",212:"ROUNDUP",213:"ROUNDDOWN",214:"ASC",215:"DBCS",216:"RANK",219:"ADDRESS",220:"DAYS360",221:"TODAY",222:"VDB",223:"ELSE",224:"ELSE.IF",225:"END.IF",226:"FOR.CELL",227:"MEDIAN",228:"SUMPRODUCT",229:"SINH",230:"COSH",231:"TANH",232:"ASINH",233:"ACOSH",234:"ATANH",235:"DGET",236:"CREATE.OBJECT",237:"VOLATILE",238:"LAST.ERROR",239:"CUSTOM.UNDO",240:"CUSTOM.REPEAT",241:"FORMULA.CONVERT",242:"GET.LINK.INFO",243:"TEXT.BOX",244:"INFO",245:"GROUP",246:"GET.OBJECT",247:"DB",248:"PAUSE",251:"RESUME",252:"FREQUENCY",253:"ADD.TOOLBAR",254:"DELETE.TOOLBAR",255:"User",256:"RESET.TOOLBAR",257:"EVALUATE",258:"GET.TOOLBAR",259:"GET.TOOL",260:"SPELLING.CHECK",261:"ERROR.TYPE",262:"APP.TITLE",263:"WINDOW.TITLE",264:"SAVE.TOOLBAR",265:"ENABLE.TOOL",266:"PRESS.TOOL",267:"REGISTER.ID",268:"GET.WORKBOOK",269:"AVEDEV",270:"BETADIST",271:"GAMMALN",272:"BETAINV",273:"BINOMDIST",274:"CHIDIST",275:"CHIINV",276:"COMBIN",277:"CONFIDENCE",278:"CRITBINOM",279:"EVEN",280:"EXPONDIST",281:"FDIST",282:"FINV",283:"FISHER",284:"FISHERINV",285:"FLOOR",286:"GAMMADIST",287:"GAMMAINV",288:"CEILING",289:"HYPGEOMDIST",290:"LOGNORMDIST",291:"LOGINV",292:"NEGBINOMDIST",293:"NORMDIST",294:"NORMSDIST",295:"NORMINV",296:"NORMSINV",297:"STANDARDIZE",298:"ODD",299:"PERMUT",300:"POISSON",301:"TDIST",302:"WEIBULL",303:"SUMXMY2",304:"SUMX2MY2",305:"SUMX2PY2",306:"CHITEST",307:"CORREL",308:"COVAR",309:"FORECAST",310:"FTEST",311:"INTERCEPT",312:"PEARSON",313:"RSQ",314:"STEYX",315:"SLOPE",316:"TTEST",317:"PROB",318:"DEVSQ",319:"GEOMEAN",320:"HARMEAN",321:"SUMSQ",322:"KURT",323:"SKEW",324:"ZTEST",325:"LARGE",326:"SMALL",327:"QUARTILE",328:"PERCENTILE",329:"PERCENTRANK",330:"MODE",331:"TRIMMEAN",332:"TINV",334:"MOVIE.COMMAND",335:"GET.MOVIE",336:"CONCATENATE",337:"POWER",338:"PIVOT.ADD.DATA",339:"GET.PIVOT.TABLE",340:"GET.PIVOT.FIELD",341:"GET.PIVOT.ITEM",342:"RADIANS",343:"DEGREES",344:"SUBTOTAL",345:"SUMIF",346:"COUNTIF",347:"COUNTBLANK",348:"SCENARIO.GET",349:"OPTIONS.LISTS.GET",350:"ISPMT",351:"DATEDIF",352:"DATESTRING",353:"NUMBERSTRING",354:"ROMAN",355:"OPEN.DIALOG",356:"SAVE.DIALOG",357:"VIEW.GET",358:"GETPIVOTDATA",359:"HYPERLINK",360:"PHONETIC",361:"AVERAGEA",362:"MAXA",363:"MINA",364:"STDEVPA",365:"VARPA",366:"STDEVA",367:"VARA",368:"BAHTTEXT",369:"THAIDAYOFWEEK",370:"THAIDIGIT",371:"THAIMONTHOFYEAR",372:"THAINUMSOUND",373:"THAINUMSTRING",374:"THAISTRINGLENGTH",375:"ISTHAIDIGIT",376:"ROUNDBAHTDOWN",377:"ROUNDBAHTUP",378:"THAIYEAR",379:"RTD"};var FtabArgc={2:1,3:1,15:1,16:1,17:1,18:1,20:1,21:1,22:1,23:1,24:1,25:1,26:1,27:2,30:2,31:3,32:1,33:1,38:1,39:2,40:3,41:3,42:3,43:3,44:3,45:3,47:3,48:2,53:1,61:3,65:3,66:3,67:1,68:1,69:1,71:1,72:1,73:1,75:1,76:1,77:1,79:2,80:2,83:1,86:1,90:1,97:2,98:1,99:1,105:1,111:1,112:1,113:1,114:1,117:2,118:1,119:4,121:1,126:1,127:1,128:1,129:1,130:1,131:1,133:1,134:1,135:1,136:2,137:2,138:2,140:1,141:1,142:3,143:4,162:1,163:1,164:1,165:2,172:1,175:2,176:2,177:3,178:2,179:1,184:1,189:3,190:1,195:3,196:3,198:1,199:3,201:1,207:4,210:3,211:1,212:2,213:2,214:1,215:1,229:1,230:1,231:1,232:1,233:1,234:1,235:3,244:1,252:2,257:1,261:1,271:1,273:4,274:2,275:2,276:2,277:3,278:3,279:1,280:3,281:3,282:3,283:1,284:1,285:2,286:4,287:3,288:2,289:4,290:3,291:3,292:3,293:4,294:1,295:3,296:1,297:3,298:1,299:2,300:3,301:3,302:4,303:2,304:2,305:2,306:2,307:2,308:2,309:3,310:2,311:2,312:2,313:2,314:2,315:2,316:4,325:2,326:2,327:2,328:2,331:2,332:2,337:2,342:1,343:1,346:2,347:1,350:4,351:3,352:1,353:2,360:1,368:1,369:1,370:1,371:1,372:1,373:1,374:1,375:1,376:1,377:1,378:1,65535:0};var XLSXFutureFunctions={"_xlfn.ACOT":"ACOT","_xlfn.ACOTH":"ACOTH","_xlfn.AGGREGATE":"AGGREGATE","_xlfn.ARABIC":"ARABIC","_xlfn.AVERAGEIF":"AVERAGEIF","_xlfn.AVERAGEIFS":"AVERAGEIFS","_xlfn.BASE":"BASE","_xlfn.BETA.DIST":"BETA.DIST","_xlfn.BETA.INV":"BETA.INV","_xlfn.BINOM.DIST":"BINOM.DIST","_xlfn.BINOM.DIST.RANGE":"BINOM.DIST.RANGE","_xlfn.BINOM.INV":"BINOM.INV","_xlfn.BITAND":"BITAND","_xlfn.BITLSHIFT":"BITLSHIFT","_xlfn.BITOR":"BITOR","_xlfn.BITRSHIFT":"BITRSHIFT","_xlfn.BITXOR":"BITXOR","_xlfn.CEILING.MATH":"CEILING.MATH","_xlfn.CEILING.PRECISE":"CEILING.PRECISE","_xlfn.CHISQ.DIST":"CHISQ.DIST","_xlfn.CHISQ.DIST.RT":"CHISQ.DIST.RT","_xlfn.CHISQ.INV":"CHISQ.INV","_xlfn.CHISQ.INV.RT":"CHISQ.INV.RT","_xlfn.CHISQ.TEST":"CHISQ.TEST","_xlfn.COMBINA":"COMBINA","_xlfn.CONFIDENCE.NORM":"CONFIDENCE.NORM","_xlfn.CONFIDENCE.T":"CONFIDENCE.T","_xlfn.COT":"COT","_xlfn.COTH":"COTH","_xlfn.COUNTIFS":"COUNTIFS","_xlfn.COVARIANCE.P":"COVARIANCE.P","_xlfn.COVARIANCE.S":"COVARIANCE.S","_xlfn.CSC":"CSC","_xlfn.CSCH":"CSCH","_xlfn.DAYS":"DAYS","_xlfn.DECIMAL":"DECIMAL","_xlfn.ECMA.CEILING":"ECMA.CEILING","_xlfn.ERF.PRECISE":"ERF.PRECISE","_xlfn.ERFC.PRECISE":"ERFC.PRECISE","_xlfn.EXPON.DIST":"EXPON.DIST","_xlfn.F.DIST":"F.DIST","_xlfn.F.DIST.RT":"F.DIST.RT","_xlfn.F.INV":"F.INV","_xlfn.F.INV.RT":"F.INV.RT","_xlfn.F.TEST":"F.TEST","_xlfn.FILTERXML":"FILTERXML","_xlfn.FLOOR.MATH":"FLOOR.MATH","_xlfn.FLOOR.PRECISE":"FLOOR.PRECISE","_xlfn.FORMULATEXT":"FORMULATEXT","_xlfn.GAMMA":"GAMMA","_xlfn.GAMMA.DIST":"GAMMA.DIST","_xlfn.GAMMA.INV":"GAMMA.INV","_xlfn.GAMMALN.PRECISE":"GAMMALN.PRECISE","_xlfn.GAUSS":"GAUSS","_xlfn.HYPGEOM.DIST":"HYPGEOM.DIST","_xlfn.IFNA":"IFNA","_xlfn.IFERROR":"IFERROR","_xlfn.IMCOSH":"IMCOSH","_xlfn.IMCOT":"IMCOT","_xlfn.IMCSC":"IMCSC","_xlfn.IMCSCH":"IMCSCH","_xlfn.IMSEC":"IMSEC","_xlfn.IMSECH":"IMSECH","_xlfn.IMSINH":"IMSINH","_xlfn.IMTAN":"IMTAN","_xlfn.ISFORMULA":"ISFORMULA","_xlfn.ISO.CEILING":"ISO.CEILING","_xlfn.ISOWEEKNUM":"ISOWEEKNUM","_xlfn.LOGNORM.DIST":"LOGNORM.DIST","_xlfn.LOGNORM.INV":"LOGNORM.INV","_xlfn.MODE.MULT":"MODE.MULT","_xlfn.MODE.SNGL":"MODE.SNGL","_xlfn.MUNIT":"MUNIT","_xlfn.NEGBINOM.DIST":"NEGBINOM.DIST","_xlfn.NETWORKDAYS.INTL":"NETWORKDAYS.INTL","_xlfn.NIGBINOM":"NIGBINOM","_xlfn.NORM.DIST":"NORM.DIST","_xlfn.NORM.INV":"NORM.INV","_xlfn.NORM.S.DIST":"NORM.S.DIST","_xlfn.NORM.S.INV":"NORM.S.INV","_xlfn.NUMBERVALUE":"NUMBERVALUE","_xlfn.PDURATION":"PDURATION","_xlfn.PERCENTILE.EXC":"PERCENTILE.EXC","_xlfn.PERCENTILE.INC":"PERCENTILE.INC","_xlfn.PERCENTRANK.EXC":"PERCENTRANK.EXC","_xlfn.PERCENTRANK.INC":"PERCENTRANK.INC","_xlfn.PERMUTATIONA":"PERMUTATIONA","_xlfn.PHI":"PHI","_xlfn.POISSON.DIST":"POISSON.DIST","_xlfn.QUARTILE.EXC":"QUARTILE.EXC","_xlfn.QUARTILE.INC":"QUARTILE.INC","_xlfn.QUERYSTRING":"QUERYSTRING","_xlfn.RANK.AVG":"RANK.AVG","_xlfn.RANK.EQ":"RANK.EQ","_xlfn.RRI":"RRI","_xlfn.SEC":"SEC","_xlfn.SECH":"SECH","_xlfn.SHEET":"SHEET","_xlfn.SHEETS":"SHEETS","_xlfn.SKEW.P":"SKEW.P","_xlfn.STDEV.P":"STDEV.P","_xlfn.STDEV.S":"STDEV.S","_xlfn.SUMIFS":"SUMIFS","_xlfn.T.DIST":"T.DIST","_xlfn.T.DIST.2T":"T.DIST.2T","_xlfn.T.DIST.RT":"T.DIST.RT","_xlfn.T.INV":"T.INV","_xlfn.T.INV.2T":"T.INV.2T","_xlfn.T.TEST":"T.TEST","_xlfn.UNICHAR":"UNICHAR","_xlfn.UNICODE":"UNICODE","_xlfn.VAR.P":"VAR.P","_xlfn.VAR.S":"VAR.S","_xlfn.WEBSERVICE":"WEBSERVICE","_xlfn.WEIBULL.DIST":"WEIBULL.DIST","_xlfn.WORKDAY.INTL":"WORKDAY.INTL","_xlfn.XOR":"XOR","_xlfn.Z.TEST":"Z.TEST"};var RecordEnum={6:{n:"Formula",f:parse_Formula},10:{n:"EOF",f:parse_EOF},12:{n:"CalcCount",f:parse_CalcCount},13:{n:"CalcMode",f:parse_CalcMode},14:{n:"CalcPrecision",f:parse_CalcPrecision},15:{n:"CalcRefMode",f:parse_CalcRefMode},16:{n:"CalcDelta",f:parse_CalcDelta},17:{n:"CalcIter",f:parse_CalcIter},18:{n:"Protect",f:parse_Protect},19:{n:"Password",f:parse_Password},20:{n:"Header",f:parse_Header},21:{n:"Footer",f:parse_Footer},23:{n:"ExternSheet",f:parse_ExternSheet},24:{n:"Lbl",f:parse_Lbl},25:{n:"WinProtect",f:parse_WinProtect},26:{n:"VerticalPageBreaks",f:parse_VerticalPageBreaks},27:{n:"HorizontalPageBreaks",f:parse_HorizontalPageBreaks},28:{n:"Note",f:parse_Note},29:{n:"Selection",f:parse_Selection},34:{n:"Date1904",f:parse_Date1904},35:{n:"ExternName",f:parse_ExternName},38:{n:"LeftMargin",f:parse_LeftMargin},39:{n:"RightMargin",f:parse_RightMargin},40:{n:"TopMargin",f:parse_TopMargin},41:{n:"BottomMargin",f:parse_BottomMargin},42:{n:"PrintRowCol",f:parse_PrintRowCol},43:{n:"PrintGrid",f:parse_PrintGrid},47:{n:"FilePass",f:parse_FilePass},49:{n:"Font",f:parse_Font},51:{n:"PrintSize",f:parse_PrintSize},60:{n:"Continue",f:parse_Continue},61:{n:"Window1",f:parse_Window1},64:{n:"Backup",f:parse_Backup},65:{n:"Pane",f:parse_Pane},66:{n:"CodePage",f:parse_CodePage},77:{n:"Pls",f:parse_Pls},80:{n:"DCon",f:parse_DCon},81:{n:"DConRef",f:parse_DConRef},82:{n:"DConName",f:parse_DConName},85:{n:"DefColWidth",f:parse_DefColWidth},89:{n:"XCT",f:parse_XCT},90:{n:"CRN",f:parse_CRN},91:{n:"FileSharing",f:parse_FileSharing},92:{n:"WriteAccess",f:parse_WriteAccess},93:{n:"Obj",f:parse_Obj},94:{n:"Uncalced",f:parse_Uncalced},95:{n:"CalcSaveRecalc",f:parse_CalcSaveRecalc},96:{n:"Template",f:parse_Template},97:{n:"Intl",f:parse_Intl},99:{n:"ObjProtect",f:parse_ObjProtect},125:{n:"ColInfo",f:parse_ColInfo},128:{n:"Guts",f:parse_Guts},129:{n:"WsBool",f:parse_WsBool},130:{n:"GridSet",f:parse_GridSet},131:{n:"HCenter",f:parse_HCenter},132:{n:"VCenter",f:parse_VCenter},133:{n:"BoundSheet8",f:parse_BoundSheet8},134:{n:"WriteProtect",f:parse_WriteProtect},140:{n:"Country",f:parse_Country},141:{n:"HideObj",f:parse_HideObj},144:{n:"Sort",f:parse_Sort},146:{n:"Palette",f:parse_Palette},151:{n:"Sync",f:parse_Sync},152:{n:"LPr",f:parse_LPr},153:{n:"DxGCol",f:parse_DxGCol},154:{n:"FnGroupName",f:parse_FnGroupName},155:{n:"FilterMode",f:parse_FilterMode},156:{n:"BuiltInFnGroupCount",f:parse_BuiltInFnGroupCount},157:{n:"AutoFilterInfo",f:parse_AutoFilterInfo},158:{n:"AutoFilter",f:parse_AutoFilter},160:{n:"Scl",f:parse_Scl},161:{n:"Setup",f:parse_Setup},174:{n:"ScenMan",f:parse_ScenMan},175:{n:"SCENARIO",f:parse_SCENARIO},176:{n:"SxView",f:parse_SxView},177:{n:"Sxvd",f:parse_Sxvd},178:{n:"SXVI",f:parse_SXVI},180:{n:"SxIvd",f:parse_SxIvd},181:{n:"SXLI",f:parse_SXLI},182:{n:"SXPI",f:parse_SXPI},184:{n:"DocRoute",f:parse_DocRoute},185:{n:"RecipName",f:parse_RecipName},189:{n:"MulRk",f:parse_MulRk},190:{n:"MulBlank",f:parse_MulBlank},193:{n:"Mms",f:parse_Mms},197:{n:"SXDI",f:parse_SXDI},198:{n:"SXDB",f:parse_SXDB},199:{n:"SXFDB",f:parse_SXFDB},200:{n:"SXDBB",f:parse_SXDBB},201:{n:"SXNum",f:parse_SXNum},202:{n:"SxBool",f:parse_SxBool},203:{n:"SxErr",f:parse_SxErr},204:{n:"SXInt",f:parse_SXInt},205:{n:"SXString",f:parse_SXString},206:{n:"SXDtr",f:parse_SXDtr},207:{n:"SxNil",f:parse_SxNil},208:{n:"SXTbl",f:parse_SXTbl},209:{n:"SXTBRGIITM",f:parse_SXTBRGIITM},210:{n:"SxTbpg",f:parse_SxTbpg},211:{n:"ObProj",f:parse_ObProj},213:{n:"SXStreamID",f:parse_SXStreamID},215:{n:"DBCell",f:parse_DBCell},216:{n:"SXRng",f:parse_SXRng},217:{n:"SxIsxoper",f:parse_SxIsxoper},218:{n:"BookBool",f:parse_BookBool},220:{n:"DbOrParamQry",f:parse_DbOrParamQry},221:{n:"ScenarioProtect",f:parse_ScenarioProtect},222:{n:"OleObjectSize",f:parse_OleObjectSize},224:{n:"XF",f:parse_XF},225:{n:"InterfaceHdr",f:parse_InterfaceHdr},226:{n:"InterfaceEnd",f:parse_InterfaceEnd},227:{n:"SXVS",f:parse_SXVS},229:{n:"MergeCells",f:parse_MergeCells},233:{n:"BkHim",f:parse_BkHim},235:{n:"MsoDrawingGroup",f:parse_MsoDrawingGroup},236:{n:"MsoDrawing",f:parse_MsoDrawing},237:{n:"MsoDrawingSelection",f:parse_MsoDrawingSelection},239:{n:"PhoneticInfo",f:parse_PhoneticInfo},240:{n:"SxRule",f:parse_SxRule},241:{n:"SXEx",f:parse_SXEx},242:{n:"SxFilt",f:parse_SxFilt},244:{n:"SxDXF",f:parse_SxDXF},245:{n:"SxItm",f:parse_SxItm},246:{n:"SxName",f:parse_SxName},247:{n:"SxSelect",f:parse_SxSelect},248:{n:"SXPair",f:parse_SXPair},249:{n:"SxFmla",f:parse_SxFmla},251:{n:"SxFormat",f:parse_SxFormat},252:{n:"SST",f:parse_SST},253:{n:"LabelSst",f:parse_LabelSst},255:{n:"ExtSST",f:parse_ExtSST},256:{n:"SXVDEx",f:parse_SXVDEx},259:{n:"SXFormula",f:parse_SXFormula},290:{n:"SXDBEx",f:parse_SXDBEx},311:{n:"RRDInsDel",f:parse_RRDInsDel},312:{n:"RRDHead",f:parse_RRDHead},315:{n:"RRDChgCell",f:parse_RRDChgCell},317:{n:"RRTabId",f:parse_RRTabId},318:{n:"RRDRenSheet",f:parse_RRDRenSheet},319:{n:"RRSort",f:parse_RRSort},320:{n:"RRDMove",f:parse_RRDMove},330:{n:"RRFormat",f:parse_RRFormat},331:{n:"RRAutoFmt",f:parse_RRAutoFmt},333:{n:"RRInsertSh",f:parse_RRInsertSh},334:{n:"RRDMoveBegin",f:parse_RRDMoveBegin},335:{n:"RRDMoveEnd",f:parse_RRDMoveEnd},336:{n:"RRDInsDelBegin",f:parse_RRDInsDelBegin},337:{n:"RRDInsDelEnd",f:parse_RRDInsDelEnd},338:{n:"RRDConflict",f:parse_RRDConflict},339:{n:"RRDDefName",f:parse_RRDDefName},340:{n:"RRDRstEtxp",f:parse_RRDRstEtxp},351:{n:"LRng",f:parse_LRng},352:{n:"UsesELFs",f:parse_UsesELFs},353:{n:"DSF",f:parse_DSF},401:{n:"CUsr",f:parse_CUsr},402:{n:"CbUsr",f:parse_CbUsr},403:{n:"UsrInfo",f:parse_UsrInfo},404:{n:"UsrExcl",f:parse_UsrExcl},405:{n:"FileLock",f:parse_FileLock},406:{n:"RRDInfo",f:parse_RRDInfo},407:{n:"BCUsrs",f:parse_BCUsrs},408:{n:"UsrChk",f:parse_UsrChk},425:{n:"UserBView",f:parse_UserBView},426:{n:"UserSViewBegin",f:parse_UserSViewBegin},427:{n:"UserSViewEnd",f:parse_UserSViewEnd},428:{n:"RRDUserView",f:parse_RRDUserView},429:{n:"Qsi",f:parse_Qsi},430:{n:"SupBook",f:parse_SupBook},431:{n:"Prot4Rev",f:parse_Prot4Rev},432:{n:"CondFmt",f:parse_CondFmt},433:{n:"CF",f:parse_CF},434:{n:"DVal",f:parse_DVal},437:{n:"DConBin",f:parse_DConBin},438:{n:"TxO",f:parse_TxO},439:{n:"RefreshAll",f:parse_RefreshAll},440:{n:"HLink",f:parse_HLink},441:{n:"Lel",f:parse_Lel},442:{n:"CodeName",f:parse_CodeName},443:{n:"SXFDBType",f:parse_SXFDBType},444:{n:"Prot4RevPass",f:parse_Prot4RevPass},445:{n:"ObNoMacros",f:parse_ObNoMacros},446:{n:"Dv",f:parse_Dv},448:{n:"Excel9File",f:parse_Excel9File},449:{n:"RecalcId",f:parse_RecalcId,r:2},450:{n:"EntExU2",f:parse_EntExU2},512:{n:"Dimensions",f:parse_Dimensions},513:{n:"Blank",f:parse_Blank},515:{n:"Number",f:parse_Number},516:{n:"Label",f:parse_Label},517:{n:"BoolErr",f:parse_BoolErr},519:{n:"String",f:parse_String},520:{n:"Row",f:parse_Row},523:{n:"Index",f:parse_Index},545:{n:"Array",f:parse_Array},549:{n:"DefaultRowHeight",f:parse_DefaultRowHeight},566:{n:"Table",f:parse_Table},574:{n:"Window2",f:parse_Window2},638:{n:"RK",f:parse_RK},659:{n:"Style",f:parse_Style},1048:{n:"BigName",f:parse_BigName},1054:{n:"Format",f:parse_Format},1084:{n:"ContinueBigName",f:parse_ContinueBigName},1212:{n:"ShrFmla",f:parse_ShrFmla},2048:{n:"HLinkTooltip",f:parse_HLinkTooltip},2049:{n:"WebPub",f:parse_WebPub},2050:{n:"QsiSXTag",f:parse_QsiSXTag},2051:{n:"DBQueryExt",f:parse_DBQueryExt},2052:{n:"ExtString",f:parse_ExtString},2053:{n:"TxtQry",f:parse_TxtQry},2054:{n:"Qsir",f:parse_Qsir},2055:{n:"Qsif",f:parse_Qsif},2056:{n:"RRDTQSIF",f:parse_RRDTQSIF},2057:{n:"BOF",f:parse_BOF},2058:{n:"OleDbConn",f:parse_OleDbConn},2059:{n:"WOpt",f:parse_WOpt},2060:{n:"SXViewEx",f:parse_SXViewEx},2061:{n:"SXTH",f:parse_SXTH},2062:{n:"SXPIEx",f:parse_SXPIEx},2063:{n:"SXVDTEx",f:parse_SXVDTEx},2064:{n:"SXViewEx9",f:parse_SXViewEx9},2066:{n:"ContinueFrt",f:parse_ContinueFrt},2067:{n:"RealTimeData",f:parse_RealTimeData},2128:{n:"ChartFrtInfo",f:parse_ChartFrtInfo},2129:{n:"FrtWrapper",f:parse_FrtWrapper},2130:{n:"StartBlock",f:parse_StartBlock},2131:{n:"EndBlock",f:parse_EndBlock},2132:{n:"StartObject",f:parse_StartObject},2133:{n:"EndObject",f:parse_EndObject},2134:{n:"CatLab",f:parse_CatLab},2135:{n:"YMult",f:parse_YMult},2136:{n:"SXViewLink",f:parse_SXViewLink},2137:{n:"PivotChartBits",f:parse_PivotChartBits},2138:{n:"FrtFontList",f:parse_FrtFontList},2146:{n:"SheetExt",f:parse_SheetExt},2147:{n:"BookExt",f:parse_BookExt,r:12},2148:{n:"SXAddl",f:parse_SXAddl},2149:{n:"CrErr",f:parse_CrErr},2150:{n:"HFPicture",f:parse_HFPicture},2151:{n:"FeatHdr",f:parse_FeatHdr},2152:{n:"Feat",f:parse_Feat},2154:{n:"DataLabExt",f:parse_DataLabExt},2155:{n:"DataLabExtContents",f:parse_DataLabExtContents},2156:{n:"CellWatch",f:parse_CellWatch},2161:{n:"FeatHdr11",f:parse_FeatHdr11},2162:{n:"Feature11",f:parse_Feature11},2164:{n:"DropDownObjIds",f:parse_DropDownObjIds},2165:{n:"ContinueFrt11",f:parse_ContinueFrt11},2166:{n:"DConn",f:parse_DConn},2167:{n:"List12",f:parse_List12},2168:{n:"Feature12",f:parse_Feature12},2169:{n:"CondFmt12",f:parse_CondFmt12},2170:{n:"CF12",f:parse_CF12},2171:{n:"CFEx",f:parse_CFEx},2172:{n:"XFCRC",f:parse_XFCRC},2173:{n:"XFExt",f:parse_XFExt},2174:{n:"AutoFilter12",f:parse_AutoFilter12},2175:{n:"ContinueFrt12",f:parse_ContinueFrt12},2180:{n:"MDTInfo",f:parse_MDTInfo},2181:{n:"MDXStr",f:parse_MDXStr},2182:{n:"MDXTuple",f:parse_MDXTuple},2183:{n:"MDXSet",f:parse_MDXSet},2184:{n:"MDXProp",f:parse_MDXProp},2185:{n:"MDXKPI",f:parse_MDXKPI},2186:{n:"MDB",f:parse_MDB},2187:{n:"PLV",f:parse_PLV},2188:{n:"Compat12",f:parse_Compat12,r:12},2189:{n:"DXF",f:parse_DXF},2190:{n:"TableStyles",f:parse_TableStyles,r:12},2191:{n:"TableStyle",f:parse_TableStyle},2192:{n:"TableStyleElement",f:parse_TableStyleElement},2194:{n:"StyleExt",f:parse_StyleExt},2195:{n:"NamePublish",f:parse_NamePublish},2196:{n:"NameCmt",f:parse_NameCmt},2197:{n:"SortData",f:parse_SortData},2198:{n:"Theme",f:parse_Theme},2199:{n:"GUIDTypeLib",f:parse_GUIDTypeLib},2200:{n:"FnGrp12",f:parse_FnGrp12},2201:{n:"NameFnGrp12",f:parse_NameFnGrp12},2202:{n:"MTRSettings",f:parse_MTRSettings,r:12},2203:{n:"CompressPictures",f:parse_CompressPictures},2204:{n:"HeaderFooter",f:parse_HeaderFooter},2205:{n:"CrtLayout12",f:parse_CrtLayout12},2206:{n:"CrtMlFrt",f:parse_CrtMlFrt},2207:{n:"CrtMlFrtContinue",f:parse_CrtMlFrtContinue},2211:{n:"ForceFullCalculation",f:parse_ForceFullCalculation},2212:{n:"ShapePropsStream",f:parse_ShapePropsStream},2213:{n:"TextPropsStream",f:parse_TextPropsStream},2214:{n:"RichTextStream",f:parse_RichTextStream},2215:{n:"CrtLayout12A",f:parse_CrtLayout12A},4097:{n:"Units",f:parse_Units},4098:{n:"Chart",f:parse_Chart},4099:{n:"Series",f:parse_Series},4102:{n:"DataFormat",f:parse_DataFormat},4103:{n:"LineFormat",f:parse_LineFormat},4105:{n:"MarkerFormat",f:parse_MarkerFormat},4106:{n:"AreaFormat",f:parse_AreaFormat},4107:{n:"PieFormat",f:parse_PieFormat},4108:{n:"AttachedLabel",f:parse_AttachedLabel},4109:{n:"SeriesText",f:parse_SeriesText},4116:{n:"ChartFormat",f:parse_ChartFormat},4117:{n:"Legend",f:parse_Legend},4118:{n:"SeriesList",f:parse_SeriesList},4119:{n:"Bar",f:parse_Bar},4120:{n:"Line",f:parse_Line},4121:{n:"Pie",f:parse_Pie},4122:{n:"Area",f:parse_Area},4123:{n:"Scatter",f:parse_Scatter},4124:{n:"CrtLine",f:parse_CrtLine},4125:{n:"Axis",f:parse_Axis},4126:{n:"Tick",f:parse_Tick},4127:{n:"ValueRange",f:parse_ValueRange},4128:{n:"CatSerRange",f:parse_CatSerRange},4129:{n:"AxisLine",f:parse_AxisLine},4130:{n:"CrtLink",f:parse_CrtLink},4132:{n:"DefaultText",f:parse_DefaultText},4133:{n:"Text",f:parse_Text},4134:{n:"FontX",f:parse_FontX},4135:{n:"ObjectLink",f:parse_ObjectLink},4146:{n:"Frame",f:parse_Frame},4147:{n:"Begin",f:parse_Begin},4148:{n:"End",f:parse_End},4149:{n:"PlotArea",f:parse_PlotArea},4154:{n:"Chart3d",f:parse_Chart3d},4156:{n:"PicF",f:parse_PicF},4157:{n:"DropBar",f:parse_DropBar},4158:{n:"Radar",f:parse_Radar},4159:{n:"Surf",f:parse_Surf},4160:{n:"RadarArea",f:parse_RadarArea},4161:{n:"AxisParent",f:parse_AxisParent},4163:{n:"LegendException",f:parse_LegendException},4164:{n:"ShtProps",f:parse_ShtProps},4165:{n:"SerToCrt",f:parse_SerToCrt},4166:{n:"AxesUsed",f:parse_AxesUsed},4168:{n:"SBaseRef",f:parse_SBaseRef},4170:{n:"SerParent",f:parse_SerParent},4171:{n:"SerAuxTrend",f:parse_SerAuxTrend},4174:{n:"IFmtRecord",f:parse_IFmtRecord},4175:{n:"Pos",f:parse_Pos},4176:{n:"AlRuns",f:parse_AlRuns},4177:{n:"BRAI",f:parse_BRAI},4187:{n:"SerAuxErrBar",f:parse_SerAuxErrBar},4188:{n:"ClrtClient",f:parse_ClrtClient},4189:{n:"SerFmt",f:parse_SerFmt},4191:{n:"Chart3DBarShape",f:parse_Chart3DBarShape},4192:{n:"Fbi",f:parse_Fbi},4193:{n:"BopPop",f:parse_BopPop},4194:{n:"AxcExt",f:parse_AxcExt},4195:{n:"Dat",f:parse_Dat},4196:{n:"PlotGrowth",f:parse_PlotGrowth},4197:{n:"SIIndex",f:parse_SIIndex},4198:{n:"GelFrame",f:parse_GelFrame},4199:{n:"BopPopCustom",f:parse_BopPopCustom},4200:{n:"Fbi2",f:parse_Fbi2},22:{n:"ExternCount",f:parsenoop},126:{n:"RK",f:parsenoop},127:{n:"ImData",f:parsenoop},135:{n:"Addin",f:parsenoop},136:{n:"Edg",f:parsenoop},137:{n:"Pub",f:parsenoop},145:{n:"Sub",f:parsenoop},148:{n:"LHRecord",f:parsenoop},149:{n:"LHNGraph",f:parsenoop},150:{n:"Sound",f:parsenoop},169:{n:"CoordList",f:parsenoop},171:{n:"GCW",f:parsenoop},188:{n:"ShrFmla",f:parsenoop},194:{n:"AddMenu",f:parsenoop},195:{n:"DelMenu",f:parsenoop},214:{n:"RString",f:parsenoop},223:{n:"UDDesc",f:parsenoop},234:{n:"TabIdConf",f:parsenoop},354:{n:"XL5Modify",f:parsenoop},421:{n:"FileSharing2",f:parsenoop},536:{n:"Name",f:parsenoop},547:{n:"ExternName",f:parse_ExternName},561:{n:"Font",f:parsenoop},1030:{n:"Formula",f:parse_Formula},2157:{n:"FeatInfo",f:parsenoop},2163:{n:"FeatInfo11",f:parsenoop},2177:{n:"SXAddl12",f:parsenoop},2240:{n:"AutoWebPub",f:parsenoop},2241:{n:"ListObj",f:parsenoop},2242:{n:"ListField",f:parsenoop},2243:{n:"ListDV",f:parsenoop},2244:{n:"ListCondFmt",f:parsenoop},2245:{n:"ListCF",f:parsenoop},2246:{n:"FMQry",f:parsenoop},2247:{n:"FMSQry",f:parsenoop},2248:{n:"PLV",f:parsenoop},2249:{n:"LnExt",f:parsenoop},2250:{n:"MkrExt",f:parsenoop},2251:{n:"CrtCoopt",f:parsenoop},0:{}};var CountryEnum={1:"US",2:"CA",3:"",7:"RU",20:"EG",30:"GR",31:"NL",32:"BE",33:"FR",34:"ES",36:"HU",39:"IT",41:"CH",43:"AT",44:"GB",45:"DK",46:"SE",47:"NO",48:"PL",49:"DE",52:"MX",55:"BR",61:"AU",64:"NZ",66:"TH",81:"JP",82:"KR",84:"VN",86:"CN",90:"TR",105:"JS",213:"DZ",216:"MA",218:"LY",351:"PT",354:"IS",358:"FI",420:"CZ",886:"TW",961:"LB",962:"JO",963:"SY",964:"IQ",965:"KW",966:"SA",971:"AE",972:"IL",974:"QA",981:"IR",65535:"US"};function fix_opts_func(defaults){return function fix_opts(opts){for(var i=0;i!=defaults.length;++i){var d=defaults[i];if(typeof opts[d[0]]==="undefined")opts[d[0]]=d[1];if(d[2]==="n")opts[d[0]]=Number(opts[d[0]])}}}var fixopts=fix_opts_func([["cellNF",false],["cellFormula",true],["sheetRows",0,"n"],["bookSheets",false],["bookProps",false],["bookFiles",false],["password",""],["WTF",false]]);function parse_compobj(obj){var v={};var o=obj.content;var l=28,m;m=__lpstr(o,l);l+=4+__readUInt32LE(o,l);v.UserType=m;m=__readUInt32LE(o,l);l+=4;switch(m){case 0:break;case 4294967295:case 4294967294:l+=4;break;default:if(m>400)throw new Error("Unsupported Clipboard: "+m.toString(16));l+=m}m=__lpstr(o,l);l+=m.length===0?0:5+m.length;v.Reserved1=m;if((m=__readUInt32LE(o,l))!==1907550708)return v;throw"Unsupported Unicode Extension"}function parse_xlscfb(cfb,options){if(!options)options={};fixopts(options);reset_cp();var CompObj=cfb.find("!CompObj");var Summary=cfb.find("!SummaryInformation");var Workbook=cfb.find("/Workbook");if(!Workbook)Workbook=cfb.find("/Book");var CompObjP,SummaryP,WorkbookP;function slurp(R,blob,length,opts){var l=length;var bufs=[];var d=blob.slice(blob.l,blob.l+l);if(opts.enc&&opts.enc.insitu_decrypt)switch(R.n){case"BOF":case"FilePass":case"FileLock":case"InterfaceHdr":case"RRDInfo":case"RRDHead":case"UsrExcl":break;default:if(d.length===0)break;opts.enc.insitu_decrypt(d)}bufs.push(d);blob.l+=l;var next=RecordEnum[__readUInt16LE(blob,blob.l)];while(next!=null&&next.n==="Continue"){l=__readUInt16LE(blob,blob.l+2);bufs.push(blob.slice(blob.l+4,blob.l+4+l));blob.l+=4+l;next=RecordEnum[__readUInt16LE(blob,blob.l)]}var b=bconcat(bufs);prep_blob(b,0);var ll=0;b.lens=[];for(var j=0;j<bufs.length;++j){b.lens.push(ll);ll+=bufs[j].length}return R.f(b,b.length,opts)}function safe_format_xf(p,opts){if(!p.XF)return;try{var fmtid=p.XF.ifmt||0;if(fmtid===0){if(p.t==="n"){if((p.v|0)===p.v)p.w=SSF._general_int(p.v);else p.w=SSF._general_num(p.v)}else p.w=SSF._general(p.v)}else p.w=SSF.format(fmtid,p.v);if(opts.cellNF)p.z=SSF._table[fmtid]}catch(e){if(opts.WTF)throw e}}function make_cell(val,ixfe,t){return{v:val,ixfe:ixfe,t:t}}function parse_workbook(blob,options){var wb={opts:{}};var Sheets={};var out={};var Directory={};var found_sheet=false;var range={};var last_formula=null;var sst=[];var cur_sheet="";var Preamble={};var lastcell,last_cell,cc,cmnt,rng,rngC,rngR;var shared_formulae={};var array_formulae=[];var temp_val;var country;var cell_valid=true;var XFs=[];var addline=function addline(cell,line,options){if(!cell_valid)return;lastcell=cell;last_cell=encode_cell(cell);if(range.s){if(cell.r<range.s.r)range.s.r=cell.r;if(cell.c<range.s.c)range.s.c=cell.c}if(range.e){if(cell.r+1>range.e.r)range.e.r=cell.r+1;if(cell.c+1>range.e.c)range.e.c=cell.c+1}if(options.sheetRows&&lastcell.r>=options.sheetRows)cell_valid=false;else out[last_cell]=line};var opts={enc:false,sbcch:0,snames:[],sharedf:shared_formulae,arrayf:array_formulae,rrtabid:[],lastuser:"",biff:8,codepage:0,winlocked:0,wtf:false};if(options.password)opts.password=options.password;var mergecells=[];var objects=[];var supbooks=[[]];var sbc=0,sbci=0,sbcli=0;supbooks.SheetNames=opts.snames;supbooks.sharedf=opts.sharedf;supbooks.arrayf=opts.arrayf;var last_Rn="";var file_depth=0;while(blob.l<blob.length-1){var s=blob.l;var RecordType=blob.read_shift(2);if(RecordType===0&&last_Rn==="EOF")break;var length=blob.l===blob.length?0:blob.read_shift(2),y;var R=RecordEnum[RecordType];if(R&&R.f){if(options.bookSheets){if(last_Rn==="BoundSheet8"&&R.n!=="BoundSheet8")break}last_Rn=R.n;if(R.r===2||R.r==12){var rt=blob.read_shift(2);length-=2;if(!opts.enc&&rt!==RecordType)throw"rt mismatch";if(R.r==12){blob.l+=10;length-=10}}var val;if(R.n==="EOF")val=R.f(blob,length,opts);else val=slurp(R,blob,length,opts);var Rn=R.n;if(opts.biff===5)switch(Rn){case"Lbl":Rn="Label";break}switch(Rn){case"Date1904":wb.opts.Date1904=val;break;case"WriteProtect":wb.opts.WriteProtect=true;break;case"FilePass":if(!opts.enc)blob.l=0;opts.enc=val;if(opts.WTF)console.error(val);if(!options.password)throw new Error("File is password-protected");if(val.Type!==0)throw new Error("Encryption scheme unsupported");if(!val.valid)throw new Error("Password is incorrect");break;case"WriteAccess":opts.lastuser=val;break;case"FileSharing":break;case"CodePage":if(val===21010)val=1200;opts.codepage=val;set_cp(val);break;case"RRTabId":opts.rrtabid=val;break;case"WinProtect":opts.winlocked=val;break;case"Template":break;case"RefreshAll":wb.opts.RefreshAll=val;break;case"BookBool":break;case"UsesELFs":break;case"MTRSettings":{if(val[0]&&val[1])throw"Unsupported threads: "+val}break;case"CalcCount":wb.opts.CalcCount=val;break;case"CalcDelta":wb.opts.CalcDelta=val;break;case"CalcIter":wb.opts.CalcIter=val;break;case"CalcMode":wb.opts.CalcMode=val;break;case"CalcPrecision":wb.opts.CalcPrecision=val;break;case"CalcSaveRecalc":wb.opts.CalcSaveRecalc=val;break;case"CalcRefMode":opts.CalcRefMode=val;break;case"Uncalced":break;case"ForceFullCalculation":wb.opts.FullCalc=val;break;case"WsBool":break;case"XF":XFs.push(val);break;case"ExtSST":break;case"BookExt":break;case"RichTextStream":break;case"BkHim":break;case"SupBook":supbooks[++sbc]=[val];sbci=0;break;case"ExternName":supbooks[sbc][++sbci]=val;break;case"Index":break;case"Lbl":supbooks[0][++sbcli]=val;break;case"ExternSheet":supbooks[sbc]=supbooks[sbc].concat(val);sbci+=val.length;break;case"Protect":out["!protect"]=val;break;case"Password":if(val!==0&&opts.WTF)console.error("Password verifier: "+val);break;case"Prot4Rev":case"Prot4RevPass":break;case"BoundSheet8":{Directory[val.pos]=val;opts.snames.push(val.name)}break;case"EOF":{if(--file_depth)break;if(range.e){out["!range"]=range;if(range.e.r>0&&range.e.c>0){range.e.r--;range.e.c--;out["!ref"]=encode_range(range);range.e.r++;range.e.c++}if(mergecells.length>0)out["!merges"]=mergecells;if(objects.length>0)out["!objects"]=objects}if(cur_sheet==="")Preamble=out;else Sheets[cur_sheet]=out;out={}}break;case"BOF":{if(val.BIFFVer===1280)opts.biff=5;if(file_depth++)break;cell_valid=true;out={};cur_sheet=(Directory[s]||{name:""}).name;mergecells=[];objects=[]}break;case"Number":{temp_val={ixfe:val.ixfe,XF:XFs[val.ixfe],v:val.val,t:"n"};if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:val.c,r:val.r},temp_val,options)}break;case"BoolErr":{temp_val={ixfe:val.ixfe,XF:XFs[val.ixfe],v:val.val,t:val.t};if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:val.c,r:val.r},temp_val,options)}break;case"RK":{temp_val={ixfe:val.ixfe,XF:XFs[val.ixfe],v:val.rknum,t:"n"};if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:val.c,r:val.r},temp_val,options)}break;case"MulRk":{for(var j=val.c;j<=val.C;++j){var ixfe=val.rkrec[j-val.c][0];temp_val={ixfe:ixfe,XF:XFs[ixfe],v:val.rkrec[j-val.c][1],t:"n"};if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:j,r:val.r},temp_val,options)}}break;case"Formula":{switch(val.val){case"String":last_formula=val;break;case"Array Formula":throw"Array Formula unsupported";default:temp_val={v:val.val,ixfe:val.cell.ixfe,t:val.tt};temp_val.XF=XFs[temp_val.ixfe];if(options.cellFormula)temp_val.f="="+stringify_formula(val.formula,range,val.cell,supbooks,opts);if(temp_val.XF)safe_format_xf(temp_val,options);addline(val.cell,temp_val,options);last_formula=val}}break;case"String":{if(last_formula){last_formula.val=val;temp_val={v:last_formula.val,ixfe:last_formula.cell.ixfe,t:"s"};temp_val.XF=XFs[temp_val.ixfe];if(options.cellFormula)temp_val.f="="+stringify_formula(last_formula.formula,range,last_formula.cell,supbooks,opts);if(temp_val.XF)safe_format_xf(temp_val,options);addline(last_formula.cell,temp_val,options);last_formula=null}}break;case"Array":{array_formulae.push(val)}break;case"ShrFmla":{if(!cell_valid)break;shared_formulae[encode_cell(last_formula.cell)]=val[0]}break;case"LabelSst":temp_val=make_cell(sst[val.isst].t,val.ixfe,"s");temp_val.XF=XFs[temp_val.ixfe];if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:val.c,r:val.r},temp_val,options);break;case"Label":temp_val=make_cell(val.val,val.ixfe,"s");temp_val.XF=XFs[temp_val.ixfe];
+if(temp_val.XF)safe_format_xf(temp_val,options);addline({c:val.c,r:val.r},temp_val,options);break;case"Dimensions":{if(file_depth===1)range=val}break;case"SST":{sst=val}break;case"Format":{SSF.load(val[1],val[0])}break;case"MergeCells":mergecells=mergecells.concat(val);break;case"Obj":objects[val.cmo[0]]=opts.lastobj=val;break;case"TxO":opts.lastobj.TxO=val;break;case"HLink":{for(rngR=val[0].s.r;rngR<=val[0].e.r;++rngR)for(rngC=val[0].s.c;rngC<=val[0].e.c;++rngC)if(out[encode_cell({c:rngC,r:rngR})])out[encode_cell({c:rngC,r:rngR})].l=val[1]}break;case"HLinkTooltip":{for(rngR=val[0].s.r;rngR<=val[0].e.r;++rngR)for(rngC=val[0].s.c;rngC<=val[0].e.c;++rngC)if(out[encode_cell({c:rngC,r:rngR})])out[encode_cell({c:rngC,r:rngR})].l.tooltip=val[1]}break;case"Note":{if(opts.biff===5)break;cc=out[encode_cell(val[0])];var noteobj=objects[val[2]];if(!cc)break;if(!cc.c)cc.c=[];cmnt={a:val[1],t:noteobj.TxO.t};cc.c.push(cmnt)}break;case"NameCmt":break;default:switch(R.n){case"Header":break;case"Footer":break;case"HCenter":break;case"VCenter":break;case"Pls":break;case"Setup":break;case"DefColWidth":break;case"GCW":break;case"LHRecord":break;case"ColInfo":break;case"Row":break;case"DBCell":break;case"MulBlank":break;case"EntExU2":break;case"SxView":break;case"Sxvd":break;case"SXVI":break;case"SXVDEx":break;case"SxIvd":break;case"SXDI":break;case"SXLI":break;case"SXEx":break;case"QsiSXTag":break;case"Selection":break;case"Feat":break;case"FeatHdr":case"FeatHdr11":break;case"Feature11":case"Feature12":case"List12":break;case"Blank":break;case"Country":country=val;break;case"RecalcId":break;case"DefaultRowHeight":case"DxGCol":break;case"Fbi":case"Fbi2":case"GelFrame":break;case"Font":break;case"XFCRC":break;case"XFExt":break;case"Style":break;case"StyleExt":break;case"Palette":break;case"ClrtClient":break;case"Theme":break;case"ScenarioProtect":break;case"ObjProtect":break;case"CondFmt12":break;case"Table":break;case"TableStyles":break;case"TableStyle":break;case"TableStyleElement":break;case"SXStreamID":break;case"SXVS":break;case"DConRef":break;case"SXAddl":break;case"DConName":break;case"SXPI":break;case"SxFormat":break;case"SxSelect":break;case"SxRule":break;case"SxFilt":break;case"SxItm":break;case"SxDXF":break;case"ScenMan":break;case"DCon":break;case"CellWatch":break;case"PrintRowCol":break;case"PrintGrid":break;case"PrintSize":break;case"XCT":break;case"CRN":break;case"Scl":{}break;case"SheetExt":{}break;case"SheetExtOptional":{}break;case"ObNoMacros":{}break;case"ObProj":{}break;case"CodeName":{}break;case"GUIDTypeLib":{}break;case"WOpt":break;case"PhoneticInfo":break;case"OleObjectSize":break;case"DXF":case"DXFN":case"DXFN12":case"DXFN12List":case"DXFN12NoCB":break;case"Dv":case"DVal":break;case"BRAI":case"Series":case"SeriesText":break;case"DConn":break;case"DbOrParamQry":break;case"DBQueryExt":break;case"IFmtRecord":break;case"CondFmt":case"CF":case"CF12":case"CFEx":break;case"Excel9File":break;case"Units":break;case"InterfaceHdr":case"Mms":case"InterfaceEnd":case"DSF":case"BuiltInFnGroupCount":case"Window1":case"Window2":case"HideObj":case"GridSet":case"Guts":case"UserBView":case"UserSViewBegin":case"UserSViewEnd":case"Pane":break;default:switch(R.n){case"Dat":case"Begin":case"End":case"StartBlock":case"EndBlock":case"Frame":case"Area":case"Axis":case"AxisLine":case"Tick":break;case"AxesUsed":case"CrtLayout12":case"CrtLayout12A":case"CrtLink":case"CrtLine":case"CrtMlFrt":break;case"LineFormat":case"AreaFormat":case"Chart":case"Chart3d":case"Chart3DBarShape":case"ChartFormat":case"ChartFrtInfo":break;case"PlotArea":case"PlotGrowth":break;case"SeriesList":case"SerParent":case"SerAuxTrend":break;case"DataFormat":case"SerToCrt":case"FontX":break;case"CatSerRange":case"AxcExt":case"SerFmt":break;case"ShtProps":break;case"DefaultText":case"Text":case"CatLab":break;case"DataLabExtContents":break;case"Legend":case"LegendException":break;case"Pie":case"Scatter":break;case"PieFormat":case"MarkerFormat":break;case"StartObject":case"EndObject":break;case"AlRuns":case"ObjectLink":break;case"SIIndex":break;case"AttachedLabel":break;case"Line":case"Bar":break;case"Surf":break;case"AxisParent":break;case"Pos":break;case"ValueRange":break;case"SXViewEx9":break;case"SXViewLink":break;case"PivotChartBits":break;case"SBaseRef":break;case"TextPropsStream":break;case"LnExt":break;case"MkrExt":break;case"CrtCoopt":break;case"Qsi":case"Qsif":case"Qsir":case"QsiSXTag":break;case"TxtQry":break;case"FilterMode":break;case"AutoFilter":case"AutoFilterInfo":break;case"AutoFilter12":break;case"DropDownObjIds":break;case"Sort":break;case"SortData":break;case"ShapePropsStream":break;case"MsoDrawing":case"MsoDrawingGroup":case"MsoDrawingSelection":break;case"ImData":break;case"WebPub":case"AutoWebPub":case"RightMargin":case"LeftMargin":case"TopMargin":case"BottomMargin":case"HeaderFooter":case"HFPicture":case"PLV":case"HorizontalPageBreaks":case"VerticalPageBreaks":case"Backup":case"CompressPictures":case"Compat12":break;case"Continue":case"ContinueFrt12":break;case"ExternCount":break;case"RString":break;case"TabIdConf":case"Radar":case"RadarArea":case"DropBar":case"Intl":case"CoordList":case"SerAuxErrBar":break;default:if(options.WTF)throw"Unrecognized Record "+R.n}}}}else blob.l+=length}var sheetnamesraw=Object.keys(Directory).sort(function(a,b){return Number(a)-Number(b)}).map(function(x){return Directory[x].name});var sheetnames=sheetnamesraw.slice();wb.Directory=sheetnamesraw;wb.SheetNames=sheetnamesraw;if(!options.bookSheets)wb.Sheets=Sheets;wb.Preamble=Preamble;wb.Strings=sst;wb.SSF=SSF.get_table();if(opts.enc)wb.Encryption=opts.enc;wb.Metadata={};if(country!==undefined)wb.Metadata.Country=country;return wb}if(CompObj)CompObjP=parse_compobj(CompObj);if(options.bookProps&&!options.bookSheets)WorkbookP={};else{if(Workbook)WorkbookP=parse_workbook(Workbook.content,options);else throw new Error("Cannot find Workbook stream")}parse_props(cfb);var props={};for(var y in cfb.Summary)props[y]=cfb.Summary[y];for(y in cfb.DocSummary)props[y]=cfb.DocSummary[y];WorkbookP.Props=WorkbookP.Custprops=props;if(options.bookFiles)WorkbookP.cfb=cfb;WorkbookP.CompObjP=CompObjP;return WorkbookP}function parse_props(cfb){var DSI=cfb.find("!DocumentSummaryInformation");if(DSI)try{cfb.DocSummary=parse_PropertySetStream(DSI,DocSummaryPIDDSI)}catch(e){}var SI=cfb.find("!SummaryInformation");if(SI)try{cfb.Summary=parse_PropertySetStream(SI,SummaryPIDSI)}catch(e){}}var encregex=/&[a-z]*;/g,coderegex=/_x([0-9a-fA-F]+)_/g;function coderepl(m,c){return _chr(parseInt(c,16))}function encrepl($$){return encodings[$$]}function unescapexml(s){if(s.indexOf("&")>-1)s=s.replace(encregex,encrepl);return s.indexOf("_")===-1?s:s.replace(coderegex,coderepl)}function parsexmlbool(value,tag){switch(value){case"1":case"true":case"TRUE":return true;default:return false}}function matchtag(f,g){return new RegExp("<"+f+'(?: xml:space="preserve")?>([^☃]*)</'+f+">",(g||"")+"m")}var entregex=/&#(\d+);/g;function entrepl($$,$1){return String.fromCharCode(parseInt($1,10))}function fixstr(str){return str.replace(entregex,entrepl)}var everted_BERR=evert(BERR);var magic_formats={"General Number":"General","General Date":SSF._table[22],"Long Date":"dddd, mmmm dd, yyyy","Medium Date":SSF._table[15],"Short Date":SSF._table[14],"Long Time":SSF._table[19],"Medium Time":SSF._table[18],"Short Time":SSF._table[20],Currency:'"$"#,##0.00_);[Red]\\("$"#,##0.00\\)',Fixed:SSF._table[2],Standard:SSF._table[4],Percent:SSF._table[10],Scientific:SSF._table[11],"Yes/No":'"Yes";"Yes";"No";@',"True/False":'"True";"True";"False";@',"On/Off":'"Yes";"Yes";"No";@'};function xlml_format(format,value){var fmt=magic_formats[format]||unescapexml(format);if(fmt==="General")return SSF._general(value);return SSF.format(fmt,value)}function xlml_set_prop(Props,tag,val){switch(tag){case"Description":tag="Comments";break}Props[tag]=val}function xlml_set_custprop(Custprops,Rn,cp,val){switch((cp[0].match(/dt:dt="([\w.]+)"/)||["",""])[1]){case"boolean":val=parsexmlbool(val);break;case"i2":case"int":val=parseInt(val,10);break;case"r4":case"float":val=parseFloat(val);break;case"date":case"dateTime.tz":val=new Date(val);break;case"i8":case"string":case"fixed":case"uuid":case"bin.base64":break;default:throw"bad custprop:"+cp[0]}Custprops[unescapexml(Rn[3])]=val}function safe_format_xlml(cell,nf,o){try{if(nf==="General"){if(cell.t==="n"){if((cell.v|0)===cell.v)cell.w=SSF._general_int(cell.v);else cell.w=SSF._general_num(cell.v)}else cell.w=SSF._general(cell.v)}else cell.w=xlml_format(nf||"General",cell.v);if(o.cellNF)cell.z=magic_formats[nf]||nf||"General"}catch(e){if(o.WTF)throw e}}function parse_xlml_data(xml,ss,data,cell,base,styles,csty,o){var nf="General",sid=cell.StyleID;o=o||{};if(sid===undefined&&csty)sid=csty.StyleID;while(styles[sid]!==undefined){if(styles[sid].nf)nf=styles[sid].nf;if(!styles[sid].Parent)break;sid=styles[sid].Parent}switch(data.Type){case"Boolean":cell.t="b";cell.v=parsexmlbool(xml);break;case"String":cell.t="str";cell.r=fixstr(unescapexml(xml));cell.v=xml.indexOf("<")>-1?ss:cell.r;break;case"DateTime":cell.v=(Date.parse(xml)-new Date(Date.UTC(1899,11,30)))/(24*60*60*1e3);if(cell.v!==cell.v)cell.v=unescapexml(xml);else if(cell.v>=1&&cell.v<60)cell.v=cell.v-1;if(!nf||nf=="General")nf="yyyy-mm-dd";case"Number":if(cell.v===undefined)cell.v=+xml;if(!cell.t)cell.t="n";break;case"Error":cell.t="e";cell.v=xml;cell.w=xml;break;default:cell.t="s";cell.v=fixstr(ss);break}if(cell.t!=="e")safe_format_xlml(cell,nf,o);if(o.cellFormula!=null&&cell.Formula){cell.f=rc_to_a1(unescapexml(cell.Formula),base);cell.Formula=undefined}cell.ixfe=cell.StyleID!==undefined?cell.StyleID:"Default"}function xlml_clean_comment(comment){comment.t=comment.v;comment.v=comment.w=comment.ixfe=undefined}function xlml_normalize(d){if(has_buf&&Buffer.isBuffer(d))return d.toString("utf8");if(typeof d==="string")return d;throw"badf"}var xlmlregex=/<(\/?)([a-z0-9]*:|)(\w+)[^>]*>/gm;function parse_xlml_xml(d,opts){var str=xlml_normalize(d);var Rn;var state=[],tmp;var sheets={},sheetnames=[],cursheet={},sheetname="";var table={},cell={},row={},dtag,didx;var c=0,r=0;var refguess={s:{r:1e6,c:1e6},e:{r:0,c:0}};var styles={},stag={};var ss="",fidx=0;var mergecells=[];var Props={},Custprops={},pidx=0,cp={};var comments=[],comment={};var cstys=[],csty;while(Rn=xlmlregex.exec(str))switch(Rn[3]){case"Data":if(state[state.length-1][1])break;if(Rn[1]==="/")parse_xlml_data(str.slice(didx,Rn.index),ss,dtag,state[state.length-1][0]=="Comment"?comment:cell,{c:c,r:r},styles,cstys[c],opts);else{ss="";dtag=parsexmltag(Rn[0]);didx=Rn.index+Rn[0].length}break;case"Cell":if(Rn[1]==="/"){if(comments.length>0)cell.c=comments;if((!opts.sheetRows||opts.sheetRows>r)&&cell.v!==undefined)cursheet[encode_col(c)+encode_row(r)]=cell;if(cell.HRef){cell.l={Target:cell.HRef,tooltip:cell.HRefScreenTip};cell.HRef=cell.HRefScreenTip=undefined}if(cell.MergeAcross||cell.MergeDown){var cc=c+(parseInt(cell.MergeAcross,10)|0);var rr=r+(parseInt(cell.MergeDown,10)|0);mergecells.push({s:{c:c,r:r},e:{c:cc,r:rr}})}++c;if(cell.MergeAcross)c+=+cell.MergeAcross}else{cell=parsexmltagobj(Rn[0]);if(cell.Index)c=+cell.Index-1;if(c<refguess.s.c)refguess.s.c=c;if(c>refguess.e.c)refguess.e.c=c;if(Rn[0].substr(-2)==="/>")++c;comments=[]}break;case"Row":if(Rn[1]==="/"||Rn[0].substr(-2)==="/>"){if(r<refguess.s.r)refguess.s.r=r;if(r>refguess.e.r)refguess.e.r=r;if(Rn[0].substr(-2)==="/>"){row=parsexmltag(Rn[0]);if(row.Index)r=+row.Index-1}c=0;++r}else{row=parsexmltag(Rn[0]);if(row.Index)r=+row.Index-1}break;case"Worksheet":if(Rn[1]==="/"){if((tmp=state.pop())[0]!==Rn[3])throw"Bad state: "+tmp;sheetnames.push(sheetname);if(refguess.s.r<=refguess.e.r&&refguess.s.c<=refguess.e.c)cursheet["!ref"]=encode_range(refguess);if(mergecells.length)cursheet["!merges"]=mergecells;sheets[sheetname]=cursheet}else{refguess={s:{r:1e6,c:1e6},e:{r:0,c:0}};r=c=0;state.push([Rn[3],false]);tmp=parsexmltag(Rn[0]);sheetname=tmp.Name;cursheet={};mergecells=[]}break;case"Table":if(Rn[1]==="/"){if((tmp=state.pop())[0]!==Rn[3])throw"Bad state: "+tmp}else if(Rn[0].slice(-2)=="/>")break;else{table=parsexmltag(Rn[0]);state.push([Rn[3],false]);cstys=[]}break;case"Style":if(Rn[1]==="/")styles[stag.ID]=stag;else stag=parsexmltag(Rn[0]);break;case"NumberFormat":stag.nf=parsexmltag(Rn[0]).Format||"General";break;case"Column":if(state[state.length-1][0]!=="Table")break;csty=parsexmltag(Rn[0]);cstys[csty.Index-1||cstys.length]=csty;for(var i=0;i<+csty.Span;++i)cstys[cstys.length]=csty;break;case"NamedRange":break;case"NamedCell":break;case"B":break;case"I":break;case"U":break;case"S":break;case"Sub":break;case"Sup":break;case"Span":break;case"Border":break;case"Alignment":break;case"Borders":break;case"Font":if(Rn[0].substr(-2)==="/>")break;else if(Rn[1]==="/")ss+=str.slice(fidx,Rn.index);else fidx=Rn.index+Rn[0].length;break;case"Interior":break;case"Protection":break;case"Author":case"Title":case"Description":case"Created":case"Keywords":case"Subject":case"Category":case"Company":case"LastAuthor":case"LastSaved":case"LastPrinted":case"Version":case"Revision":case"TotalTime":case"HyperlinkBase":case"Manager":if(Rn[0].substr(-2)==="/>")break;else if(Rn[1]==="/")xlml_set_prop(Props,Rn[3],str.slice(pidx,Rn.index));else pidx=Rn.index+Rn[0].length;break;case"Paragraphs":break;case"Styles":case"Workbook":if(Rn[1]==="/"){if((tmp=state.pop())[0]!==Rn[3])throw"Bad state: "+tmp}else state.push([Rn[3],false]);break;case"Comment":if(Rn[1]==="/"){if((tmp=state.pop())[0]!==Rn[3])throw"Bad state: "+tmp;xlml_clean_comment(comment);comments.push(comment)}else{state.push([Rn[3],false]);tmp=parsexmltag(Rn[0]);comment={a:tmp.Author}}break;case"Name":break;case"ComponentOptions":case"DocumentProperties":case"CustomDocumentProperties":case"OfficeDocumentSettings":case"PivotTable":case"PivotCache":case"Names":case"MapInfo":case"PageBreaks":case"QueryTable":case"DataValidation":case"AutoFilter":case"Sorting":case"Schema":case"data":case"ConditionalFormatting":case"SmartTagType":case"SmartTags":case"ExcelWorkbook":case"WorkbookOptions":case"WorksheetOptions":if(Rn[1]==="/"){if((tmp=state.pop())[0]!==Rn[3])throw"Bad state: "+tmp}else if(Rn[0].charAt(Rn[0].length-2)!=="/")state.push([Rn[3],true]);break;default:var seen=true;switch(state[state.length-1][0]){case"OfficeDocumentSettings":switch(Rn[3]){case"AllowPNG":break;case"RemovePersonalInformation":break;case"DownloadComponents":break;case"LocationOfComponents":break;case"Colors":break;case"Color":break;case"Index":break;case"RGB":break;case"PixelsPerInch":break;case"TargetScreenSize":break;case"ReadOnlyRecommended":break;default:seen=false}break;case"ComponentOptions":switch(Rn[3]){case"Toolbar":break;case"HideOfficeLogo":break;case"SpreadsheetAutoFit":break;case"Label":break;case"Caption":break;case"MaxHeight":break;case"MaxWidth":break;case"NextSheetNumber":break;default:seen=false}break;case"ExcelWorkbook":switch(Rn[3]){case"WindowHeight":break;case"WindowWidth":break;case"WindowTopX":break;case"WindowTopY":break;case"TabRatio":break;case"ProtectStructure":break;case"ProtectWindows":break;case"ActiveSheet":break;case"DisplayInkNotes":break;case"FirstVisibleSheet":break;case"SupBook":break;case"SheetName":break;case"SheetIndex":break;case"SheetIndexFirst":break;case"SheetIndexLast":break;case"Dll":break;case"AcceptLabelsInFormulas":break;case"DoNotSaveLinkValues":break;case"Date1904":break;case"Iteration":break;case"MaxIterations":break;case"MaxChange":break;case"Path":break;case"Xct":break;case"Count":break;case"SelectedSheets":break;case"Calculation":break;case"Uncalced":break;case"StartupPrompt":break;case"Crn":break;case"ExternName":break;case"Formula":break;case"ColFirst":break;case"ColLast":break;case"WantAdvise":break;case"Boolean":break;case"Error":break;case"Text":break;case"OLE":break;case"NoAutoRecover":break;case"PublishObjects":break;case"DoNotCalculateBeforeSave":break;case"Number":break;case"RefModeR1C1":break;case"EmbedSaveSmartTags":break;default:seen=false}break;case"WorkbookOptions":switch(Rn[3]){case"OWCVersion":break;case"Height":break;case"Width":break;default:seen=false}break;case"WorksheetOptions":switch(Rn[3]){case"Unsynced":break;case"Visible":break;case"Print":break;case"Panes":break;case"Scale":break;case"Pane":break;case"Number":break;case"Layout":break;case"Header":break;case"Footer":break;case"PageSetup":break;case"PageMargins":break;case"Selected":break;case"ProtectObjects":break;case"EnableSelection":break;case"ProtectScenarios":break;case"ValidPrinterInfo":break;case"HorizontalResolution":break;case"VerticalResolution":break;case"NumberofCopies":break;case"ActiveRow":break;case"ActiveCol":break;case"ActivePane":break;case"TopRowVisible":break;case"TopRowBottomPane":break;case"LeftColumnVisible":break;case"LeftColumnRightPane":break;case"FitToPage":break;case"RangeSelection":break;case"PaperSizeIndex":break;case"PageLayoutZoom":break;case"PageBreakZoom":break;case"FilterOn":break;case"DoNotDisplayGridlines":break;case"SplitHorizontal":break;case"SplitVertical":break;case"FreezePanes":break;case"FrozenNoSplit":break;case"FitWidth":break;case"FitHeight":break;case"CommentsLayout":break;case"Zoom":break;case"LeftToRight":break;case"Gridlines":break;case"AllowSort":break;case"AllowFilter":break;case"AllowInsertRows":break;case"AllowDeleteRows":break;case"AllowInsertCols":break;case"AllowDeleteCols":break;case"AllowInsertHyperlinks":break;case"AllowFormatCells":break;case"AllowSizeCols":break;case"AllowSizeRows":break;case"NoSummaryRowsBelowDetail":break;case"TabColorIndex":break;case"DoNotDisplayHeadings":break;case"ShowPageLayoutZoom":break;case"NoSummaryColumnsRightDetail":break;case"BlackAndWhite":break;case"DoNotDisplayZeros":break;case"DisplayPageBreak":break;case"RowColHeadings":break;case"DoNotDisplayOutline":break;case"NoOrientation":break;case"AllowUsePivotTables":break;case"ZeroHeight":break;case"ViewableRange":break;case"Selection":break;case"ProtectContents":break;default:seen=false}break;case"PivotTable":case"PivotCache":switch(Rn[3]){case"ImmediateItemsOnDrop":break;case"ShowPageMultipleItemLabel":break;case"CompactRowIndent":break;case"Location":break;case"PivotField":break;case"Orientation":break;case"LayoutForm":break;case"LayoutSubtotalLocation":break;case"LayoutCompactRow":break;case"Position":break;case"PivotItem":break;case"DataType":break;case"DataField":break;case"SourceName":break;case"ParentField":break;case"PTLineItems":break;case"PTLineItem":break;case"CountOfSameItems":break;case"Item":break;case"ItemType":break;case"PTSource":break;case"CacheIndex":break;case"ConsolidationReference":break;case"FileName":break;case"Reference":break;case"NoColumnGrand":break;case"NoRowGrand":break;case"BlankLineAfterItems":break;case"Hidden":break;case"Subtotal":break;case"BaseField":break;case"MapChildItems":break;case"Function":break;case"RefreshOnFileOpen":break;case"PrintSetTitles":break;case"MergeLabels":break;case"DefaultVersion":break;case"RefreshName":break;case"RefreshDate":break;case"RefreshDateCopy":break;case"VersionLastRefresh":break;case"VersionLastUpdate":break;case"VersionUpdateableMin":break;case"VersionRefreshableMin":break;case"Calculation":break;default:seen=false}break;case"PageBreaks":switch(Rn[3]){case"ColBreaks":break;case"ColBreak":break;case"RowBreaks":break;case"RowBreak":break;case"ColStart":break;case"ColEnd":break;case"RowEnd":break;default:seen=false}break;case"AutoFilter":switch(Rn[3]){case"AutoFilterColumn":break;case"AutoFilterCondition":break;case"AutoFilterAnd":break;case"AutoFilterOr":break;default:seen=false}break;case"QueryTable":switch(Rn[3]){case"Id":break;case"AutoFormatFont":break;case"AutoFormatPattern":break;case"QuerySource":break;case"QueryType":break;case"EnableRedirections":break;case"RefreshedInXl9":break;case"URLString":break;case"HTMLTables":break;case"Connection":break;case"CommandText":break;case"RefreshInfo":break;case"NoTitles":break;case"NextId":break;case"ColumnInfo":break;case"OverwriteCells":break;case"DoNotPromptForFile":break;case"TextWizardSettings":break;case"Source":break;case"Number":break;case"Decimal":break;case"ThousandSeparator":break;case"TrailingMinusNumbers":break;case"FormatSettings":break;case"FieldType":break;case"Delimiters":break;case"Tab":break;case"Comma":break;case"AutoFormatName":break;case"VersionLastEdit":break;case"VersionLastRefresh":break;default:seen=false}break;case"Sorting":case"ConditionalFormatting":case"DataValidation":switch(Rn[3]){case"Range":break;case"Type":break;case"Min":break;case"Max":break;case"Sort":break;case"Descending":break;case"Order":break;case"CaseSensitive":break;case"Value":break;case"ErrorStyle":break;case"ErrorMessage":break;case"ErrorTitle":break;case"CellRangeList":break;case"InputMessage":break;case"InputTitle":break;case"ComboHide":break;case"InputHide":break;case"Condition":break;case"Qualifier":break;case"UseBlank":break;case"Value1":break;case"Value2":break;case"Format":break;default:seen=false}break;case"MapInfo":case"Schema":case"data":switch(Rn[3]){case"Map":break;case"Entry":break;case"Range":break;case"XPath":break;case"Field":break;case"XSDType":break;case"FilterOn":break;case"Aggregate":break;case"ElementType":break;case"AttributeType":break;case"schema":case"element":case"complexType":case"datatype":case"all":case"attribute":case"extends":break;case"row":break;default:seen=false}break;case"SmartTags":break;default:seen=false;break}if(seen)break;if(!state[state.length-1][1])throw"Unrecognized tag: "+Rn[3]+"|"+state.join("|");if(state[state.length-1][0]==="CustomDocumentProperties"){if(Rn[0].substr(-2)==="/>")break;else if(Rn[1]==="/")xlml_set_custprop(Custprops,Rn,cp,str.slice(pidx,Rn.index));else{cp=Rn;pidx=Rn.index+Rn[0].length}break}if(opts.WTF)throw"Unrecognized tag: "+Rn[3]+"|"+state.join("|")}var out={};if(!opts.bookSheets&&!opts.bookProps)out.Sheets=sheets;out.SheetNames=sheetnames;out.SSF=SSF.get_table();out.Props=Props;out.Custprops=Custprops;return out}function parse_xlml(data,opts){fixopts(opts=opts||{});switch(opts.type||"base64"){case"base64":return parse_xlml_xml(Base64.decode(data),opts);case"binary":case"buffer":case"file":return parse_xlml_xml(data,opts);case"array":return parse_xlml_xml(data.map(_chr).join(""),opts)}}function write_xlml(wb,opts){}var fs;if(typeof exports!=="undefined"){if(typeof module!=="undefined"&&module.exports){fs=require("fs")}}function firstbyte(f,o){switch((o||{}).type||"base64"){case"buffer":return f[0];case"base64":return Base64.decode(f.substr(0,12)).charCodeAt(0);case"binary":return f.charCodeAt(0);case"array":return f[0];default:throw new Error("Unrecognized type "+o.type)}}function xlsread(f,o){if(!o)o={};if(!o.type)o.type=has_buf&&Buffer.isBuffer(f)?"buffer":"base64";switch(firstbyte(f,o)){case 208:return parse_xlscfb(CFB.read(f,o),o);case 60:return parse_xlml(f,o);default:throw"Unsupported file"}}var readFile=function(f,o){var d=fs.readFileSync(f);if(!o)o={};switch(firstbyte(d,{type:"buffer"})){case 208:return parse_xlscfb(CFB.read(d,{type:"buffer"}),o);case 60:return parse_xlml(d,(o.type="buffer",o));default:throw"Unsupported file"}};function writeSync(wb,opts){var o=opts||{};switch(o.bookType){case"xml":return write_xlml(wb,o);default:throw"unsupported output format "+o.bookType}}function writeFileSync(wb,filename,opts){var o=opts|{};o.type="file";o.file=filename;switch(o.file.substr(-4).toLowerCase()){case".xls":o.bookType="xls";break;case".xml":o.bookType="xml";break}return writeSync(wb,o)}function shift_cell(cell,tgt){if(tgt.s){if(cell.cRel)cell.c+=tgt.s.c;if(cell.rRel)cell.r+=tgt.s.r}else{cell.c+=tgt.c;cell.r+=tgt.r}cell.cRel=cell.rRel=0;while(cell.c>=256)cell.c-=256;while(cell.r>=65536)cell.r-=65536;return cell}function shift_range(cell,range){cell.s=shift_cell(cell.s,range.s);cell.e=shift_cell(cell.e,range.s);return cell}function decode_row(rowstr){return parseInt(unfix_row(rowstr),10)-1}function encode_row(row){return""+(row+1)}function fix_row(cstr){return cstr.replace(/([A-Z]|^)(\d+)$/,"$1$$$2")}function unfix_row(cstr){return cstr.replace(/\$(\d+)$/,"$1")}function decode_col(colstr){var c=unfix_col(colstr),d=0,i=0;for(;i!==c.length;++i)d=26*d+c.charCodeAt(i)-64;return d-1}function encode_col(col){var s="";for(++col;col;col=Math.floor((col-1)/26))s=String.fromCharCode((col-1)%26+65)+s;return s}function fix_col(cstr){return cstr.replace(/^([A-Z])/,"$$$1")}function unfix_col(cstr){return cstr.replace(/^\$([A-Z])/,"$1")}function split_cell(cstr){return cstr.replace(/(\$?[A-Z]*)(\$?\d*)/,"$1,$2").split(",")}function decode_cell(cstr){var splt=split_cell(cstr);return{c:decode_col(splt[0]),r:decode_row(splt[1])}}function encode_cell(cell){return encode_col(cell.c)+encode_row(cell.r)}function fix_cell(cstr){return fix_col(fix_row(cstr))}function unfix_cell(cstr){return unfix_col(unfix_row(cstr))}function decode_range(range){var x=range.split(":").map(decode_cell);return{s:x[0],e:x[x.length-1]}}function encode_range(cs,ce){if(ce===undefined||typeof ce==="number")return encode_range(cs.s,cs.e);if(typeof cs!=="string")cs=encode_cell(cs);if(typeof ce!=="string")ce=encode_cell(ce);return cs==ce?cs:cs+":"+ce}function safe_decode_range(range){var o={s:{c:0,r:0},e:{c:0,r:0}};var idx=0,i=0,cc=0;var len=range.length;for(idx=0;i<len;++i){if((cc=range.charCodeAt(i)-64)<1||cc>26)break;idx=26*idx+cc}o.s.c=--idx;for(idx=0;i<len;++i){if((cc=range.charCodeAt(i)-48)<0||cc>9)break;idx=10*idx+cc}o.s.r=--idx;if(i===len||range.charCodeAt(++i)===58){o.e.c=o.s.c;o.e.r=o.s.r;return o}for(idx=0;i!=len;++i){if((cc=range.charCodeAt(i)-64)<1||cc>26)break;idx=26*idx+cc}o.e.c=--idx;for(idx=0;i!=len;++i){if((cc=range.charCodeAt(i)-48)<0||cc>9)break;idx=10*idx+cc}o.e.r=--idx;return o}function safe_format_cell(cell,v){if(cell.z!==undefined)try{return cell.w=SSF.format(cell.z,v)}catch(e){}if(!cell.XF)return v;try{return cell.w=SSF.format(cell.XF.ifmt||0,v)}catch(e){return""+v}}function format_cell(cell,v){if(cell==null||cell.t==null)return"";if(cell.w!==undefined)return cell.w;if(v===undefined)return safe_format_cell(cell,cell.v);return safe_format_cell(cell,v)}function sheet_to_json(sheet,opts){var val,row,range,header=0,offset=1,r,hdr=[],isempty,R,C,v;var o=opts!=null?opts:{};var raw=o.raw;if(sheet==null||sheet["!ref"]==null)return[];range=o.range!==undefined?o.range:sheet["!ref"];if(o.header===1)header=1;else if(o.header==="A")header=2;else if(Array.isArray(o.header))header=3;switch(typeof range){case"string":r=safe_decode_range(range);break;case"number":r=safe_decode_range(sheet["!ref"]);r.s.r=range;break;default:r=range}if(header>0)offset=0;var rr=encode_row(r.s.r);var cols=new Array(r.e.c-r.s.c+1);var out=new Array(r.e.r-r.s.r-offset+1);var outi=0;for(C=r.s.c;C<=r.e.c;++C){cols[C]=encode_col(C);val=sheet[cols[C]+rr];switch(header){case 1:hdr[C]=C;break;case 2:hdr[C]=cols[C];break;case 3:hdr[C]=o.header[C-r.s.c];break;default:if(val===undefined)continue;hdr[C]=format_cell(val)}}for(R=r.s.r+offset;R<=r.e.r;++R){rr=encode_row(R);isempty=true;row=header===1?[]:Object.create({__rowNum__:R});for(C=r.s.c;C<=r.e.c;++C){val=sheet[cols[C]+rr];if(val===undefined||val.t===undefined)continue;v=val.v;switch(val.t){case"e":continue;case"s":case"str":break;case"b":case"n":break;default:throw"unrecognized type "+val.t}if(v!==undefined){row[hdr[C]]=raw?v:format_cell(val,v);isempty=false}}if(isempty===false)out[outi++]=row}out.length=outi;return out}function sheet_to_row_object_array(sheet,opts){return sheet_to_json(sheet,opts!=null?opts:{})}function sheet_to_csv(sheet,opts){var out="",txt="",qreg=/"/g;var o=opts==null?{}:opts;if(sheet==null||sheet["!ref"]==null)return"";var r=safe_decode_range(sheet["!ref"]);var FS=o.FS!==undefined?o.FS:",",fs=FS.charCodeAt(0);var RS=o.RS!==undefined?o.RS:"\n",rs=RS.charCodeAt(0);var row="",rr="",cols=[];var i=0,cc=0,val;var R=0,C=0;for(C=r.s.c;C<=r.e.c;++C)cols[C]=encode_col(C);for(R=r.s.r;R<=r.e.r;++R){row="";rr=encode_row(R);for(C=r.s.c;C<=r.e.c;++C){val=sheet[cols[C]+rr];txt=val!==undefined?""+format_cell(val):"";for(i=0,cc=0;i!==txt.length;++i)if((cc=txt.charCodeAt(i))===fs||cc===rs||cc===34){txt='"'+txt.replace(qreg,'""')+'"';break}row+=(C===r.s.c?"":FS)+txt}out+=row+RS}return out}var make_csv=sheet_to_csv;function sheet_to_formulae(sheet){var cmds,y="",x,val="";if(sheet==null||sheet["!ref"]==null)return"";var r=safe_decode_range(sheet["!ref"]),rr="",cols=[],C;cmds=new Array((r.e.r-r.s.r+1)*(r.e.c-r.s.c+1));var i=0;for(C=r.s.c;C<=r.e.c;++C)cols[C]=encode_col(C);for(var R=r.s.r;R<=r.e.r;++R){rr=encode_row(R);for(C=r.s.c;C<=r.e.c;++C){y=cols[C]+rr;x=sheet[y];val="";if(x===undefined)continue;if(x.f!=null)val=x.f;else if(x.w!==undefined)val="'"+x.w;else if(x.v===undefined)continue;else val=""+x.v;cmds[i++]=y+"="+val}}cmds.length=i;return cmds}var utils={encode_col:encode_col,encode_row:encode_row,encode_cell:encode_cell,encode_range:encode_range,decode_col:decode_col,decode_row:decode_row,split_cell:split_cell,decode_cell:decode_cell,decode_range:decode_range,format_cell:format_cell,get_formulae:sheet_to_formulae,make_csv:sheet_to_csv,make_json:sheet_to_json,make_formulae:sheet_to_formulae,sheet_to_csv:sheet_to_csv,sheet_to_json:sheet_to_json,sheet_to_formulae:sheet_to_formulae,sheet_to_row_object_array:sheet_to_row_object_array};XLS.parse_xlscfb=parse_xlscfb;XLS.read=xlsread;XLS.readFile=readFile;XLS.utils=utils;XLS.CFB=CFB;XLS.SSF=SSF})(typeof exports!=="undefined"?exports:XLS);
+//# sourceMappingURL=dist/xls.min.map
+/* xlsx.js (C) 2013-2014 SheetJS -- http://sheetjs.com */
+/* vim: set ts=2: */
+/*jshint -W041 */
+var XLSX = {};
+(function(XLSX){
+XLSX.version = '0.7.8';
+var current_codepage = 1252, current_cptable;
+if(typeof module !== "undefined" && typeof require !== 'undefined') {
+	if(typeof cptable === 'undefined') cptable = require('./dist/cpexcel');
+	current_cptable = cptable[current_codepage];
+}
+function reset_cp() { set_cp(1252); }
+var set_cp = function(cp) { current_codepage = cp; };
+
+function char_codes(data) { var o = []; for(var i = 0, len = data.length; i < len; ++i) o[i] = data.charCodeAt(i); return o; }
+var debom_xml = function(data) { return data; };
+
+if(typeof cptable !== 'undefined') {
+	set_cp = function(cp) { current_codepage = cp; current_cptable = cptable[cp]; };
+	debom_xml = function(data) {
+		if(data.charCodeAt(0) === 0xFF && data.charCodeAt(1) === 0xFE) { return cptable.utils.decode(1200, char_codes(data.substr(2))); }
+		return data;
+	};
+}
+/* ssf.js (C) 2013-2014 SheetJS -- http://sheetjs.com */
+/*jshint -W041 */
+var SSF = {};
+var make_ssf = function make_ssf(SSF){
+SSF.version = '0.8.1';
+function _strrev(x) { var o = "", i = x.length-1; while(i>=0) o += x.charAt(i--); return o; }
+function fill(c,l) { var o = ""; while(o.length < l) o+=c; return o; }
+function pad0(v,d){var t=""+v; return t.length>=d?t:fill('0',d-t.length)+t;}
+function pad_(v,d){var t=""+v;return t.length>=d?t:fill(' ',d-t.length)+t;}
+function rpad_(v,d){var t=""+v; return t.length>=d?t:t+fill(' ',d-t.length);}
+function pad0r1(v,d){var t=""+Math.round(v); return t.length>=d?t:fill('0',d-t.length)+t;}
+function pad0r2(v,d){var t=""+v; return t.length>=d?t:fill('0',d-t.length)+t;}
+var p2_32 = Math.pow(2,32);
+function pad0r(v,d){if(v>p2_32||v<-p2_32) return pad0r1(v,d); var i = Math.round(v); return pad0r2(i,d); }
+function isgeneral(s, i) { return s.length >= 7 + i && (s.charCodeAt(i)|32) === 103 && (s.charCodeAt(i+1)|32) === 101 && (s.charCodeAt(i+2)|32) === 110 && (s.charCodeAt(i+3)|32) === 101 && (s.charCodeAt(i+4)|32) === 114 && (s.charCodeAt(i+5)|32) === 97 && (s.charCodeAt(i+6)|32) === 108; }
+/* Options */
+var opts_fmt = [
+	["date1904", 0],
+	["output", ""],
+	["WTF", false]
+];
+function fixopts(o){
+	for(var y = 0; y != opts_fmt.length; ++y) if(o[opts_fmt[y][0]]===undefined) o[opts_fmt[y][0]]=opts_fmt[y][1];
+}
+SSF.opts = opts_fmt;
+var table_fmt = {
+	0:  'General',
+	1:  '0',
+	2:  '0.00',
+	3:  '#,##0',
+	4:  '#,##0.00',
+	9:  '0%',
+	10: '0.00%',
+	11: '0.00E+00',
+	12: '# ?/?',
+	13: '# ??/??',
+	14: 'm/d/yy',
+	15: 'd-mmm-yy',
+	16: 'd-mmm',
+	17: 'mmm-yy',
+	18: 'h:mm AM/PM',
+	19: 'h:mm:ss AM/PM',
+	20: 'h:mm',
+	21: 'h:mm:ss',
+	22: 'm/d/yy h:mm',
+	37: '#,##0 ;(#,##0)',
+	38: '#,##0 ;[Red](#,##0)',
+	39: '#,##0.00;(#,##0.00)',
+	40: '#,##0.00;[Red](#,##0.00)',
+	45: 'mm:ss',
+	46: '[h]:mm:ss',
+	47: 'mmss.0',
+	48: '##0.0E+0',
+	49: '@',
+	56: '"上午/下午 "hh"時"mm"分"ss"秒 "',
+	65535: 'General'
+};
+var days = [
+	['Sun', 'Sunday'],
+	['Mon', 'Monday'],
+	['Tue', 'Tuesday'],
+	['Wed', 'Wednesday'],
+	['Thu', 'Thursday'],
+	['Fri', 'Friday'],
+	['Sat', 'Saturday']
+];
+var months = [
+	['J', 'Jan', 'January'],
+	['F', 'Feb', 'February'],
+	['M', 'Mar', 'March'],
+	['A', 'Apr', 'April'],
+	['M', 'May', 'May'],
+	['J', 'Jun', 'June'],
+	['J', 'Jul', 'July'],
+	['A', 'Aug', 'August'],
+	['S', 'Sep', 'September'],
+	['O', 'Oct', 'October'],
+	['N', 'Nov', 'November'],
+	['D', 'Dec', 'December']
+];
+function frac(x, D, mixed) {
+	var sgn = x < 0 ? -1 : 1;
+	var B = x * sgn;
+	var P_2 = 0, P_1 = 1, P = 0;
+	var Q_2 = 1, Q_1 = 0, Q = 0;
+	var A = Math.floor(B);
+	while(Q_1 < D) {
+		A = Math.floor(B);
+		P = A * P_1 + P_2;
+		Q = A * Q_1 + Q_2;
+		if((B - A) < 0.0000000005) break;
+		B = 1 / (B - A);
+		P_2 = P_1; P_1 = P;
+		Q_2 = Q_1; Q_1 = Q;
+	}
+	if(Q > D) { Q = Q_1; P = P_1; }
+	if(Q > D) { Q = Q_2; P = P_2; }
+	if(!mixed) return [0, sgn * P, Q];
+	if(Q===0) throw "Unexpected state: "+P+" "+P_1+" "+P_2+" "+Q+" "+Q_1+" "+Q_2;
+	var q = Math.floor(sgn * P/Q);
+	return [q, sgn*P - q*Q, Q];
+}
+function general_fmt_int(v, opts) { return ""+v; }
+SSF._general_int = general_fmt_int;
+var general_fmt_num = (function make_general_fmt_num() {
+var gnr1 = /\.(\d*[1-9])0+$/, gnr2 = /\.0*$/, gnr4 = /\.(\d*[1-9])0+/, gnr5 = /\.0*[Ee]/, gnr6 = /(E[+-])(\d)$/;
+function gfn2(v) {
+	var w = (v<0?12:11);
+	var o = gfn5(v.toFixed(12)); if(o.length <= w) return o;
+	o = v.toPrecision(10); if(o.length <= w) return o;
+	return v.toExponential(5);
+}
+function gfn3(v) {
+	var o = v.toFixed(11).replace(gnr1,".$1");
+	if(o.length > (v<0?12:11)) o = v.toPrecision(6);
+	return o;
+}
+function gfn4(o) {
+	for(var i = 0; i != o.length; ++i) if((o.charCodeAt(i) | 0x20) === 101) return o.replace(gnr4,".$1").replace(gnr5,"E").replace("e","E").replace(gnr6,"$10$2");
+	return o;
+}
+function gfn5(o) {
+	//for(var i = 0; i != o.length; ++i) if(o.charCodeAt(i) === 46) return o.replace(gnr2,"").replace(gnr1,".$1");
+	//return o;
+	return o.indexOf(".") > -1 ? o.replace(gnr2,"").replace(gnr1,".$1") : o;
+}
+return function general_fmt_num(v, opts) {
+	var V = Math.floor(Math.log(Math.abs(v))*Math.LOG10E), o;
+	if(V >= -4 && V <= -1) o = v.toPrecision(10+V);
+	else if(Math.abs(V) <= 9) o = gfn2(v);
+	else if(V === 10) o = v.toFixed(10).substr(0,12);
+	else o = gfn3(v);
+	return gfn5(gfn4(o));
+};})();
+SSF._general_num = general_fmt_num;
+function general_fmt(v, opts) {
+	switch(typeof v) {
+		case 'string': return v;
+		case 'boolean': return v ? "TRUE" : "FALSE";
+		case 'number': return (v|0) === v ? general_fmt_int(v, opts) : general_fmt_num(v, opts);
+	}
+	throw new Error("unsupported value in General format: " + v);
+}
+SSF._general = general_fmt;
+function fix_hijri(date, o) { return 0; }
+function parse_date_code(v,opts,b2) {
+	if(v > 2958465 || v < 0) return null;
+	var date = (v|0), time = Math.floor(86400 * (v - date)), dow=0;
+	var dout=[];
+	var out={D:date, T:time, u:86400*(v-date)-time,y:0,m:0,d:0,H:0,M:0,S:0,q:0};
+	if(Math.abs(out.u) < 1e-6) out.u = 0;
+	fixopts(opts != null ? opts : (opts=[]));
+	if(opts.date1904) date += 1462;
+	if(out.u > 0.999) {
+		out.u = 0;
+		if(++time == 86400) { time = 0; ++date; }
+	}
+	if(date === 60) {dout = b2 ? [1317,10,29] : [1900,2,29]; dow=3;}
+	else if(date === 0) {dout = b2 ? [1317,8,29] : [1900,1,0]; dow=6;}
+	else {
+		if(date > 60) --date;
+		/* 1 = Jan 1 1900 */
+		var d = new Date(1900,0,1);
+		d.setDate(d.getDate() + date - 1);
+		dout = [d.getFullYear(), d.getMonth()+1,d.getDate()];
+		dow = d.getDay();
+		if(date < 60) dow = (dow + 6) % 7;
+		if(b2) dow = fix_hijri(d, dout);
+	}
+	out.y = dout[0]; out.m = dout[1]; out.d = dout[2];
+	out.S = time % 60; time = Math.floor(time / 60);
+	out.M = time % 60; time = Math.floor(time / 60);
+	out.H = time;
+	out.q = dow;
+	return out;
+}
+SSF.parse_date_code = parse_date_code;
+/*jshint -W086 */
+function write_date(type, fmt, val, ss0) {
+	var o="", ss=0, tt=0, y = val.y, out, outl = 0;
+	switch(type) {
+		case 98: /* 'b' buddhist year */
+			y = val.y + 543;
+			/* falls through */
+		case 121: /* 'y' year */
+		switch(fmt.length) {
+			case 1: case 2: out = y % 100; outl = 2; break;
+			default: out = y % 10000; outl = 4; break;
+		} break;
+		case 109: /* 'm' month */
+		switch(fmt.length) {
+			case 1: case 2: out = val.m; outl = fmt.length; break;
+			case 3: return months[val.m-1][1];
+			case 5: return months[val.m-1][0];
+			default: return months[val.m-1][2];
+		} break;
+		case 100: /* 'd' day */
+		switch(fmt.length) {
+			case 1: case 2: out = val.d; outl = fmt.length; break;
+			case 3: return days[val.q][0];
+			default: return days[val.q][1];
+		} break;
+		case 104: /* 'h' 12-hour */
+		switch(fmt.length) {
+			case 1: case 2: out = 1+(val.H+11)%12; outl = fmt.length; break;
+			default: throw 'bad hour format: ' + fmt;
+		} break;
+		case 72: /* 'H' 24-hour */
+		switch(fmt.length) {
+			case 1: case 2: out = val.H; outl = fmt.length; break;
+			default: throw 'bad hour format: ' + fmt;
+		} break;
+		case 77: /* 'M' minutes */
+		switch(fmt.length) {
+			case 1: case 2: out = val.M; outl = fmt.length; break;
+			default: throw 'bad minute format: ' + fmt;
+		} break;
+		case 115: /* 's' seconds */
+		if(val.u === 0) switch(fmt) {
+			case 's': case 'ss': return pad0(val.S, fmt.length);
+			case '.0': case '.00': case '.000':
+		}
+		switch(fmt) {
+			case 's': case 'ss': case '.0': case '.00': case '.000':
+				if(ss0 >= 2) tt = ss0 === 3 ? 1000 : 100;
+				else tt = ss0 === 1 ? 10 : 1;
+				ss = Math.round((tt)*(val.S + val.u));
+				if(ss >= 60*tt) ss = 0;
+				if(fmt === 's') return ss === 0 ? "0" : ""+ss/tt;
+				o = pad0(ss,2 + ss0);
+				if(fmt === 'ss') return o.substr(0,2);
+				return "." + o.substr(2,fmt.length-1);
+			default: throw 'bad second format: ' + fmt;
+		}
+		case 90: /* 'Z' absolute time */
+		switch(fmt) {
+			case '[h]': case '[hh]': out = val.D*24+val.H; break;
+			case '[m]': case '[mm]': out = (val.D*24+val.H)*60+val.M; break;
+			case '[s]': case '[ss]': out = ((val.D*24+val.H)*60+val.M)*60+Math.round(val.S+val.u); break;
+			default: throw 'bad abstime format: ' + fmt;
+		} outl = fmt.length === 3 ? 1 : 2; break;
+		case 101: /* 'e' era */
+			out = y; outl = 1;
+	}
+	if(outl > 0) return pad0(out, outl); else return "";
+}
+/*jshint +W086 */
+function commaify(s) {
+	if(s.length <= 3) return s;
+	var j = (s.length % 3), o = s.substr(0,j);
+	for(; j!=s.length; j+=3) o+=(o.length > 0 ? "," : "") + s.substr(j,3);
+	return o;
+}
+var write_num = (function make_write_num(){
+var pct1 = /%/g;
+function write_num_pct(type, fmt, val){
+	var sfmt = fmt.replace(pct1,""), mul = fmt.length - sfmt.length;
+	return write_num(type, sfmt, val * Math.pow(10,2*mul)) + fill("%",mul);
+}
+function write_num_cm(type, fmt, val){
+	var idx = fmt.length - 1;
+	while(fmt.charCodeAt(idx-1) === 44) --idx;
+	return write_num(type, fmt.substr(0,idx), val / Math.pow(10,3*(fmt.length-idx)));
+}
+function write_num_exp(fmt, val){
 	var o;
-	var tail;		// (zip_HuftList)
-
-	tail = this.root = null;
-	for(i = 0; i < c.length; i++)
-	    c[i] = 0;
-	for(i = 0; i < lx.length; i++)
-	    lx[i] = 0;
-	for(i = 0; i < u.length; i++)
-	    u[i] = null;
-	for(i = 0; i < v.length; i++)
-	    v[i] = 0;
-	for(i = 0; i < x.length; i++)
-	    x[i] = 0;
-
-	// Generate counts for each bit length
-	el = n > 256 ? b[256] : this.BMAX; // set length of EOB code, if any
-	p = b; pidx = 0;
-	i = n;
-	do {
-	    c[p[pidx]]++;	// assume all entries <= BMAX
-	    pidx++;
-	} while(--i > 0);
-	if(c[0] == n) {	// null input--all zero length codes
-	    this.root = null;
-	    this.m = 0;
-	    this.status = 0;
-	    return;
-	}
-
-	// Find minimum and maximum length, bound *m by those
-	for(j = 1; j <= this.BMAX; j++)
-	    if(c[j] != 0)
-		break;
-	k = j;			// minimum code length
-	if(mm < j)
-	    mm = j;
-	for(i = this.BMAX; i != 0; i--)
-	    if(c[i] != 0)
-		break;
-	g = i;			// maximum code length
-	if(mm > i)
-	    mm = i;
-
-	// Adjust last length count to fill out codes, if needed
-	for(y = 1 << j; j < i; j++, y <<= 1)
-	    if((y -= c[j]) < 0) {
-		this.status = 2;	// bad input: more codes than bits
-		this.m = mm;
-		return;
-	    }
-	if((y -= c[i]) < 0) {
-	    this.status = 2;
-	    this.m = mm;
-	    return;
-	}
-	c[i] += y;
-
-	// Generate starting offsets into the value table for each length
-	x[1] = j = 0;
-	p = c;
-	pidx = 1;
-	xp = 2;
-	while(--i > 0)		// note that i == g from above
-	    x[xp++] = (j += p[pidx++]);
-
-	// Make a table of values in order of bit lengths
-	p = b; pidx = 0;
-	i = 0;
-	do {
-	    if((j = p[pidx++]) != 0)
-		v[x[j]++] = i;
-	} while(++i < n);
-	n = x[g];			// set n to length of v
-
-	// Generate the Huffman codes and for each, make the table entries
-	x[0] = i = 0;		// first Huffman code is zero
-	p = v; pidx = 0;		// grab values in bit order
-	h = -1;			// no tables yet--level -1
-	w = lx[0] = 0;		// no bits decoded yet
-	q = null;			// ditto
-	z = 0;			// ditto
-
-	// go through the bit lengths (k already is bits in shortest code)
-	for(; k <= g; k++) {
-	    a = c[k];
-	    while(a-- > 0) {
-		// here i is the Huffman code of length k bits for value p[pidx]
-		// make tables up to required level
-		while(k > w + lx[1 + h]) {
-		    w += lx[1 + h]; // add bits already decoded
-		    h++;
-
-		    // compute minimum size table less than or equal to *m bits
-		    z = (z = g - w) > mm ? mm : z; // upper limit
-		    if((f = 1 << (j = k - w)) > a + 1) { // try a k-w bit table
-			// too few codes for k-w bit table
-			f -= a + 1;	// deduct codes from patterns left
-			xp = k;
-			while(++j < z) { // try smaller tables up to z bits
-			    if((f <<= 1) <= c[++xp])
-				break;	// enough codes to use up j bits
-			    f -= c[xp];	// else deduct codes from patterns
+	var idx = fmt.indexOf("E") - fmt.indexOf(".") - 1;
+	if(fmt.match(/^#+0.0E\+0$/)) {
+		var period = fmt.indexOf("."); if(period === -1) period=fmt.indexOf('E');
+		var ee = Math.floor(Math.log(Math.abs(val))*Math.LOG10E)%period;
+		if(ee < 0) ee += period;
+		o = (val/Math.pow(10,ee)).toPrecision(idx+1+(period+ee)%period);
+		if(o.indexOf("e") === -1) {
+			var fakee = Math.floor(Math.log(Math.abs(val))*Math.LOG10E);
+			if(o.indexOf(".") === -1) o = o[0] + "." + o.substr(1) + "E+" + (fakee - o.length+ee);
+			else o += "E+" + (fakee - ee);
+			while(o.substr(0,2) === "0.") {
+				o = o[0] + o.substr(2,period) + "." + o.substr(2+period);
+				o = o.replace(/^0+([1-9])/,"$1").replace(/^0+\./,"0.");
 			}
-		    }
-		    if(w + j > el && w < el)
-			j = el - w;	// make EOB code end at table
-		    z = 1 << j;	// table entries for j-bit table
-		    lx[1 + h] = j; // set table size in stack
-
-		    // allocate and link in new table
-		    q = new Array(z);
-		    for(o = 0; o < z; o++) {
-			q[o] = new zip_HuftNode();
-		    }
-
-		    if(tail == null)
-			tail = this.root = new zip_HuftList();
-		    else
-			tail = tail.next = new zip_HuftList();
-		    tail.next = null;
-		    tail.list = q;
-		    u[h] = q;	// table starts after link
-
-		    /* connect to last table, if there is one */
-		    if(h > 0) {
-			x[h] = i;		// save pattern for backing up
-			r.b = lx[h];	// bits to dump before this table
-			r.e = 16 + j;	// bits in this table
-			r.t = q;		// pointer to this table
-			j = (i & ((1 << w) - 1)) >> (w - lx[h]);
-			u[h-1][j].e = r.e;
-			u[h-1][j].b = r.b;
-			u[h-1][j].n = r.n;
-			u[h-1][j].t = r.t;
-		    }
+			o = o.replace(/\+-/,"-");
 		}
-
-		// set up table entry in r
-		r.b = k - w;
-		if(pidx >= n)
-		    r.e = 99;		// out of values--invalid code
-		else if(p[pidx] < s) {
-		    r.e = (p[pidx] < 256 ? 16 : 15); // 256 is end-of-block code
-		    r.n = p[pidx++];	// simple code is just the value
-		} else {
-		    r.e = e[p[pidx] - s];	// non-simple--look up in lists
-		    r.n = d[p[pidx++] - s];
+		o = o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/,function($$,$1,$2,$3) { return $1 + $2 + $3.substr(0,(period+ee)%period) + "." + $3.substr(ee) + "E"; });
+	} else o = val.toExponential(idx);
+	if(fmt.match(/E\+00$/) && o.match(/e[+-]\d$/)) o = o.substr(0,o.length-1) + "0" + o[o.length-1];
+	if(fmt.match(/E\-/) && o.match(/e\+/)) o = o.replace(/e\+/,"e");
+	return o.replace("e","E");
+}
+var frac1 = /# (\?+)( ?)\/( ?)(\d+)/;
+function write_num_f1(r, aval, sign) {
+	var den = parseInt(r[4]), rr = Math.round(aval * den), base = Math.floor(rr/den);
+	var myn = (rr - base*den), myd = den;
+	return sign + (base === 0 ? "" : ""+base) + " " + (myn === 0 ? fill(" ", r[1].length + 1 + r[4].length) : pad_(myn,r[1].length) + r[2] + "/" + r[3] + pad0(myd,r[4].length));
+}
+function write_num_f2(r, aval, sign) {
+	return sign + (aval === 0 ? "" : ""+aval) + fill(" ", r[1].length + 2 + r[4].length);
+}
+var dec1 = /^#*0*\.(0+)/;
+var closeparen = /\).*[0#]/;
+var phone = /\(###\) ###\\?-####/;
+function hashq(str) {
+	var o = "", cc;
+	for(var i = 0; i != str.length; ++i) switch((cc=str.charCodeAt(i))) {
+		case 35: break;
+		case 63: o+= " "; break;
+		case 48: o+= "0"; break;
+		default: o+= String.fromCharCode(cc);
+	}
+	return o;
+}
+function rnd(val, d) { var dd = Math.pow(10,d); return ""+(Math.round(val * dd)/dd); }
+function dec(val, d) { return Math.round((val-Math.floor(val))*Math.pow(10,d)); }
+function flr(val) { if(val < 2147483647 && val > -2147483648) return ""+(val >= 0 ? (val|0) : (val-1|0)); return ""+Math.floor(val); }
+function write_num_flt(type, fmt, val) {
+	if(type.charCodeAt(0) === 40 && !fmt.match(closeparen)) {
+		var ffmt = fmt.replace(/\( */,"").replace(/ \)/,"").replace(/\)/,"");
+		if(val >= 0) return write_num_flt('n', ffmt, val);
+		return '(' + write_num_flt('n', ffmt, -val) + ')';
+	}
+	if(fmt.charCodeAt(fmt.length - 1) === 44) return write_num_cm(type, fmt, val);
+	if(fmt.indexOf('%') !== -1) return write_num_pct(type, fmt, val);
+	if(fmt.indexOf('E') !== -1) return write_num_exp(fmt, val);
+	if(fmt.charCodeAt(0) === 36) return "$"+write_num_flt(type,fmt.substr(fmt[1]==' '?2:1),val);
+	var o, oo;
+	var r, ri, ff, aval = Math.abs(val), sign = val < 0 ? "-" : "";
+	if(fmt.match(/^00+$/)) return sign + pad0r(aval,fmt.length);
+	if(fmt.match(/^[#?]+$/)) {
+		o = pad0r(val,0); if(o === "0") o = "";
+		return o.length > fmt.length ? o : hashq(fmt.substr(0,fmt.length-o.length)) + o;
+	}
+	if((r = fmt.match(frac1)) !== null) return write_num_f1(r, aval, sign);
+	if(fmt.match(/^#+0+$/) !== null) return sign + pad0r(aval,fmt.length - fmt.indexOf("0"));
+	if((r = fmt.match(dec1)) !== null) {
+		o = rnd(val, r[1].length).replace(/^([^\.]+)$/,"$1."+r[1]).replace(/\.$/,"."+r[1]).replace(/\.(\d*)$/,function($$, $1) { return "." + $1 + fill("0", r[1].length-$1.length); });
+		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./,".");
+	}
+	fmt = fmt.replace(/^#+([0.])/, "$1");
+	if((r = fmt.match(/^(0*)\.(#*)$/)) !== null) {
+		return sign + rnd(aval, r[2].length).replace(/\.(\d*[1-9])0*$/,".$1").replace(/^(-?\d*)$/,"$1.").replace(/^0\./,r[1].length?"0.":".");
+	}
+	if((r = fmt.match(/^#,##0(\.?)$/)) !== null) return sign + commaify(pad0r(aval,0));
+	if((r = fmt.match(/^#,##0\.([#0]*0)$/)) !== null) {
+		return val < 0 ? "-" + write_num_flt(type, fmt, -val) : commaify(""+(Math.floor(val))) + "." + pad0(dec(val, r[1].length),r[1].length);
+	}
+	if((r = fmt.match(/^#,#*,#0/)) !== null) return write_num_flt(type,fmt.replace(/^#,#*,/,""),val);
+	if((r = fmt.match(/^([0#]+)(\\?-([0#]+))+$/)) !== null) {
+		o = _strrev(write_num_flt(type, fmt.replace(/[\\-]/g,""), val));
+		ri = 0;
+		return _strrev(_strrev(fmt.replace(/\\/g,"")).replace(/[0#]/g,function(x){return ri<o.length?o[ri++]:x==='0'?'0':"";}));
+	}
+	if(fmt.match(phone) !== null) {
+		o = write_num_flt(type, "##########", val);
+		return "(" + o.substr(0,3) + ") " + o.substr(3, 3) + "-" + o.substr(6);
+	}
+	var oa = "";
+	if((r = fmt.match(/^([#0?]+)( ?)\/( ?)([#0?]+)/)) !== null) {
+		ri = Math.min(r[4].length,7);
+		ff = frac(aval, Math.pow(10,ri)-1, false);
+		o = "" + sign;
+		oa = write_num("n", r[1], ff[1]);
+		if(oa[oa.length-1] == " ") oa = oa.substr(0,oa.length-1) + "0";
+		o += oa + r[2] + "/" + r[3];
+		oa = rpad_(ff[2],ri);
+		if(oa.length < r[4].length) oa = hashq(r[4].substr(r[4].length-oa.length)) + oa;
+		o += oa;
+		return o;
+	}
+	if((r = fmt.match(/^# ([#0?]+)( ?)\/( ?)([#0?]+)/)) !== null) {
+		ri = Math.min(Math.max(r[1].length, r[4].length),7);
+		ff = frac(aval, Math.pow(10,ri)-1, true);
+		return sign + (ff[0]||(ff[1] ? "" : "0")) + " " + (ff[1] ? pad_(ff[1],ri) + r[2] + "/" + r[3] + rpad_(ff[2],ri): fill(" ", 2*ri+1 + r[2].length + r[3].length));
+	}
+	if((r = fmt.match(/^[#0?]+$/)) !== null) {
+		o = pad0r(val, 0);
+		if(fmt.length <= o.length) return o;
+		return hashq(fmt.substr(0,fmt.length-o.length)) + o;
+	}
+  if((r = fmt.match(/^([#0?]+)\.([#0]+)$/)) !== null) {
+		o = "" + val.toFixed(Math.min(r[2].length,10)).replace(/([^0])0+$/,"$1");
+		ri = o.indexOf(".");
+		var lres = fmt.indexOf(".") - ri, rres = fmt.length - o.length - lres;
+		return hashq(fmt.substr(0,lres) + o + fmt.substr(fmt.length-rres));
+	}
+	if((r = fmt.match(/^00,000\.([#0]*0)$/)) !== null) {
+		ri = dec(val, r[1].length);
+		return val < 0 ? "-" + write_num_flt(type, fmt, -val) : commaify(flr(val)).replace(/^\d,\d{3}$/,"0$&").replace(/^\d*$/,function($$) { return "00," + ($$.length < 3 ? pad0(0,3-$$.length) : "") + $$; }) + "." + pad0(ri,r[1].length);
+	}
+	switch(fmt) {
+		case "#,###": var x = commaify(pad0r(aval,0)); return x !== "0" ? sign + x : "";
+		default:
+	}
+	throw new Error("unsupported format |" + fmt + "|");
+}
+function write_num_cm2(type, fmt, val){
+	var idx = fmt.length - 1;
+	while(fmt.charCodeAt(idx-1) === 44) --idx;
+	return write_num(type, fmt.substr(0,idx), val / Math.pow(10,3*(fmt.length-idx)));
+}
+function write_num_pct2(type, fmt, val){
+	var sfmt = fmt.replace(pct1,""), mul = fmt.length - sfmt.length;
+	return write_num(type, sfmt, val * Math.pow(10,2*mul)) + fill("%",mul);
+}
+function write_num_exp2(fmt, val){
+	var o;
+	var idx = fmt.indexOf("E") - fmt.indexOf(".") - 1;
+	if(fmt.match(/^#+0.0E\+0$/)) {
+		var period = fmt.indexOf("."); if(period === -1) period=fmt.indexOf('E');
+		var ee = Math.floor(Math.log(Math.abs(val))*Math.LOG10E)%period;
+		if(ee < 0) ee += period;
+		o = (val/Math.pow(10,ee)).toPrecision(idx+1+(period+ee)%period);
+		if(!o.match(/[Ee]/)) {
+			var fakee = Math.floor(Math.log(Math.abs(val))*Math.LOG10E);
+			if(o.indexOf(".") === -1) o = o[0] + "." + o.substr(1) + "E+" + (fakee - o.length+ee);
+			else o += "E+" + (fakee - ee);
+			o = o.replace(/\+-/,"-");
 		}
-
-		// fill code-like entries with r //
-		f = 1 << (k - w);
-		for(j = i >> w; j < z; j += f) {
-		    q[j].e = r.e;
-		    q[j].b = r.b;
-		    q[j].n = r.n;
-		    q[j].t = r.t;
+		o = o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/,function($$,$1,$2,$3) { return $1 + $2 + $3.substr(0,(period+ee)%period) + "." + $3.substr(ee) + "E"; });
+	} else o = val.toExponential(idx);
+	if(fmt.match(/E\+00$/) && o.match(/e[+-]\d$/)) o = o.substr(0,o.length-1) + "0" + o[o.length-1];
+	if(fmt.match(/E\-/) && o.match(/e\+/)) o = o.replace(/e\+/,"e");
+	return o.replace("e","E");
+}
+function write_num_int(type, fmt, val) {
+	if(type.charCodeAt(0) === 40 && !fmt.match(closeparen)) {
+		var ffmt = fmt.replace(/\( */,"").replace(/ \)/,"").replace(/\)/,"");
+		if(val >= 0) return write_num_int('n', ffmt, val);
+		return '(' + write_num_int('n', ffmt, -val) + ')';
+	}
+	if(fmt.charCodeAt(fmt.length - 1) === 44) return write_num_cm2(type, fmt, val);
+	if(fmt.indexOf('%') !== -1) return write_num_pct2(type, fmt, val);
+	if(fmt.indexOf('E') !== -1) return write_num_exp2(fmt, val);
+	if(fmt.charCodeAt(0) === 36) return "$"+write_num_int(type,fmt.substr(fmt[1]==' '?2:1),val);
+	var o;
+	var r, ri, ff, aval = Math.abs(val), sign = val < 0 ? "-" : "";
+	if(fmt.match(/^00+$/)) return sign + pad0(aval,fmt.length);
+	if(fmt.match(/^[#?]+$/)) {
+		o = (""+val); if(val === 0) o = "";
+		return o.length > fmt.length ? o : hashq(fmt.substr(0,fmt.length-o.length)) + o;
+	}
+	if((r = fmt.match(frac1)) !== null) return write_num_f2(r, aval, sign);
+	if(fmt.match(/^#+0+$/) !== null) return sign + pad0(aval,fmt.length - fmt.indexOf("0"));
+	if((r = fmt.match(dec1)) !== null) {
+		o = (""+val).replace(/^([^\.]+)$/,"$1."+r[1]).replace(/\.$/,"."+r[1]).replace(/\.(\d*)$/,function($$, $1) { return "." + $1 + fill("0", r[1].length-$1.length); });
+		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./,".");
+	}
+	fmt = fmt.replace(/^#+([0.])/, "$1");
+	if((r = fmt.match(/^(0*)\.(#*)$/)) !== null) {
+		return sign + (""+aval).replace(/\.(\d*[1-9])0*$/,".$1").replace(/^(-?\d*)$/,"$1.").replace(/^0\./,r[1].length?"0.":".");
+	}
+	if((r = fmt.match(/^#,##0(\.?)$/)) !== null) return sign + commaify((""+aval));
+	if((r = fmt.match(/^#,##0\.([#0]*0)$/)) !== null) {
+		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify((""+val)) + "." + fill('0',r[1].length);
+	}
+	if((r = fmt.match(/^#,#*,#0/)) !== null) return write_num_int(type,fmt.replace(/^#,#*,/,""),val);
+	if((r = fmt.match(/^([0#]+)(\\?-([0#]+))+$/)) !== null) {
+		o = _strrev(write_num_int(type, fmt.replace(/[\\-]/g,""), val));
+		ri = 0;
+		return _strrev(_strrev(fmt.replace(/\\/g,"")).replace(/[0#]/g,function(x){return ri<o.length?o[ri++]:x==='0'?'0':"";}));
+	}
+	if(fmt.match(phone) !== null) {
+		o = write_num_int(type, "##########", val);
+		return "(" + o.substr(0,3) + ") " + o.substr(3, 3) + "-" + o.substr(6);
+	}
+	var oa = "";
+	if((r = fmt.match(/^([#0?]+)( ?)\/( ?)([#0?]+)/)) !== null) {
+		ri = Math.min(r[4].length,7);
+		ff = frac(aval, Math.pow(10,ri)-1, false);
+		o = "" + sign;
+		oa = write_num("n", r[1], ff[1]);
+		if(oa[oa.length-1] == " ") oa = oa.substr(0,oa.length-1) + "0";
+		o += oa + r[2] + "/" + r[3];
+		oa = rpad_(ff[2],ri);
+		if(oa.length < r[4].length) oa = hashq(r[4].substr(r[4].length-oa.length)) + oa;
+		o += oa;
+		return o;
+	}
+	if((r = fmt.match(/^# ([#0?]+)( ?)\/( ?)([#0?]+)/)) !== null) {
+		ri = Math.min(Math.max(r[1].length, r[4].length),7);
+		ff = frac(aval, Math.pow(10,ri)-1, true);
+		return sign + (ff[0]||(ff[1] ? "" : "0")) + " " + (ff[1] ? pad_(ff[1],ri) + r[2] + "/" + r[3] + rpad_(ff[2],ri): fill(" ", 2*ri+1 + r[2].length + r[3].length));
+	}
+	if((r = fmt.match(/^[#0?]+$/)) !== null) {
+		o = "" + val;
+		if(fmt.length <= o.length) return o;
+		return hashq(fmt.substr(0,fmt.length-o.length)) + o;
+	}
+	if((r = fmt.match(/^([#0]+)\.([#0]+)$/)) !== null) {
+		o = "" + val.toFixed(Math.min(r[2].length,10)).replace(/([^0])0+$/,"$1");
+		ri = o.indexOf(".");
+		var lres = fmt.indexOf(".") - ri, rres = fmt.length - o.length - lres;
+		return hashq(fmt.substr(0,lres) + o + fmt.substr(fmt.length-rres));
+	}
+	if((r = fmt.match(/^00,000\.([#0]*0)$/)) !== null) {
+		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify(""+val).replace(/^\d,\d{3}$/,"0$&").replace(/^\d*$/,function($$) { return "00," + ($$.length < 3 ? pad0(0,3-$$.length) : "") + $$; }) + "." + pad0(0,r[1].length);
+	}
+	switch(fmt) {
+		case "#,###": var x = commaify(""+aval); return x !== "0" ? sign + x : "";
+		default:
+	}
+	throw new Error("unsupported format |" + fmt + "|");
+}
+return function write_num(type, fmt, val) {
+	return (val|0) === val ? write_num_int(type, fmt, val) : write_num_flt(type, fmt, val);
+};})();
+function split_fmt(fmt) {
+	var out = [];
+	var in_str = false, cc;
+	for(var i = 0, j = 0; i < fmt.length; ++i) switch((cc=fmt.charCodeAt(i))) {
+		case 34: /* '"' */
+			in_str = !in_str; break;
+		case 95: case 42: case 92: /* '_' '*' '\\' */
+			++i; break;
+		case 59: /* ';' */
+			out[out.length] = fmt.substr(j,i-j);
+			j = i+1;
+	}
+	out[out.length] = fmt.substr(j);
+	if(in_str === true) throw new Error("Format |" + fmt + "| unterminated string ");
+	return out;
+}
+SSF._split = split_fmt;
+var abstime = /\[[HhMmSs]*\]/;
+function eval_fmt(fmt, v, opts, flen) {
+	var out = [], o = "", i = 0, c = "", lst='t', q, dt, j, cc;
+	var hr='H';
+	/* Tokenize */
+	while(i < fmt.length) {
+		switch((c = fmt[i])) {
+			case 'G': /* General */
+				if(!isgeneral(fmt, i)) throw new Error('unrecognized character ' + c + ' in ' +fmt);
+				out[out.length] = {t:'G', v:'General'}; i+=7; break;
+			case '"': /* Literal text */
+				for(o="";(cc=fmt.charCodeAt(++i)) !== 34 && i < fmt.length;) o += String.fromCharCode(cc);
+				out[out.length] = {t:'t', v:o}; ++i; break;
+			case '\\': var w = fmt[++i], t = (w === "(" || w === ")") ? w : 't';
+				out[out.length] = {t:t, v:w}; ++i; break;
+			case '_': out[out.length] = {t:'t', v:" "}; i+=2; break;
+			case '@': /* Text Placeholder */
+				out[out.length] = {t:'T', v:v}; ++i; break;
+			case 'B': case 'b':
+				if(fmt[i+1] === "1" || fmt[i+1] === "2") {
+          if(dt==null) { dt=parse_date_code(v, opts, fmt[i+1] === "2"); if(dt==null) return ""; }
+					out[out.length] = {t:'X', v:fmt.substr(i,2)}; lst = c; i+=2; break;
+				}
+				/* falls through */
+			case 'M': case 'D': case 'Y': case 'H': case 'S': case 'E':
+				c = c.toLowerCase();
+				/* falls through */
+			case 'm': case 'd': case 'y': case 'h': case 's': case 'e': case 'g':
+				if(v < 0) return "";
+				if(dt==null) { dt=parse_date_code(v, opts); if(dt==null) return ""; }
+				o = c; while(++i<fmt.length && fmt[i].toLowerCase() === c) o+=c;
+				if(c === 'm' && lst.toLowerCase() === 'h') c = 'M'; /* m = minute */
+				if(c === 'h') c = hr;
+				out[out.length] = {t:c, v:o}; lst = c; break;
+			case 'A':
+				q={t:c, v:"A"};
+				if(dt==null) dt=parse_date_code(v, opts);
+        if(fmt.substr(i, 3) === "A/P") { if(dt!=null) q.v = dt.H >= 12 ? "P" : "A"; q.t = 'T'; hr='h';i+=3;}
+        else if(fmt.substr(i,5) === "AM/PM") { if(dt!=null) q.v = dt.H >= 12 ? "PM" : "AM"; q.t = 'T'; i+=5; hr='h'; }
+				else { q.t = "t"; ++i; }
+				if(dt==null && q.t === 'T') return "";
+				out[out.length] = q; lst = c; break;
+			case '[':
+				o = c;
+				while(fmt[i++] !== ']' && i < fmt.length) o += fmt[i];
+				if(o.substr(-1) !== ']') throw 'unterminated "[" block: |' + o + '|';
+				if(o.match(abstime)) {
+					if(dt==null) { dt=parse_date_code(v, opts); if(dt==null) return ""; }
+					out[out.length] = {t:'Z', v:o.toLowerCase()};
+				} else { o=""; }
+				break;
+			/* Numbers */
+			case '.':
+				if(dt != null) {
+					o = c; while((c=fmt[++i]) === "0") o += c;
+					out[out.length] = {t:'s', v:o}; break;
+				}
+				/* falls through */
+			case '0': case '#':
+				o = c; while("0#?.,E+-%".indexOf(c=fmt[++i]) > -1 || c=='\\' && fmt[i+1] == "-" && "0#".indexOf(fmt[i+2])>-1) o += c;
+				out[out.length] = {t:'n', v:o}; break;
+			case '?':
+				o = c; while(fmt[++i] === c) o+=c;
+				q={t:c, v:o}; out[out.length] = q; lst = c; break;
+			case '*': ++i; if(fmt[i] == ' ' || fmt[i] == '*') ++i; break; // **
+			case '(': case ')': out[out.length] = {t:(flen===1?'t':c), v:c}; ++i; break;
+			case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+				o = c; while("0123456789".indexOf(fmt[++i]) > -1) o+=fmt[i];
+				out[out.length] = {t:'D', v:o}; break;
+			case ' ': out[out.length] = {t:c, v:c}; ++i; break;
+			default:
+				if(",$-+/():!^&'~{}<>=€acfijklopqrtuvwxz".indexOf(c) === -1) throw new Error('unrecognized character ' + c + ' in ' + fmt);
+				out[out.length] = {t:'t', v:c}; ++i; break;
 		}
-
-		// backwards increment the k-bit code i
-		for(j = 1 << (k - 1); (i & j) != 0; j >>= 1)
-		    i ^= j;
-		i ^= j;
-
-		// backup over finished tables
-		while((i & ((1 << w) - 1)) != x[h]) {
-		    w -= lx[h];		// don't need to update q
-		    h--;
+	}
+	var bt = 0, ss0 = 0, ssm;
+	for(i=out.length-1, lst='t'; i >= 0; --i) {
+		switch(out[i].t) {
+			case 'h': case 'H': out[i].t = hr; lst='h'; if(bt < 1) bt = 1; break;
+			case 's':
+				if((ssm=out[i].v.match(/\.0+$/))) ss0=Math.max(ss0,ssm[0].length-1);
+				if(bt < 3) bt = 3;
+			/* falls through */
+			case 'd': case 'y': case 'M': case 'e': lst=out[i].t; break;
+			case 'm': if(lst === 's') { out[i].t = 'M'; if(bt < 2) bt = 2; } break;
+			case 'X': if(out[i].v === "B2");
+				break;
+			case 'Z':
+				if(bt < 1 && out[i].v.match(/[Hh]/)) bt = 1;
+				if(bt < 2 && out[i].v.match(/[Mm]/)) bt = 2;
+				if(bt < 3 && out[i].v.match(/[Ss]/)) bt = 3;
 		}
-	    }
 	}
-
-	/* return actual size of base table */
-	this.m = lx[1];
-
-	/* Return true (1) if we were given an incomplete table */
-	this.status = ((y != 0 && g != 1) ? 1 : 0);
-    } /* end of constructor */
-}
-
-
-/* routines (inflate) */
-
-function zip_GET_BYTE() {
-    if(zip_inflate_data.length == zip_inflate_pos)
-	return -1;
-    return zip_inflate_data.charCodeAt(zip_inflate_pos++) & 0xff;
-}
-
-function zip_NEEDBITS(n) {
-    while(zip_bit_len < n) {
-	zip_bit_buf |= zip_GET_BYTE() << zip_bit_len;
-	zip_bit_len += 8;
-    }
-}
-
-function zip_GETBITS(n) {
-    return zip_bit_buf & zip_MASK_BITS[n];
-}
-
-function zip_DUMPBITS(n) {
-    zip_bit_buf >>= n;
-    zip_bit_len -= n;
-}
-
-function zip_inflate_codes(buff, off, size) {
-    /* inflate (decompress) the codes in a deflated (compressed) block.
-       Return an error code or zero if it all goes ok. */
-    var e;		// table entry flag/number of extra bits
-    var t;		// (zip_HuftNode) pointer to table entry
-    var n;
-
-    if(size == 0)
-      return 0;
-
-    // inflate the coded data
-    n = 0;
-    for(;;) {			// do until end of block
-	zip_NEEDBITS(zip_bl);
-	t = zip_tl.list[zip_GETBITS(zip_bl)];
-	e = t.e;
-	while(e > 16) {
-	    if(e == 99)
-		return -1;
-	    zip_DUMPBITS(t.b);
-	    e -= 16;
-	    zip_NEEDBITS(e);
-	    t = t.t[zip_GETBITS(e)];
-	    e = t.e;
+	switch(bt) {
+		case 0: break;
+		case 1:
+			if(dt.u >= 0.5) { dt.u = 0; ++dt.S; }
+			if(dt.S >=  60) { dt.S = 0; ++dt.M; }
+			if(dt.M >=  60) { dt.M = 0; ++dt.H; }
+			break;
+		case 2:
+			if(dt.u >= 0.5) { dt.u = 0; ++dt.S; }
+			if(dt.S >=  60) { dt.S = 0; ++dt.M; }
+			break;
 	}
-	zip_DUMPBITS(t.b);
-
-	if(e == 16) {		// then it's a literal
-	    zip_wp &= zip_WSIZE - 1;
-	    buff[off + n++] = zip_slide[zip_wp++] = t.n;
-	    if(n == size)
-		return size;
-	    continue;
-	}
-
-	// exit if end of block
-	if(e == 15)
-	    break;
-
-	// it's an EOB or a length
-
-	// get length of block to copy
-	zip_NEEDBITS(e);
-	zip_copy_leng = t.n + zip_GETBITS(e);
-	zip_DUMPBITS(e);
-
-	// decode distance of block to copy
-	zip_NEEDBITS(zip_bd);
-	t = zip_td.list[zip_GETBITS(zip_bd)];
-	e = t.e;
-
-	while(e > 16) {
-	    if(e == 99)
-		return -1;
-	    zip_DUMPBITS(t.b);
-	    e -= 16;
-	    zip_NEEDBITS(e);
-	    t = t.t[zip_GETBITS(e)];
-	    e = t.e;
-	}
-	zip_DUMPBITS(t.b);
-	zip_NEEDBITS(e);
-	zip_copy_dist = zip_wp - t.n - zip_GETBITS(e);
-	zip_DUMPBITS(e);
-
-	// do the copy
-	while(zip_copy_leng > 0 && n < size) {
-	    zip_copy_leng--;
-	    zip_copy_dist &= zip_WSIZE - 1;
-	    zip_wp &= zip_WSIZE - 1;
-	    buff[off + n++] = zip_slide[zip_wp++]
-		= zip_slide[zip_copy_dist++];
-	}
-
-	if(n == size)
-	    return size;
-    }
-
-    zip_method = -1; // done
-    return n;
-}
-
-function zip_inflate_stored(buff, off, size) {
-    /* "decompress" an inflated type 0 (stored) block. */
-    var n;
-
-    // go to byte boundary
-    n = zip_bit_len & 7;
-    zip_DUMPBITS(n);
-
-    // get the length and its complement
-    zip_NEEDBITS(16);
-    n = zip_GETBITS(16);
-    zip_DUMPBITS(16);
-    zip_NEEDBITS(16);
-    if(n != ((~zip_bit_buf) & 0xffff))
-	return -1;			// error in compressed data
-    zip_DUMPBITS(16);
-
-    // read and output the compressed data
-    zip_copy_leng = n;
-
-    n = 0;
-    while(zip_copy_leng > 0 && n < size) {
-	zip_copy_leng--;
-	zip_wp &= zip_WSIZE - 1;
-	zip_NEEDBITS(8);
-	buff[off + n++] = zip_slide[zip_wp++] =
-	    zip_GETBITS(8);
-	zip_DUMPBITS(8);
-    }
-
-    if(zip_copy_leng == 0)
-      zip_method = -1; // done
-    return n;
-}
-
-function zip_inflate_fixed(buff, off, size) {
-    /* decompress an inflated type 1 (fixed Huffman codes) block.  We should
-       either replace this with a custom decoder, or at least precompute the
-       Huffman tables. */
-
-    // if first time, set up tables for fixed blocks
-    if(zip_fixed_tl == null) {
-	var i;			// temporary variable
-	var l = new Array(288);	// length list for huft_build
-	var h;	// zip_HuftBuild
-
-	// literal table
-	for(i = 0; i < 144; i++)
-	    l[i] = 8;
-	for(; i < 256; i++)
-	    l[i] = 9;
-	for(; i < 280; i++)
-	    l[i] = 7;
-	for(; i < 288; i++)	// make a complete, but wrong code set
-	    l[i] = 8;
-	zip_fixed_bl = 7;
-
-	h = new zip_HuftBuild(l, 288, 257, zip_cplens, zip_cplext,
-			      zip_fixed_bl);
-	if(h.status != 0) {
-	    alert("HufBuild error: "+h.status);
-	    return -1;
-	}
-	zip_fixed_tl = h.root;
-	zip_fixed_bl = h.m;
-
-	// distance table
-	for(i = 0; i < 30; i++)	// make an incomplete code set
-	    l[i] = 5;
-	zip_fixed_bd = 5;
-
-	h = new zip_HuftBuild(l, 30, 0, zip_cpdist, zip_cpdext, zip_fixed_bd);
-	if(h.status > 1) {
-	    zip_fixed_tl = null;
-	    alert("HufBuild error: "+h.status);
-	    return -1;
-	}
-	zip_fixed_td = h.root;
-	zip_fixed_bd = h.m;
-    }
-
-    zip_tl = zip_fixed_tl;
-    zip_td = zip_fixed_td;
-    zip_bl = zip_fixed_bl;
-    zip_bd = zip_fixed_bd;
-    return zip_inflate_codes(buff, off, size);
-}
-
-function zip_inflate_dynamic(buff, off, size) {
-    // decompress an inflated type 2 (dynamic Huffman codes) block.
-    var i;		// temporary variables
-    var j;
-    var l;		// last length
-    var n;		// number of lengths to get
-    var t;		// (zip_HuftNode) literal/length code table
-    var nb;		// number of bit length codes
-    var nl;		// number of literal/length codes
-    var nd;		// number of distance codes
-    var ll = new Array(286+30); // literal/length and distance code lengths
-    var h;		// (zip_HuftBuild)
-
-    for(i = 0; i < ll.length; i++)
-	ll[i] = 0;
-
-    // read in table lengths
-    zip_NEEDBITS(5);
-    nl = 257 + zip_GETBITS(5);	// number of literal/length codes
-    zip_DUMPBITS(5);
-    zip_NEEDBITS(5);
-    nd = 1 + zip_GETBITS(5);	// number of distance codes
-    zip_DUMPBITS(5);
-    zip_NEEDBITS(4);
-    nb = 4 + zip_GETBITS(4);	// number of bit length codes
-    zip_DUMPBITS(4);
-    if(nl > 286 || nd > 30)
-      return -1;		// bad lengths
-
-    // read in bit-length-code lengths
-    for(j = 0; j < nb; j++)
-    {
-	zip_NEEDBITS(3);
-	ll[zip_border[j]] = zip_GETBITS(3);
-	zip_DUMPBITS(3);
-    }
-    for(; j < 19; j++)
-	ll[zip_border[j]] = 0;
-
-    // build decoding table for trees--single level, 7 bit lookup
-    zip_bl = 7;
-    h = new zip_HuftBuild(ll, 19, 19, null, null, zip_bl);
-    if(h.status != 0)
-	return -1;	// incomplete code set
-
-    zip_tl = h.root;
-    zip_bl = h.m;
-
-    // read in literal and distance code lengths
-    n = nl + nd;
-    i = l = 0;
-    while(i < n) {
-	zip_NEEDBITS(zip_bl);
-	t = zip_tl.list[zip_GETBITS(zip_bl)];
-	j = t.b;
-	zip_DUMPBITS(j);
-	j = t.n;
-	if(j < 16)		// length of code in bits (0..15)
-	    ll[i++] = l = j;	// save last length in l
-	else if(j == 16) {	// repeat last length 3 to 6 times
-	    zip_NEEDBITS(2);
-	    j = 3 + zip_GETBITS(2);
-	    zip_DUMPBITS(2);
-	    if(i + j > n)
-		return -1;
-	    while(j-- > 0)
-		ll[i++] = l;
-	} else if(j == 17) {	// 3 to 10 zero length codes
-	    zip_NEEDBITS(3);
-	    j = 3 + zip_GETBITS(3);
-	    zip_DUMPBITS(3);
-	    if(i + j > n)
-		return -1;
-	    while(j-- > 0)
-		ll[i++] = 0;
-	    l = 0;
-	} else {		// j == 18: 11 to 138 zero length codes
-	    zip_NEEDBITS(7);
-	    j = 11 + zip_GETBITS(7);
-	    zip_DUMPBITS(7);
-	    if(i + j > n)
-		return -1;
-	    while(j-- > 0)
-		ll[i++] = 0;
-	    l = 0;
-	}
-    }
-
-    // build the decoding tables for literal/length and distance codes
-    zip_bl = zip_lbits;
-    h = new zip_HuftBuild(ll, nl, 257, zip_cplens, zip_cplext, zip_bl);
-    if(zip_bl == 0)	// no literals or lengths
-	h.status = 1;
-    if(h.status != 0) {
-	if(h.status == 1)
-	    ;// **incomplete literal tree**
-	return -1;		// incomplete code set
-    }
-    zip_tl = h.root;
-    zip_bl = h.m;
-
-    for(i = 0; i < nd; i++)
-	ll[i] = ll[i + nl];
-    zip_bd = zip_dbits;
-    h = new zip_HuftBuild(ll, nd, 0, zip_cpdist, zip_cpdext, zip_bd);
-    zip_td = h.root;
-    zip_bd = h.m;
-
-    if(zip_bd == 0 && nl > 257) {   // lengths but no distances
-	// **incomplete distance tree**
-	return -1;
-    }
-
-    if(h.status == 1) {
-	;// **incomplete distance tree**
-    }
-    if(h.status != 0)
-	return -1;
-
-    // decompress until an end-of-block code
-    return zip_inflate_codes(buff, off, size);
-}
-
-function zip_inflate_start() {
-    var i;
-
-    if(zip_slide == null)
-	zip_slide = new Array(2 * zip_WSIZE);
-    zip_wp = 0;
-    zip_bit_buf = 0;
-    zip_bit_len = 0;
-    zip_method = -1;
-    zip_eof = false;
-    zip_copy_leng = zip_copy_dist = 0;
-    zip_tl = null;
-}
-
-function zip_inflate_internal(buff, off, size) {
-    // decompress an inflated entry
-    var n, i;
-
-    n = 0;
-    while(n < size) {
-	if(zip_eof && zip_method == -1)
-	    return n;
-
-	if(zip_copy_leng > 0) {
-	    if(zip_method != zip_STORED_BLOCK) {
-		// STATIC_TREES or DYN_TREES
-		while(zip_copy_leng > 0 && n < size) {
-		    zip_copy_leng--;
-		    zip_copy_dist &= zip_WSIZE - 1;
-		    zip_wp &= zip_WSIZE - 1;
-		    buff[off + n++] = zip_slide[zip_wp++] =
-			zip_slide[zip_copy_dist++];
+	/* replace fields */
+	var nstr = "", jj;
+	for(i=0; i < out.length; ++i) {
+		switch(out[i].t) {
+			case 't': case 'T': case ' ': case 'D': break;
+			case 'X': out[i] = undefined; break;
+			case 'd': case 'm': case 'y': case 'h': case 'H': case 'M': case 's': case 'e': case 'b': case 'Z':
+				out[i].v = write_date(out[i].t.charCodeAt(0), out[i].v, dt, ss0);
+				out[i].t = 't'; break;
+			case 'n': case '(': case '?':
+				jj = i+1;
+				while(out[jj] != null && (
+					(c=out[jj].t) === "?" || c === "D" ||
+					(c === " " || c === "t") && out[jj+1] != null && (out[jj+1].t === '?' || out[jj+1].t === "t" && out[jj+1].v === '/') ||
+					out[i].t === '(' && (c === ' ' || c === 'n' || c === ')') ||
+					c === 't' && (out[jj].v === '/' || '$€'.indexOf(out[jj].v) > -1 || out[jj].v === ' ' && out[jj+1] != null && out[jj+1].t == '?')
+				)) {
+					out[i].v += out[jj].v;
+					out[jj] = undefined; ++jj;
+				}
+				nstr += out[i].v;
+				i = jj-1; break;
+			case 'G': out[i].t = 't'; out[i].v = general_fmt(v,opts); break;
 		}
-	    } else {
-		while(zip_copy_leng > 0 && n < size) {
-		    zip_copy_leng--;
-		    zip_wp &= zip_WSIZE - 1;
-		    zip_NEEDBITS(8);
-		    buff[off + n++] = zip_slide[zip_wp++] = zip_GETBITS(8);
-		    zip_DUMPBITS(8);
+	}
+	var vv = "", myv, ostr;
+	if(nstr.length > 0) {
+		myv = (v<0&&nstr.charCodeAt(0) === 45 ? -v : v); /* '-' */
+		ostr = write_num(nstr.charCodeAt(0) === 40 ? '(' : 'n', nstr, myv); /* '(' */
+		jj=ostr.length-1;
+		var decpt = out.length;
+		for(i=0; i < out.length; ++i) if(out[i] != null && out[i].v.indexOf(".") > -1) { decpt = i; break; }
+		var lasti=out.length;
+		if(decpt === out.length && ostr.indexOf("E") === -1) {
+			for(i=out.length-1; i>= 0;--i) {
+				if(out[i] == null || 'n?('.indexOf(out[i].t) === -1) continue;
+				if(jj>=out[i].v.length-1) { jj -= out[i].v.length; out[i].v = ostr.substr(jj+1, out[i].v.length); }
+				else if(jj < 0) out[i].v = "";
+				else { out[i].v = ostr.substr(0, jj+1); jj = -1; }
+				out[i].t = 't';
+				lasti = i;
+			}
+			if(jj>=0 && lasti<out.length) out[lasti].v = ostr.substr(0,jj+1) + out[lasti].v;
 		}
-		if(zip_copy_leng == 0)
-		    zip_method = -1; // done
-	    }
-	    if(n == size)
-		return n;
+		else if(decpt !== out.length && ostr.indexOf("E") === -1) {
+			jj = ostr.indexOf(".")-1;
+			for(i=decpt; i>= 0; --i) {
+				if(out[i] == null || 'n?('.indexOf(out[i].t) === -1) continue;
+				j=out[i].v.indexOf(".")>-1&&i===decpt?out[i].v.indexOf(".")-1:out[i].v.length-1;
+				vv = out[i].v.substr(j+1);
+				for(; j>=0; --j) {
+					if(jj>=0 && (out[i].v[j] === "0" || out[i].v[j] === "#")) vv = ostr[jj--] + vv;
+				}
+				out[i].v = vv;
+				out[i].t = 't';
+				lasti = i;
+			}
+			if(jj>=0 && lasti<out.length) out[lasti].v = ostr.substr(0,jj+1) + out[lasti].v;
+			jj = ostr.indexOf(".")+1;
+			for(i=decpt; i<out.length; ++i) {
+				if(out[i] == null || 'n?('.indexOf(out[i].t) === -1 && i !== decpt ) continue;
+				j=out[i].v.indexOf(".")>-1&&i===decpt?out[i].v.indexOf(".")+1:0;
+				vv = out[i].v.substr(0,j);
+				for(; j<out[i].v.length; ++j) {
+					if(jj<ostr.length) vv += ostr[jj++];
+				}
+				out[i].v = vv;
+				out[i].t = 't';
+				lasti = i;
+			}
+		}
 	}
-
-	if(zip_method == -1) {
-	    if(zip_eof)
-		break;
-
-	    // read in last block bit
-	    zip_NEEDBITS(1);
-	    if(zip_GETBITS(1) != 0)
-		zip_eof = true;
-	    zip_DUMPBITS(1);
-
-	    // read in block type
-	    zip_NEEDBITS(2);
-	    zip_method = zip_GETBITS(2);
-	    zip_DUMPBITS(2);
-	    zip_tl = null;
-	    zip_copy_leng = 0;
+	for(i=0; i<out.length; ++i) if(out[i] != null && 'n(?'.indexOf(out[i].t)>-1) {
+		myv = (flen >1 && v < 0 && i>0 && out[i-1].v === "-" ? -v:v);
+		out[i].v = write_num(out[i].t, out[i].v, myv);
+		out[i].t = 't';
 	}
-
-	switch(zip_method) {
-	  case 0: // zip_STORED_BLOCK
-	    i = zip_inflate_stored(buff, off + n, size - n);
-	    break;
-
-	  case 1: // zip_STATIC_TREES
-	    if(zip_tl != null)
-		i = zip_inflate_codes(buff, off + n, size - n);
-	    else
-		i = zip_inflate_fixed(buff, off + n, size - n);
-	    break;
-
-	  case 2: // zip_DYN_TREES
-	    if(zip_tl != null)
-		i = zip_inflate_codes(buff, off + n, size - n);
-	    else
-		i = zip_inflate_dynamic(buff, off + n, size - n);
-	    break;
-
-	  default: // error
-	    i = -1;
-	    break;
+	var retval = "";
+	for(i=0; i !== out.length; ++i) if(out[i] != null) retval += out[i].v;
+	return retval;
+}
+SSF._eval = eval_fmt;
+var cfregex = /\[[=<>]/;
+var cfregex2 = /\[([=<>]*)(-?\d+\.?\d*)\]/;
+function chkcond(v, rr) {
+	if(rr == null) return false;
+	var thresh = parseFloat(rr[2]);
+	switch(rr[1]) {
+		case "=":  if(v == thresh) return true; break;
+		case ">":  if(v >  thresh) return true; break;
+		case "<":  if(v <  thresh) return true; break;
+		case "<>": if(v != thresh) return true; break;
+		case ">=": if(v >= thresh) return true; break;
+		case "<=": if(v <= thresh) return true; break;
 	}
-
-	if(i == -1) {
-	    if(zip_eof)
-		return 0;
-	    return -1;
+	return false;
+}
+function choose_fmt(f, v) {
+	var fmt = split_fmt(f);
+	var l = fmt.length, lat = fmt[l-1].indexOf("@");
+	if(l<4 && lat>-1) --l;
+	if(fmt.length > 4) throw "cannot find right format for |" + fmt + "|";
+	if(typeof v !== "number") return [4, fmt.length === 4 || lat>-1?fmt[fmt.length-1]:"@"];
+	switch(fmt.length) {
+		case 1: fmt = lat>-1 ? ["General", "General", "General", fmt[0]] : [fmt[0], fmt[0], fmt[0], "@"]; break;
+		case 2: fmt = lat>-1 ? [fmt[0], fmt[0], fmt[0], fmt[1]] : [fmt[0], fmt[1], fmt[0], "@"]; break;
+		case 3: fmt = lat>-1 ? [fmt[0], fmt[1], fmt[0], fmt[2]] : [fmt[0], fmt[1], fmt[2], "@"]; break;
+		case 4: break;
 	}
-	n += i;
-    }
-    return n;
+	var ff = v > 0 ? fmt[0] : v < 0 ? fmt[1] : fmt[2];
+	if(fmt[0].indexOf("[") === -1 && fmt[1].indexOf("[") === -1) return [l, ff];
+	if(fmt[0].match(cfregex) != null || fmt[1].match(cfregex) != null) {
+		var m1 = fmt[0].match(cfregex2);
+		var m2 = fmt[1].match(cfregex2);
+		return chkcond(v, m1) ? [l, fmt[0]] : chkcond(v, m2) ? [l, fmt[1]] : [l, fmt[m1 != null && m2 != null ? 2 : 1]];
+	}
+	return [l, ff];
+}
+function format(fmt,v,o) {
+	fixopts(o != null ? o : (o=[]));
+	var sfmt = "";
+	switch(typeof fmt) {
+		case "string": sfmt = fmt; break;
+		case "number": sfmt = (o.table != null ? o.table : table_fmt)[fmt]; break;
+	}
+	if(isgeneral(sfmt,0)) return general_fmt(v, o);
+	var f = choose_fmt(sfmt, v);
+	if(isgeneral(f[1])) return general_fmt(v, o);
+	if(v === true) v = "TRUE"; else if(v === false) v = "FALSE";
+	else if(v === "" || v == null) return "";
+	return eval_fmt(f[1], v, o, f[0]);
+}
+SSF._table = table_fmt;
+SSF.load = function load_entry(fmt, idx) { table_fmt[idx] = fmt; };
+SSF.format = format;
+SSF.get_table = function get_table() { return table_fmt; };
+SSF.load_table = function load_table(tbl) { for(var i=0; i!=0x0188; ++i) if(tbl[i] !== undefined) SSF.load(tbl[i], i); };
+};
+make_ssf(SSF);
+function isval(x) { return x !== undefined && x !== null; }
+
+function keys(o) { return Object.keys(o); }
+
+function evert_key(obj, key) {
+	var o = [], K = keys(obj);
+	for(var i = 0; i !== K.length; ++i) o[obj[K[i]][key]] = K[i];
+	return o;
 }
 
-function zip_inflate(str) {
-    var out, buff;
-    var i, j;
-
-    zip_inflate_start();
-    zip_inflate_data = str;
-    zip_inflate_pos = 0;
-
-    buff = new Array(1024);
-    out = "";
-    while((i = zip_inflate_internal(buff, 0, buff.length)) > 0) {
-	for(j = 0; j < i; j++)
-	    out += String.fromCharCode(buff[j]);
-    }
-    zip_inflate_data = null; // G.C.
-    return out;
+function evert(obj) {
+	var o = [], K = keys(obj);
+	for(var i = 0; i !== K.length; ++i) o[obj[K[i]]] = K[i];
+	return o;
 }
 
-//
-// end of the script of Masanao Izumo.
-//
-
-// we add the compression method for JSZip
-if(!JSZip.compressions["DEFLATE"]) {
-  JSZip.compressions["DEFLATE"] = {
-    magic : "\x08\x00",
-    uncompress : zip_inflate
-  }
-} else {
-  JSZip.compressions["DEFLATE"].uncompress = zip_inflate;
+function evert_num(obj) {
+	var o = [], K = keys(obj);
+	for(var i = 0; i !== K.length; ++i) o[obj[K[i]]] = parseInt(K[i],10);
+	return o;
 }
 
+function evert_arr(obj) {
+	var o = [], K = keys(obj);
+	for(var i = 0; i !== K.length; ++i) {
+		if(o[obj[K[i]]] == null) o[obj[K[i]]] = [];
+		o[obj[K[i]]].push(K[i]);
+	}
+	return o;
+}
+
+/* TODO: date1904 logic */
+function datenum(v, date1904) {
+	if(date1904) v+=1462;
+	var epoch = Date.parse(v);
+	return (epoch + 2209161600000) / (24 * 60 * 60 * 1000);
+}
+
+function cc2str(arr) {
+	var o = "";
+	for(var i = 0; i != arr.length; ++i) o += String.fromCharCode(arr[i]);
+	return o;
+}
+
+var has_buf = (typeof Buffer !== 'undefined');
+function getdata(data) {
+	if(!data) return null;
+	if(data.name.substr(-4) === ".bin") {
+		if(data.data) return char_codes(data.data);
+		if(data.asNodeBuffer && has_buf) return data.asNodeBuffer();
+		if(data._data && data._data.getContent) return Array.prototype.slice.call(data._data.getContent());
+	} else {
+		if(data.data) return data.name.substr(-4) !== ".bin" ? debom_xml(data.data) : char_codes(data.data);
+		if(data.asNodeBuffer && has_buf) return debom_xml(data.asNodeBuffer().toString('binary'));
+		if(data.asBinary) return debom_xml(data.asBinary());
+		if(data._data && data._data.getContent) return debom_xml(cc2str(Array.prototype.slice.call(data._data.getContent(),0)));
+	}
+	return null;
+}
+
+function getzipfile(zip, file) {
+	var f = file; if(zip.files[f]) return zip.files[f];
+	f = file.toLowerCase(); if(zip.files[f]) return zip.files[f];
+	f = f.replace(/\//g,'\\'); if(zip.files[f]) return zip.files[f];
+	throw new Error("Cannot find file " + file + " in zip");
+}
+
+function getzipdata(zip, file, safe) {
+	if(!safe) return getdata(getzipfile(zip, file));
+	if(!file) return null;
+	try { return getzipdata(zip, file); } catch(e) { return null; }
+}
+
+var _fs, jszip;
+if(typeof JSZip !== 'undefined') jszip = JSZip;
+if (typeof exports !== 'undefined') {
+	if (typeof module !== 'undefined' && module.exports) {
+		if(has_buf && typeof jszip === 'undefined') jszip = require('js'+'zip');
+		if(typeof jszip === 'undefined') jszip = require('./js'+'zip').JSZip;
+		_fs = require('f'+'s');
+	}
+}
+var attregexg=/\b[\w:]+=["'][^"]*['"]/g;
+var tagregex=/<[^>]*>/g;
+var nsregex=/<\w*:/, nsregex2 = /<(\/?)\w+:/;
+function parsexmltag(tag, skip_root) {
+	var z = [];
+	var eq = 0, c = 0;
+	for(; eq !== tag.length; ++eq) if((c = tag.charCodeAt(eq)) === 32 || c === 10 || c === 13) break;
+	if(!skip_root) z[0] = tag.substr(0, eq);
+	if(eq === tag.length) return z;
+	var m = tag.match(attregexg), j=0, w="", v="", i=0, q="", cc="";
+	if(m) for(i = 0; i != m.length; ++i) {
+		cc = m[i];
+		for(c=0; c != cc.length; ++c) if(cc.charCodeAt(c) === 61) break;
+		q = cc.substr(0,c); v = cc.substring(c+2, cc.length-1);
+		for(j=0;j!=q.length;++j) if(q.charCodeAt(j) === 58) break;
+		if(j===q.length) z[q] = v;
+		else z[(j===5 && q.substr(0,5)==="xmlns"?"xmlns":"")+q.substr(j+1)] = v;
+	}
+	return z;
+}
+function strip_ns(x) { return x.replace(nsregex2, "<$1"); }
+
+var encodings = {
+	'&quot;': '"',
+	'&apos;': "'",
+	'&gt;': '>',
+	'&lt;': '<',
+	'&amp;': '&'
+};
+var rencoding = evert(encodings);
+var rencstr = "&<>'\"".split("");
+
+// TODO: CP remap (need to read file version to determine OS)
+var encregex = /&[a-z]*;/g, coderegex = /_x([\da-fA-F]+)_/g;
+function unescapexml(text){
+	var s = text + '';
+	return s.replace(encregex, function($$) { return encodings[$$]; }).replace(coderegex,function(m,c) {return String.fromCharCode(parseInt(c,16));});
+}
+var decregex=/[&<>'"]/g, charegex = /[\u0000-\u0008\u000b-\u001f]/g;
+function escapexml(text){
+	var s = text + '';
+	return s.replace(decregex, function(y) { return rencoding[y]; }).replace(charegex,function(s) { return "_x" + ("000"+s.charCodeAt(0).toString(16)).substr(-4) + "_";});
+}
+
+function parsexmlbool(value, tag) {
+	switch(value) {
+		case '1': case 'true': case 'TRUE': return true;
+		/* case '0': case 'false': case 'FALSE':*/
+		default: return false;
+	}
+}
+
+var utf8read = function utf8reada(orig) {
+	var out = "", i = 0, c = 0, d = 0, e = 0, f = 0, w = 0;
+	while (i < orig.length) {
+		c = orig.charCodeAt(i++);
+		if (c < 128) { out += String.fromCharCode(c); continue; }
+		d = orig.charCodeAt(i++);
+		if (c>191 && c<224) { out += String.fromCharCode(((c & 31) << 6) | (d & 63)); continue; }
+		e = orig.charCodeAt(i++);
+		if (c < 240) { out += String.fromCharCode(((c & 15) << 12) | ((d & 63) << 6) | (e & 63)); continue; }
+		f = orig.charCodeAt(i++);
+		w = (((c & 7) << 18) | ((d & 63) << 12) | ((e & 63) << 6) | (f & 63))-65536;
+		out += String.fromCharCode(0xD800 + ((w>>>10)&1023));
+		out += String.fromCharCode(0xDC00 + (w&1023));
+	}
+	return out;
+};
+
+
+if(has_buf) {
+	var utf8readb = function utf8readb(data) {
+		var out = new Buffer(2*data.length), w, i, j = 1, k = 0, ww=0, c;
+		for(i = 0; i < data.length; i+=j) {
+			j = 1;
+			if((c=data.charCodeAt(i)) < 128) w = c;
+			else if(c < 224) { w = (c&31)*64+(data.charCodeAt(i+1)&63); j=2; }
+			else if(c < 240) { w=(c&15)*4096+(data.charCodeAt(i+1)&63)*64+(data.charCodeAt(i+2)&63); j=3; }
+			else { j = 4;
+				w = (c & 7)*262144+(data.charCodeAt(i+1)&63)*4096+(data.charCodeAt(i+2)&63)*64+(data.charCodeAt(i+3)&63);
+				w -= 65536; ww = 0xD800 + ((w>>>10)&1023); w = 0xDC00 + (w&1023);
+			}
+			if(ww !== 0) { out[k++] = ww&255; out[k++] = ww>>>8; ww = 0; }
+			out[k++] = w%256; out[k++] = w>>>8;
+		}
+		out.length = k;
+		return out.toString('ucs2');
+	};
+	var corpus = "foo bar baz\u00e2\u0098\u0083\u00f0\u009f\u008d\u00a3";
+	if(utf8read(corpus) == utf8readb(corpus)) utf8read = utf8readb;
+	var utf8readc = function utf8readc(data) { return Buffer(data, 'binary').toString('utf8'); };
+	if(utf8read(corpus) == utf8readc(corpus)) utf8read = utf8readc;
+}
+
+// matches <foo>...</foo> extracts content
+var matchtag = (function() {
+	var mtcache = {};
+	return function matchtag(f,g) {
+		var t = f+"|"+g;
+		if(mtcache[t] !== undefined) return mtcache[t];
+		return (mtcache[t] = new RegExp('<(?:\\w+:)?'+f+'(?: xml:space="preserve")?(?:[^>]*)>([^\u2603]*)</(?:\\w+:)?'+f+'>',(g||"")));
+	};
 })();
 
-// enforcing Stuk's coding style
-// vim: set shiftwidth=3 softtabstop=3:
-/**
+var vtregex = (function(){ var vt_cache = {};
+	return function vt_regex(bt) {
+		if(vt_cache[bt] !== undefined) return vt_cache[bt];
+		return (vt_cache[bt] = new RegExp("<vt:" + bt + ">(.*?)</vt:" + bt + ">", 'g') );
+};})();
+var vtvregex = /<\/?vt:variant>/g, vtmregex = /<vt:([^>]*)>(.*)</;
+function parseVector(data) {
+	var h = parsexmltag(data);
 
-JSZip - A Javascript class for generating and reading zip files
-<http://stuartk.com/jszip>
+	var matches = data.match(vtregex(h.baseType))||[];
+	if(matches.length != h.size) throw "unexpected vector length " + matches.length + " != " + h.size;
+	var res = [];
+	matches.forEach(function(x) {
+		var v = x.replace(vtvregex,"").match(vtmregex);
+		res.push({v:v[2], t:v[1]});
+	});
+	return res;
+}
 
-(c) 2011 David Duponchel <d.duponchel@gmail.com>
-Dual licenced under the MIT license or GPLv3. See LICENSE.markdown.
+var wtregex = /(^\s|\s$|\n)/;
+function writetag(f,g) {return '<' + f + (g.match(wtregex)?' xml:space="preserve"' : "") + '>' + g + '</' + f + '>';}
 
-**/
-/*global JSZip,JSZipBase64 */
-(function () {
+function wxt_helper(h) { return keys(h).map(function(k) { return " " + k + '="' + h[k] + '"';}).join(""); }
+function writextag(f,g,h) { return '<' + f + (isval(h) ? wxt_helper(h) : "") + (isval(g) ? (g.match(wtregex)?' xml:space="preserve"' : "") + '>' + g + '</' + f : "/") + '>';}
 
-   var MAX_VALUE_16BITS = 65535;
-   var MAX_VALUE_32BITS = -1; // well, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" is parsed as -1
+function write_w3cdtf(d, t) { try { return d.toISOString().replace(/\.\d*/,""); } catch(e) { if(t) throw e; } }
 
-   /**
-    * Prettify a string read as binary.
-    * @param {string} str the string to prettify.
-    * @return {string} a pretty string.
-    */
-   var pretty = function (str) {
-      var res = '', code, i;
-      for (i = 0; i < (str||"").length; i++) {
-         code = str.charCodeAt(i);
-         res += '\\x' + (code < 16 ? "0" : "") + code.toString(16).toUpperCase();
-      }
-      return res;
-   };
+function write_vt(s) {
+	switch(typeof s) {
+		case 'string': return writextag('vt:lpwstr', s);
+		case 'number': return writextag((s|0)==s?'vt:i4':'vt:r8', String(s));
+		case 'boolean': return writextag('vt:bool',s?'true':'false');
+	}
+	if(s instanceof Date) return writextag('vt:filetime', write_w3cdtf(s));
+	throw new Error("Unable to serialize " + s);
+}
 
-   /**
-    * Find a compression registered in JSZip.
-    * @param {string} compressionMethod the method magic to find.
-    * @return {Object|null} the JSZip compression object, null if none found.
-    */
-   var findCompression = function (compressionMethod) {
-      for (var method in JSZip.compressions) {
-         if( !JSZip.compressions.hasOwnProperty(method) ) { continue; }
-         if (JSZip.compressions[method].magic === compressionMethod) {
-            return JSZip.compressions[method];
-         }
-      }
-      return null;
-   };
+var XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
+var XMLNS = {
+	'dc': 'http://purl.org/dc/elements/1.1/',
+	'dcterms': 'http://purl.org/dc/terms/',
+	'dcmitype': 'http://purl.org/dc/dcmitype/',
+	'mx': 'http://schemas.microsoft.com/office/mac/excel/2008/main',
+	'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+	'sjs': 'http://schemas.openxmlformats.org/package/2006/sheetjs/core-properties',
+	'vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+	'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+	'xsd': 'http://www.w3.org/2001/XMLSchema'
+};
 
-   // class StreamReader {{{
-   /**
-    * Read bytes from a stream.
-    * Developer tip : when debugging, a watch on pretty(this.reader.stream.slice(this.reader.index))
-    * is very useful :)
-    * @constructor
-    * @param {String|ArrayBuffer|Uint8Array} stream the stream to read.
-    */
-   function StreamReader(stream) {
-      this.stream = "";
-      if (JSZip.support.uint8array && stream instanceof Uint8Array) {
-         this.stream = JSZip.utils.uint8Array2String(stream);
-      } else if (JSZip.support.arraybuffer && stream instanceof ArrayBuffer) {
-         var bufferView = new Uint8Array(stream);
-         this.stream = JSZip.utils.uint8Array2String(bufferView);
-      } else {
-         this.stream = JSZip.utils.string2binary(stream);
-      }
-      this.index = 0;
-   }
-   StreamReader.prototype = {
-      /**
-       * Check that the offset will not go too far.
-       * @param {string} offset the additional offset to check.
-       * @throws {Error} an Error if the offset is out of bounds.
-       */
-      checkOffset : function (offset) {
-         this.checkIndex(this.index + offset);
-      },
-      /**
-       * Check that the specifed index will not be too far.
-       * @param {string} newIndex the index to check.
-       * @throws {Error} an Error if the index is out of bounds.
-       */
-      checkIndex : function (newIndex) {
-         if (this.stream.length < newIndex || newIndex < 0) {
-            throw new Error("End of stream reached (stream length = " +
-                            this.stream.length + ", asked index = " +
-                            (newIndex) + "). Corrupted zip ?");
-         }
-      },
-      /**
-       * Change the index.
-       * @param {number} newIndex The new index.
-       * @throws {Error} if the new index is out of the stream.
-       */
-      setIndex : function (newIndex) {
-         this.checkIndex(newIndex);
-         this.index = newIndex;
-      },
-      /**
-       * Skip the next n bytes.
-       * @param {number} n the number of bytes to skip.
-       * @throws {Error} if the new index is out of the stream.
-       */
-      skip : function (n) {
-         this.setIndex(this.index + n);
-      },
-      /**
-       * Get the byte at the specified index.
-       * @param {number} i the index to use.
-       * @return {number} a byte.
-       */
-      byteAt : function(i) {
-         return this.stream.charCodeAt(i);
-      },
-      /**
-       * Get the next number with a given byte size.
-       * @param {number} size the number of bytes to read.
-       * @return {number} the corresponding number.
-       */
-      readInt : function (size) {
-         var result = 0, i;
-         this.checkOffset(size);
-         for(i = this.index + size - 1; i >= this.index; i--) {
-            result = (result << 8) + this.byteAt(i);
-         }
-         this.index += size;
-         return result;
-      },
-      /**
-       * Get the next string with a given byte size.
-       * @param {number} size the number of bytes to read.
-       * @return {string} the corresponding string.
-       */
-      readString : function (size) {
-         this.checkOffset(size);
-         // this will work because the constructor applied the "& 0xff" mask.
-         var result = this.stream.slice(this.index, this.index + size);
-         this.index += size;
-         return result;
-      },
-      /**
-       * Get the next date.
-       * @return {Date} the date.
-       */
-      readDate : function () {
-         var dostime = this.readInt(4);
-         return new Date(
-            ((dostime >> 25) & 0x7f) + 1980, // year
-            ((dostime >> 21) & 0x0f) - 1, // month
-            (dostime >> 16) & 0x1f, // day
-            (dostime >> 11) & 0x1f, // hour
-            (dostime >> 5) & 0x3f, // minute
-            (dostime & 0x1f) << 1); // second
-      }
-   };
-   // }}} end of StreamReader
+XMLNS.main = [
+	'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+	'http://purl.oclc.org/ooxml/spreadsheetml/main',
+	'http://schemas.microsoft.com/office/excel/2006/main',
+	'http://schemas.microsoft.com/office/excel/2006/2'
+];
+function readIEEE754(buf, idx, isLE, nl, ml) {
+	if(isLE === undefined) isLE = true;
+	if(!nl) nl = 8;
+	if(!ml && nl === 8) ml = 52;
+	var e, m, el = nl * 8 - ml - 1, eMax = (1 << el) - 1, eBias = eMax >> 1;
+	var bits = -7, d = isLE ? -1 : 1, i = isLE ? (nl - 1) : 0, s = buf[idx + i];
 
-   // class ZipEntry {{{
-   /**
-    * An entry in the zip file.
-    * @constructor
-    * @param {Object} options Options of the current file.
-    * @param {Object} loadOptions Options for loading the stream.
-    */
-   function ZipEntry(options, loadOptions) {
-      this.options = options;
-      this.loadOptions = loadOptions;
-   }
-   ZipEntry.prototype = {
-      /**
-       * say if the file is encrypted.
-       * @return {boolean} true if the file is encrypted, false otherwise.
-       */
-      isEncrypted : function () {
-         // bit 1 is set
-         return (this.bitFlag & 0x0001) === 0x0001;
-      },
-      /**
-       * say if the file has utf-8 filename/comment.
-       * @return {boolean} true if the filename/comment is in utf-8, false otherwise.
-       */
-      useUTF8 : function () {
-         // bit 11 is set
-         return (this.bitFlag & 0x0800) === 0x0800;
-      },
-      /**
-       * Read the local part of a zip file and add the info in this object.
-       * @param {StreamReader} reader the reader to use.
-       */
-      readLocalPart : function(reader) {
-         var compression, localExtraFieldsLength;
+	i += d;
+	e = s & ((1 << (-bits)) - 1); s >>>= (-bits); bits += el;
+	for (; bits > 0; e = e * 256 + buf[idx + i], i += d, bits -= 8);
+	m = e & ((1 << (-bits)) - 1); e >>>= (-bits); bits += ml;
+	for (; bits > 0; m = m * 256 + buf[idx + i], i += d, bits -= 8);
+	if (e === eMax) return m ? NaN : ((s ? -1 : 1) * Infinity);
+	else if (e === 0) e = 1 - eBias;
+	else { m = m + Math.pow(2, ml); e = e - eBias; }
+	return (s ? -1 : 1) * m * Math.pow(2, e - ml);
+}
 
-         // we already know everything from the central dir !
-         // If the central dir data are false, we are doomed.
-         // On the bright side, the local part is scary  : zip64, data descriptors, both, etc.
-         // The less data we get here, the more reliable this should be.
-         // Let's skip the whole header and dash to the data !
-         reader.skip(22);
-         // in some zip created on windows, the filename stored in the central dir contains \ instead of /.
-         // Strangely, the filename here is OK.
-         // I would love to treat these zip files as corrupted (see http://www.info-zip.org/FAQ.html#backslashes
-         // or APPNOTE#4.4.17.1, "All slashes MUST be forward slashes '/'") but there are a lot of bad zip generators...
-         // Search "unzip mismatching "local" filename continuing with "central" filename version" on
-         // the internet.
-         //
-         // I think I see the logic here : the central directory is used to display
-         // content and the local directory is used to extract the files. Mixing / and \
-         // may be used to display \ to windows users and use / when extracting the files.
-         // Unfortunately, this lead also to some issues : http://seclists.org/fulldisclosure/2009/Sep/394
-         this.fileNameLength = reader.readInt(2);
-         localExtraFieldsLength = reader.readInt(2); // can't be sure this will be the same as the central dir
-         this.fileName = reader.readString(this.fileNameLength);
-         reader.skip(localExtraFieldsLength);
+var __toBuffer, ___toBuffer;
+__toBuffer = ___toBuffer = function toBuffer_(bufs) { var x = []; for(var i = 0; i < bufs[0].length; ++i) { x.push.apply(x, bufs[0][i]); } return x; };
+var __double, ___double;
+__double = ___double = function(b, idx) { return readIEEE754(b, idx);};
 
-         if (this.compressedSize == -1 || this.uncompressedSize == -1) {
-            throw new Error("Bug or corrupted zip : didn't get enough informations from the central directory " +
-                            "(compressedSize == -1 || uncompressedSize == -1)");
-         }
-         this.compressedFileData = reader.readString(this.compressedSize);
+var is_buf = function is_buf_a(a) { return Array.isArray(a); };
+if(has_buf) {
+	__toBuffer = function(bufs) { return (bufs[0].length > 0 && Buffer.isBuffer(bufs[0][0])) ? Buffer.concat(bufs[0]) : ___toBuffer(bufs);};
+	__double = function double_(b,i) { if(Buffer.isBuffer(b)) return b.readDoubleLE(i); return ___double(b,i); };
+	is_buf = function is_buf_b(a) { return Buffer.isBuffer(a) || Array.isArray(a); };
+}
 
-         compression = findCompression(this.compressionMethod);
-         if (compression === null) { // no compression found
-            throw new Error("Corrupted zip : compression " + pretty(this.compressionMethod) +
-                            " unknown (inner file : " + this.fileName + ")");
-         }
-         this.uncompressedFileData = compression.uncompress(this.compressedFileData);
 
-         if (this.uncompressedFileData.length !== this.uncompressedSize) {
-            throw new Error("Bug : uncompressed data size mismatch");
-         }
+var __readUInt8 = function(b, idx) { return b[idx]; };
+var __readUInt16LE = function(b, idx) { return b[idx+1]*(1<<8)+b[idx]; };
+var __readInt16LE = function(b, idx) { var u = b[idx+1]*(1<<8)+b[idx]; return (u < 0x8000) ? u : (0xffff - u + 1) * -1; };
+var __readUInt32LE = function(b, idx) { return b[idx+3]*(1<<24)+(b[idx+2]<<16)+(b[idx+1]<<8)+b[idx]; };
+var __readInt32LE = function(b, idx) { return (b[idx+3]<<24)|(b[idx+2]<<16)|(b[idx+1]<<8)|b[idx]; };
 
-         if (this.loadOptions.checkCRC32 && JSZip.prototype.crc32(this.uncompressedFileData) !== this.crc32) {
-            throw new Error("Corrupted zip : CRC32 mismatch");
-         }
-      },
 
-      /**
-       * Read the central part of a zip file and add the info in this object.
-       * @param {StreamReader} reader the reader to use.
-       */
-      readCentralPart : function(reader) {
-         this.versionMadeBy          = reader.readString(2);
-         this.versionNeeded          = reader.readInt(2);
-         this.bitFlag                = reader.readInt(2);
-         this.compressionMethod      = reader.readString(2);
-         this.date                   = reader.readDate();
-         this.crc32                  = reader.readInt(4);
-         this.compressedSize         = reader.readInt(4);
-         this.uncompressedSize       = reader.readInt(4);
-         this.fileNameLength         = reader.readInt(2);
-         this.extraFieldsLength      = reader.readInt(2);
-         this.fileCommentLength      = reader.readInt(2);
-         this.diskNumberStart        = reader.readInt(2);
-         this.internalFileAttributes = reader.readInt(2);
-         this.externalFileAttributes = reader.readInt(4);
-         this.localHeaderOffset      = reader.readInt(4);
+function ReadShift(size, t) {
+	var o="", oo=[], w, vv, i, loc;
+	if(t === 'dbcs') {
+		loc = this.l;
+		if(has_buf && Buffer.isBuffer(this)) o = this.slice(this.l, this.l+2*size).toString("utf16le");
+		else for(i = 0; i != size; ++i) { o+=String.fromCharCode(__readUInt16LE(this, loc)); loc+=2; }
+		size *= 2;
+	} else switch(size) {
+		case 1: o = __readUInt8(this, this.l); break;
+		case 2: o = (t === 'i' ? __readInt16LE : __readUInt16LE)(this, this.l); break;
+		case 4: o = __readUInt32LE(this, this.l); break;
+		case 8: if(t === 'f') { o = __double(this, this.l); break; }
+	}
+	this.l+=size; return o;
+}
 
-         if (this.isEncrypted()) {
-            throw new Error("Encrypted zip are not supported");
-         }
+function WriteShift(t, val, f) {
+	var size, i;
+	if(f === 'dbcs') {
+		for(i = 0; i != val.length; ++i) this.writeUInt16LE(val.charCodeAt(i), this.l + 2 * i);
+		size = 2 * val.length;
+	} else switch(t) {
+		case  1: size = 1; this[this.l] = val&255; break;
+		case  3: size = 3; this[this.l+2] = val & 255; val >>>= 8; this[this.l+1] = val&255; val >>>= 8; this[this.l] = val&255; break;
+		case  4: size = 4; this.writeUInt32LE(val, this.l); break;
+		case  8: size = 8; if(f === 'f') { this.writeDoubleLE(val, this.l); break; }
+		/* falls through */
+		case 16: break;
+		case -4: size = 4; this.writeInt32LE(val, this.l); break;
+	}
+	this.l += size; return this;
+}
 
-         this.fileName = reader.readString(this.fileNameLength);
-         this.readExtraFields(reader);
-         this.parseZIP64ExtraField(reader);
-         this.fileComment = reader.readString(this.fileCommentLength);
+function prep_blob(blob, pos) {
+	blob.l = pos;
+	blob.read_shift = ReadShift;
+	blob.write_shift = WriteShift;
+}
 
-         // warning, this is true only for zip with madeBy == DOS (plateform dependent feature)
-         this.dir = this.externalFileAttributes & 0x00000010 ? true : false;
-      },
-      /**
-       * Parse the ZIP64 extra field and merge the info in the current ZipEntry.
-       * @param {StreamReader} reader the reader to use.
-       */
-      parseZIP64ExtraField : function(reader) {
+function parsenoop(blob, length) { blob.l += length; }
 
-         if(!this.extraFields[0x0001]) {
-            return;
-         }
+function writenoop(blob, length) { blob.l += length; }
 
-         // should be something, preparing the extra reader
-         var extraReader = new StreamReader(this.extraFields[0x0001].value);
+function new_buf(sz) {
+	var o = has_buf ? new Buffer(sz) : new Array(sz);
+	prep_blob(o, 0);
+	return o;
+}
 
-         // I really hope that these 64bits integer can fit in 32 bits integer, because js
-         // won't let us have more.
-         if(this.uncompressedSize === MAX_VALUE_32BITS) {
-            this.uncompressedSize = extraReader.readInt(8);
-         }
-         if(this.compressedSize === MAX_VALUE_32BITS) {
-            this.compressedSize = extraReader.readInt(8);
-         }
-         if(this.localHeaderOffset === MAX_VALUE_32BITS) {
-            this.localHeaderOffset = extraReader.readInt(8);
-         }
-         if(this.diskNumberStart === MAX_VALUE_32BITS) {
-            this.diskNumberStart = extraReader.readInt(4);
-         }
-      },
-      /**
-       * Read the central part of a zip file and add the info in this object.
-       * @param {StreamReader} reader the reader to use.
-       */
-      readExtraFields : function(reader) {
-         var start = reader.index,
-             extraFieldId,
-             extraFieldLength,
-             extraFieldValue;
+/* [MS-XLSB] 2.1.4 Record */
+function recordhopper(data, cb, opts) {
+	var tmpbyte, cntbyte, length;
+	prep_blob(data, data.l || 0);
+	while(data.l < data.length) {
+		var RT = data.read_shift(1);
+		if(RT & 0x80) RT = (RT & 0x7F) + ((data.read_shift(1) & 0x7F)<<7);
+		var R = RecordEnum[RT] || RecordEnum[0xFFFF];
+		tmpbyte = data.read_shift(1);
+		length = tmpbyte & 0x7F;
+		for(cntbyte = 1; cntbyte <4 && (tmpbyte & 0x80); ++cntbyte) length += ((tmpbyte = data.read_shift(1)) & 0x7F)<<(7*cntbyte);
+		var d = R.f(data, length, opts);
+		if(cb(d, R, RT)) return;
+	}
+}
 
-         this.extraFields = this.extraFields || {};
+/* control buffer usage for fixed-length buffers */
+function buf_array() {
+	var bufs = [], blksz = 2048;
+	var newblk = function ba_newblk(sz) {
+		var o = new_buf(sz);
+		prep_blob(o, 0);
+		return o;
+	};
 
-         while (reader.index < start + this.extraFieldsLength) {
-            extraFieldId     = reader.readInt(2);
-            extraFieldLength = reader.readInt(2);
-            extraFieldValue  = reader.readString(extraFieldLength);
+	var curbuf = newblk(blksz);
 
-            this.extraFields[extraFieldId] = {
-               id:     extraFieldId,
-               length: extraFieldLength,
-               value:  extraFieldValue
-            };
-         }
-      },
-      /**
-       * Apply an UTF8 transformation if needed.
-       */
-      handleUTF8 : function() {
-         if (this.useUTF8()) {
-            this.fileName    = JSZip.prototype.utf8decode(this.fileName);
-            this.fileComment = JSZip.prototype.utf8decode(this.fileComment);
-         }
-      }
-   };
-   // }}} end of ZipEntry
+	var endbuf = function ba_endbuf() {
+		curbuf.length = curbuf.l;
+		if(curbuf.length > 0) bufs.push(curbuf);
+		curbuf = null;
+	};
 
-   //  class ZipEntries {{{
-   /**
-    * All the entries in the zip file.
-    * @constructor
-    * @param {String|ArrayBuffer|Uint8Array} data the binary stream to load.
-    * @param {Object} loadOptions Options for loading the stream.
-    */
-   function ZipEntries(data, loadOptions) {
-      this.files = [];
-      this.loadOptions = loadOptions;
-      if (data) {
-         this.load(data);
-      }
-   }
-   ZipEntries.prototype = {
-      /**
-       * Check that the reader is on the speficied signature.
-       * @param {string} expectedSignature the expected signature.
-       * @throws {Error} if it is an other signature.
-       */
-      checkSignature : function(expectedSignature) {
-         var signature = this.reader.readString(4);
-         if (signature !== expectedSignature) {
-            throw new Error("Corrupted zip or bug : unexpected signature " +
-                            "(" + pretty(signature) + ", expected " + pretty(expectedSignature) + ")");
-         }
-      },
-      /**
-       * Read the end of the central directory.
-       */
-      readBlockEndOfCentral : function () {
-         this.diskNumber                  = this.reader.readInt(2);
-         this.diskWithCentralDirStart     = this.reader.readInt(2);
-         this.centralDirRecordsOnThisDisk = this.reader.readInt(2);
-         this.centralDirRecords           = this.reader.readInt(2);
-         this.centralDirSize              = this.reader.readInt(4);
-         this.centralDirOffset            = this.reader.readInt(4);
+	var next = function ba_next(sz) {
+		if(sz < curbuf.length - curbuf.l) return curbuf;
+		endbuf();
+		return (curbuf = newblk(Math.max(sz+1, blksz)));
+	};
 
-         this.zipCommentLength            = this.reader.readInt(2);
-         this.zipComment                  = this.reader.readString(this.zipCommentLength);
-      },
-      /**
-       * Read the end of the Zip 64 central directory.
-       * Not merged with the method readEndOfCentral :
-       * The end of central can coexist with its Zip64 brother,
-       * I don't want to read the wrong number of bytes !
-       */
-      readBlockZip64EndOfCentral : function () {
-         this.zip64EndOfCentralSize       = this.reader.readInt(8);
-         this.versionMadeBy               = this.reader.readString(2);
-         this.versionNeeded               = this.reader.readInt(2);
-         this.diskNumber                  = this.reader.readInt(4);
-         this.diskWithCentralDirStart     = this.reader.readInt(4);
-         this.centralDirRecordsOnThisDisk = this.reader.readInt(8);
-         this.centralDirRecords           = this.reader.readInt(8);
-         this.centralDirSize              = this.reader.readInt(8);
-         this.centralDirOffset            = this.reader.readInt(8);
+	var end = function ba_end() {
+		endbuf();
+		return __toBuffer([bufs]);
+	};
 
-         this.zip64ExtensibleData = {};
-         var extraDataSize = this.zip64EndOfCentralSize - 44,
-         index = 0,
-         extraFieldId,
-         extraFieldLength,
-         extraFieldValue;
-         while(index < extraDataSize) {
-            extraFieldId     = this.reader.readInt(2);
-            extraFieldLength = this.reader.readInt(4);
-            extraFieldValue  = this.reader.readString(extraFieldLength);
-            this.zip64ExtensibleData[extraFieldId] = {
-               id:     extraFieldId,
-               length: extraFieldLength,
-               value:  extraFieldValue
-            };
-         }
-      },
-      /**
-       * Read the end of the Zip 64 central directory locator.
-       */
-      readBlockZip64EndOfCentralLocator : function () {
-         this.diskWithZip64CentralDirStart       = this.reader.readInt(4);
-         this.relativeOffsetEndOfZip64CentralDir = this.reader.readInt(8);
-         this.disksCount                         = this.reader.readInt(4);
-         if (this.disksCount > 1) {
-            throw new Error("Multi-volumes zip are not supported");
-         }
-      },
-      /**
-       * Read the local files, based on the offset read in the central part.
-       */
-      readLocalFiles : function() {
-         var i, file;
-         for(i = 0; i < this.files.length; i++) {
-            file = this.files[i];
-            this.reader.setIndex(file.localHeaderOffset);
-            this.checkSignature(JSZip.signature.LOCAL_FILE_HEADER);
-            file.readLocalPart(this.reader);
-            file.handleUTF8();
-         }
-      },
-      /**
-       * Read the central directory.
-       */
-      readCentralDir : function() {
-         var file;
+	var push = function ba_push(buf) { endbuf(); curbuf = buf; next(blksz); };
 
-         this.reader.setIndex(this.centralDirOffset);
-         while(this.reader.readString(4) === JSZip.signature.CENTRAL_FILE_HEADER) {
-            file = new ZipEntry({
-               zip64: this.zip64
-            }, this.loadOptions);
-            file.readCentralPart(this.reader);
-            this.files.push(file);
-         }
-      },
-      /**
-       * Read the end of central directory.
-       */
-      readEndOfCentral : function() {
-            var offset = this.reader.stream.lastIndexOf(JSZip.signature.CENTRAL_DIRECTORY_END);
-            if (offset === -1) {
-               throw new Error("Corrupted zip : can't find end of central directory");
-            }
-            this.reader.setIndex(offset);
-            this.checkSignature(JSZip.signature.CENTRAL_DIRECTORY_END);
-            this.readBlockEndOfCentral();
+	return { next:next, push:push, end:end, _bufs:bufs };
+}
 
-         
-            /* extract from the zip spec :
-               4)  If one of the fields in the end of central directory
-                   record is too small to hold required data, the field
-                   should be set to -1 (0xFFFF or 0xFFFFFFFF) and the
-                   ZIP64 format record should be created.
-               5)  The end of central directory record and the
-                   Zip64 end of central directory locator record must
-                   reside on the same disk when splitting or spanning
-                   an archive.
-            */
-            if (  this.diskNumber                  === MAX_VALUE_16BITS
-               || this.diskWithCentralDirStart     === MAX_VALUE_16BITS
-               || this.centralDirRecordsOnThisDisk === MAX_VALUE_16BITS
-               || this.centralDirRecords           === MAX_VALUE_16BITS
-               || this.centralDirSize              === MAX_VALUE_32BITS
-               || this.centralDirOffset            === MAX_VALUE_32BITS
-            ) {
-               this.zip64 = true;
+function write_record(ba, type, payload, length) {
+	var t = evert_RE[type], l;
+	if(!length) length = RecordEnum[t].p || (payload||[]).length || 0;
+	l = 1 + (t >= 0x80 ? 1 : 0) + 1 + length;
+	if(length >= 0x80) ++l; if(length >= 0x4000) ++l; if(length >= 0x200000) ++l;
+	var o = ba.next(l);
+	if(t <= 0x7F) o.write_shift(1, t);
+	else {
+		o.write_shift(1, (t & 0x7F) + 0x80);
+		o.write_shift(1, (t >> 7));
+	}
+	for(var i = 0; i != 4; ++i) {
+		if(length >= 0x80) { o.write_shift(1, (length & 0x7F)+0x80); length >>= 7; }
+		else { o.write_shift(1, length); break; }
+	}
+	if(length > 0 && is_buf(payload)) ba.push(payload);
+}
 
-               /*
-               Warning : the zip64 extension is supported, but ONLY if the 64bits integer read from
-               the zip file can fit into a 32bits integer. This cannot be solved : Javascript represents
-               all numbers as 64-bit double precision IEEE 754 floating point numbers.
-               So, we have 53bits for integers and bitwise operations treat everything as 32bits.
-               see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Operators/Bitwise_Operators
-               and http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf section 8.5
-               */
+/* [MS-XLSB] 2.5.143 */
+function parse_StrRun(data, length) {
+	return { ich: data.read_shift(2), ifnt: data.read_shift(2) };
+}
 
-               // should look for a zip64 EOCD locator
-               offset = this.reader.stream.lastIndexOf(JSZip.signature.ZIP64_CENTRAL_DIRECTORY_LOCATOR);
-               if (offset === -1) {
-                  throw new Error("Corrupted zip : can't find the ZIP64 end of central directory locator");
-               }
-               this.reader.setIndex(offset);
-               this.checkSignature(JSZip.signature.ZIP64_CENTRAL_DIRECTORY_LOCATOR);
-               this.readBlockZip64EndOfCentralLocator();
+/* [MS-XLSB] 2.1.7.121 */
+function parse_RichStr(data, length) {
+	var start = data.l;
+	var flags = data.read_shift(1);
+	var str = parse_XLWideString(data);
+	var rgsStrRun = [];
+	var z = { t: str, h: str };
+	if((flags & 1) !== 0) { /* fRichStr */
+		/* TODO: formatted string */
+		var dwSizeStrRun = data.read_shift(4);
+		for(var i = 0; i != dwSizeStrRun; ++i) rgsStrRun.push(parse_StrRun(data));
+		z.r = rgsStrRun;
+	}
+	else z.r = "<t>" + escapexml(str) + "</t>";
+	if((flags & 2) !== 0) { /* fExtStr */
+		/* TODO: phonetic string */
+	}
+	data.l = start + length;
+	return z;
+}
+function write_RichStr(str, o) {
+	/* TODO: formatted string */
+	if(o == null) o = new_buf(5+2*str.t.length);
+	o.write_shift(1,0);
+	write_XLWideString(str.t, o);
+	return o;
+}
 
-               // now the zip64 EOCD record
-               this.reader.setIndex(this.relativeOffsetEndOfZip64CentralDir);
-               this.checkSignature(JSZip.signature.ZIP64_CENTRAL_DIRECTORY_END);
-               this.readBlockZip64EndOfCentral();
-            }
-      },
-      /**
-       * Read a zip file and create ZipEntries.
-       * @param {String|ArrayBuffer|Uint8Array} data the binary string representing a zip file.
-       */
-      load : function(data) {
-         this.reader = new StreamReader(data);
+/* [MS-XLSB] 2.5.9 */
+function parse_Cell(data) {
+	var col = data.read_shift(4);
+	var iStyleRef = data.read_shift(2);
+	iStyleRef += data.read_shift(1) <<16;
+	var fPhShow = data.read_shift(1);
+	return { c:col, iStyleRef: iStyleRef };
+}
+function write_Cell(cell, o) {
+	if(o == null) o = new_buf(8);
+	o.write_shift(-4, cell.c);
+	o.write_shift(3, cell.iStyleRef === undefined ? cell.iStyleRef : cell.s);
+	o.write_shift(1, 0); /* fPhShow */
+	return o;
+}
 
-         this.readEndOfCentral();
-         this.readCentralDir();
-         this.readLocalFiles();
-      }
-   };
-   // }}} end of ZipEntries
 
-   /**
-    * Implementation of the load method of JSZip.
-    * It uses the above classes to decode a zip file, and load every files.
-    * @param {String|ArrayBuffer|Uint8Array} data the data to load.
-    * @param {Object} options Options for loading the stream.
-    *  options.base64 : is the stream in base64 ? default : false
-    */
-   JSZip.prototype.load = function(data, options) {
-      var files, zipEntries, i, input;
-      options = options || {};
-      if(options.base64) {
-         data = JSZipBase64.decode(data);
-      }
+/* [MS-XLSB] 2.5.21 */
+function parse_CodeName (data, length) { return parse_XLWideString(data, length); }
 
-      zipEntries = new ZipEntries(data, options);
-      files = zipEntries.files;
-      for (i = 0; i < files.length; i++) {
-         input = files[i];
-         this.file(input.fileName, input.uncompressedFileData, {
-            binary:true,
-            optimizedBinaryString:true,
-            date:input.date,
-            dir:input.dir
-         });
-      }
+/* [MS-XLSB] 2.5.166 */
+function parse_XLNullableWideString(data) {
+	var cchCharacters = data.read_shift(4);
+	return cchCharacters === 0 || cchCharacters === 0xFFFFFFFF ? "" : data.read_shift(cchCharacters, 'dbcs');
+}
+function write_XLNullableWideString(data, o) {
+	if(!o) o = new_buf(127);
+	o.write_shift(4, data.length > 0 ? data.length : 0xFFFFFFFF);
+	if(data.length > 0) o.write_shift(0, data, 'dbcs');
+	return o;
+}
 
-      return this;
-   };
+/* [MS-XLSB] 2.5.168 */
+function parse_XLWideString(data) {
+	var cchCharacters = data.read_shift(4);
+	return cchCharacters === 0 ? "" : data.read_shift(cchCharacters, 'dbcs');
+}
+function write_XLWideString(data, o) {
+	if(o == null) o = new_buf(4+2*data.length);
+	o.write_shift(4, data.length);
+	if(data.length > 0) o.write_shift(0, data, 'dbcs');
+	return o;
+}
 
-}());
-// enforcing Stuk's coding style
-// vim: set shiftwidth=3 softtabstop=3 foldmethod=marker:
+/* [MS-XLSB] 2.5.114 */
+var parse_RelID = parse_XLNullableWideString;
+var write_RelID = write_XLNullableWideString;
+
+
+/* [MS-XLSB] 2.5.122 */
+function parse_RkNumber(data) {
+	var b = data.slice(data.l, data.l+4);
+	var fX100 = b[0] & 1, fInt = b[0] & 2;
+	data.l+=4;
+	b[0] &= 0xFC;
+	var RK = fInt === 0 ? __double([0,0,0,0,b[0],b[1],b[2],b[3]],0) : __readInt32LE(b,0)>>2;
+	return fX100 ? RK/100 : RK;
+}
+
+/* [MS-XLSB] 2.5.153 */
+function parse_UncheckedRfX(data) {
+	var cell = {s: {}, e: {}};
+	cell.s.r = data.read_shift(4);
+	cell.e.r = data.read_shift(4);
+	cell.s.c = data.read_shift(4);
+	cell.e.c = data.read_shift(4);
+	return cell;
+}
+
+function write_UncheckedRfX(r, o) {
+	if(!o) o = new_buf(16);
+	o.write_shift(4, r.s.r);
+	o.write_shift(4, r.e.r);
+	o.write_shift(4, r.s.c);
+	o.write_shift(4, r.e.c);
+	return o;
+}
+
+/* [MS-XLSB] 2.5.171 */
+function parse_Xnum(data, length) { return data.read_shift(8, 'f'); }
+function write_Xnum(data, o) { return (o || new_buf(8)).write_shift(8, 'f', data); }
+
+/* [MS-XLSB] 2.5.198.2 */
+var BErr = {
+	0x00: "#NULL!",
+	0x07: "#DIV/0!",
+	0x0F: "#VALUE!",
+	0x17: "#REF!",
+	0x1D: "#NAME?",
+	0x24: "#NUM!",
+	0x2A: "#N/A",
+	0x2B: "#GETTING_DATA",
+	0xFF: "#WTF?"
+};
+var RBErr = evert_num(BErr);
+
+/* [MS-XLSB] 2.4.321 BrtColor */
+function parse_BrtColor(data, length) {
+	var out = {};
+	var d = data.read_shift(1);
+	out.fValidRGB = d & 1;
+	out.xColorType = d >>> 1;
+	out.index = data.read_shift(1);
+	out.nTintAndShade = data.read_shift(2, 'i');
+	out.bRed   = data.read_shift(1);
+	out.bGreen = data.read_shift(1);
+	out.bBlue  = data.read_shift(1);
+	out.bAlpha = data.read_shift(1);
+}
+
+/* [MS-XLSB] 2.5.52 */
+function parse_FontFlags(data, length) {
+	var d = data.read_shift(1);
+	data.l++;
+	var out = {
+		fItalic: d & 0x2,
+		fStrikeout: d & 0x8,
+		fOutline: d & 0x10,
+		fShadow: d & 0x20,
+		fCondense: d & 0x40,
+		fExtend: d & 0x80
+	};
+	return out;
+}
+/* Parts enumerated in OPC spec, MS-XLSB and MS-XLSX */
+/* 12.3 Part Summary <SpreadsheetML> */
+/* 14.2 Part Summary <DrawingML> */
+/* [MS-XLSX] 2.1 Part Enumerations */
+/* [MS-XLSB] 2.1.7 Part Enumeration */
+var ct2type = {
+	/* Workbook */
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml": "workbooks",
+
+	/* Worksheet */
+	"application/vnd.ms-excel.binIndexWs": "TODO", /* Binary Index */
+
+	/* Chartsheet */
+	"application/vnd.ms-excel.chartsheet": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml": "TODO",
+
+	/* Dialogsheet */
+	"application/vnd.ms-excel.dialogsheet": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml": "TODO",
+
+	/* Macrosheet */
+	"application/vnd.ms-excel.macrosheet": "TODO",
+	"application/vnd.ms-excel.macrosheet+xml": "TODO",
+	"application/vnd.ms-excel.intlmacrosheet": "TODO",
+	"application/vnd.ms-excel.binIndexMs": "TODO", /* Binary Index */
+
+	/* File Properties */
+	"application/vnd.openxmlformats-package.core-properties+xml": "coreprops",
+	"application/vnd.openxmlformats-officedocument.custom-properties+xml": "custprops",
+	"application/vnd.openxmlformats-officedocument.extended-properties+xml": "extprops",
+
+	/* Custom Data Properties */
+	"application/vnd.openxmlformats-officedocument.customXmlProperties+xml": "TODO",
+
+	/* Comments */
+	"application/vnd.ms-excel.comments": "comments",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml": "comments",
+
+	/* PivotTable */
+	"application/vnd.ms-excel.pivotTable": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml": "TODO",
+
+	/* Calculation Chain */
+	"application/vnd.ms-excel.calcChain": "calcchains",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml": "calcchains",
+
+	/* Printer Settings */
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings": "TODO",
+
+	/* ActiveX */
+	"application/vnd.ms-office.activeX": "TODO",
+	"application/vnd.ms-office.activeX+xml": "TODO",
+
+	/* Custom Toolbars */
+	"application/vnd.ms-excel.attachedToolbars": "TODO",
+
+	/* External Data Connections */
+	"application/vnd.ms-excel.connections": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml": "TODO",
+
+	/* External Links */
+	"application/vnd.ms-excel.externalLink": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml": "TODO",
+
+	/* Metadata */
+	"application/vnd.ms-excel.sheetMetadata": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml": "TODO",
+
+	/* PivotCache */
+	"application/vnd.ms-excel.pivotCacheDefinition": "TODO",
+	"application/vnd.ms-excel.pivotCacheRecords": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml": "TODO",
+
+	/* Query Table */
+	"application/vnd.ms-excel.queryTable": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml": "TODO",
+
+	/* Shared Workbook */
+	"application/vnd.ms-excel.userNames": "TODO",
+	"application/vnd.ms-excel.revisionHeaders": "TODO",
+	"application/vnd.ms-excel.revisionLog": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.revisionHeaders+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.revisionLog+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.userNames+xml": "TODO",
+
+	/* Single Cell Table */
+	"application/vnd.ms-excel.tableSingleCells": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.tableSingleCells+xml": "TODO",
+
+	/* Slicer */
+	"application/vnd.ms-excel.slicer": "TODO",
+	"application/vnd.ms-excel.slicerCache": "TODO",
+	"application/vnd.ms-excel.slicer+xml": "TODO",
+	"application/vnd.ms-excel.slicerCache+xml": "TODO",
+
+	/* Sort Map */
+	"application/vnd.ms-excel.wsSortMap": "TODO",
+
+	/* Table */
+	"application/vnd.ms-excel.table": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml": "TODO",
+
+	/* Themes */
+	"application/vnd.openxmlformats-officedocument.theme+xml": "themes",
+
+	/* Timeline */
+	"application/vnd.ms-excel.Timeline+xml": "TODO", /* verify */
+	"application/vnd.ms-excel.TimelineCache+xml": "TODO", /* verify */
+
+	/* VBA */
+	"application/vnd.ms-office.vbaProject": "vba",
+	"application/vnd.ms-office.vbaProjectSignature": "vba",
+
+	/* Volatile Dependencies */
+	"application/vnd.ms-office.volatileDependencies": "TODO",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.volatileDependencies+xml": "TODO",
+
+	/* Control Properties */
+	"application/vnd.ms-excel.controlproperties+xml": "TODO",
+
+	/* Data Model */
+	"application/vnd.openxmlformats-officedocument.model+data": "TODO",
+
+	/* Survey */
+	"application/vnd.ms-excel.Survey+xml": "TODO",
+
+	/* Drawing */
+	"application/vnd.openxmlformats-officedocument.drawing+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.chart+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml": "TODO",
+	"application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml": "TODO",
+
+	/* VML */
+	"application/vnd.openxmlformats-officedocument.vmlDrawing": "TODO",
+
+	"application/vnd.openxmlformats-package.relationships+xml": "rels",
+	"application/vnd.openxmlformats-officedocument.oleObject": "TODO",
+
+	"sheet": "js"
+};
+
+var CT_LIST = (function(){
+	var o = {
+		workbooks: {
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+			xlsm: "application/vnd.ms-excel.sheet.macroEnabled.main+xml",
+			xlsb: "application/vnd.ms-excel.sheet.binary.macroEnabled.main",
+			xltx: "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml"
+		},
+		strs: { /* Shared Strings */
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml",
+			xlsb: "application/vnd.ms-excel.sharedStrings"
+		},
+		sheets: {
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+			xlsb: "application/vnd.ms-excel.worksheet"
+		},
+		styles: {/* Styles */
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+			xlsb: "application/vnd.ms-excel.styles"
+		}
+	};
+	keys(o).forEach(function(k) { if(!o[k].xlsm) o[k].xlsm = o[k].xlsx; });
+	keys(o).forEach(function(k){ keys(o[k]).forEach(function(v) { ct2type[o[k][v]] = k; }); });
+	return o;
+})();
+
+var type2ct = evert_arr(ct2type);
+
+XMLNS.CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
+
+function parse_ct(data, opts) {
+	var ctext = {};
+	if(!data || !data.match) return data;
+	var ct = { workbooks: [], sheets: [], calcchains: [], themes: [], styles: [],
+		coreprops: [], extprops: [], custprops: [], strs:[], comments: [], vba: [],
+		TODO:[], rels:[], xmlns: "" };
+	(data.match(tagregex)||[]).forEach(function(x) {
+		var y = parsexmltag(x);
+		switch(y[0].replace(nsregex,"<")) {
+			case '<?xml': break;
+			case '<Types': ct.xmlns = y['xmlns' + (y[0].match(/<(\w+):/)||["",""])[1] ]; break;
+			case '<Default': ctext[y.Extension] = y.ContentType; break;
+			case '<Override':
+				if(ct[ct2type[y.ContentType]] !== undefined) ct[ct2type[y.ContentType]].push(y.PartName);
+				else if(opts.WTF) console.error(y);
+				break;
+		}
+	});
+	if(ct.xmlns !== XMLNS.CT) throw new Error("Unknown Namespace: " + ct.xmlns);
+	ct.calcchain = ct.calcchains.length > 0 ? ct.calcchains[0] : "";
+	ct.sst = ct.strs.length > 0 ? ct.strs[0] : "";
+	ct.style = ct.styles.length > 0 ? ct.styles[0] : "";
+	ct.defaults = ctext;
+	delete ct.calcchains;
+	return ct;
+}
+
+var CTYPE_XML_ROOT = writextag('Types', null, {
+	'xmlns': XMLNS.CT,
+	'xmlns:xsd': XMLNS.xsd,
+	'xmlns:xsi': XMLNS.xsi
+});
+
+var CTYPE_DEFAULTS = [
+	['xml', 'application/xml'],
+	['bin', 'application/vnd.ms-excel.sheet.binary.macroEnabled.main'],
+	['rels', type2ct.rels[0]]
+].map(function(x) {
+	return writextag('Default', null, {'Extension':x[0], 'ContentType': x[1]});
+});
+
+function write_ct(ct, opts) {
+	var o = [], v;
+	o[o.length] = (XML_HEADER);
+	o[o.length] = (CTYPE_XML_ROOT);
+	o = o.concat(CTYPE_DEFAULTS);
+	var f1 = function(w) {
+		if(ct[w] && ct[w].length > 0) {
+			v = ct[w][0];
+			o[o.length] = (writextag('Override', null, {
+				'PartName': (v[0] == '/' ? "":"/") + v,
+				'ContentType': CT_LIST[w][opts.bookType || 'xlsx']
+			}));
+		}
+	};
+	var f2 = function(w) {
+		ct[w].forEach(function(v) {
+			o[o.length] = (writextag('Override', null, {
+				'PartName': (v[0] == '/' ? "":"/") + v,
+				'ContentType': CT_LIST[w][opts.bookType || 'xlsx']
+			}));
+		});
+	};
+	var f3 = function(t) {
+		(ct[t]||[]).forEach(function(v) {
+			o[o.length] = (writextag('Override', null, {
+				'PartName': (v[0] == '/' ? "":"/") + v,
+				'ContentType': type2ct[t][0]
+			}));
+		});
+	};
+	f1('workbooks');
+	f2('sheets');
+	f3('themes');
+	['strs', 'styles'].forEach(f1);
+	['coreprops', 'extprops', 'custprops'].forEach(f3);
+	if(o.length>2){ o[o.length] = ('</Types>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* 9.3.2 OPC Relationships Markup */
+var RELS = {
+	WB: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+	SHEET: "http://sheetjs.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+};
+
+function parse_rels(data, currentFilePath) {
+	if (!data) return data;
+	if (currentFilePath.charAt(0) !== '/') {
+		currentFilePath = '/'+currentFilePath;
+	}
+	var rels = {};
+	var hash = {};
+	var resolveRelativePathIntoAbsolute = function (to) {
+		var toksFrom = currentFilePath.split('/');
+		toksFrom.pop(); // folder path
+		var toksTo = to.split('/');
+		var reversed = [];
+		while (toksTo.length !== 0) {
+			var tokTo = toksTo.shift();
+			if (tokTo === '..') {
+				toksFrom.pop();
+			} else if (tokTo !== '.') {
+				toksFrom.push(tokTo);
+			}
+		}
+		return toksFrom.join('/');
+	};
+
+	data.match(tagregex).forEach(function(x) {
+		var y = parsexmltag(x);
+		/* 9.3.2.2 OPC_Relationships */
+		if (y[0] === '<Relationship') {
+			var rel = {}; rel.Type = y.Type; rel.Target = y.Target; rel.Id = y.Id; rel.TargetMode = y.TargetMode;
+			var canonictarget = y.TargetMode === 'External' ? y.Target : resolveRelativePathIntoAbsolute(y.Target);
+			rels[canonictarget] = rel;
+			hash[y.Id] = rel;
+		}
+	});
+	rels["!id"] = hash;
+	return rels;
+}
+
+XMLNS.RELS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+
+var RELS_ROOT = writextag('Relationships', null, {
+	//'xmlns:ns0': XMLNS.RELS,
+	'xmlns': XMLNS.RELS
+});
+
+/* TODO */
+function write_rels(rels) {
+	var o = [];
+	o[o.length] = (XML_HEADER);
+	o[o.length] = (RELS_ROOT);
+	keys(rels['!id']).forEach(function(rid) { var rel = rels['!id'][rid];
+		o[o.length] = (writextag('Relationship', null, rel));
+	});
+	if(o.length>2){ o[o.length] = ('</Relationships>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* ECMA-376 Part II 11.1 Core Properties Part */
+/* [MS-OSHARED] 2.3.3.2.[1-2].1 (PIDSI/PIDDSI) */
+var CORE_PROPS = [
+	["cp:category", "Category"],
+	["cp:contentStatus", "ContentStatus"],
+	["cp:keywords", "Keywords"],
+	["cp:lastModifiedBy", "LastAuthor"],
+	["cp:lastPrinted", "LastPrinted"],
+	["cp:revision", "RevNumber"],
+	["cp:version", "Version"],
+	["dc:creator", "Author"],
+	["dc:description", "Comments"],
+	["dc:identifier", "Identifier"],
+	["dc:language", "Language"],
+	["dc:subject", "Subject"],
+	["dc:title", "Title"],
+	["dcterms:created", "CreatedDate", 'date'],
+	["dcterms:modified", "ModifiedDate", 'date']
+];
+
+XMLNS.CORE_PROPS = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties";
+RELS.CORE_PROPS  = 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties';
+
+var CORE_PROPS_REGEX = (function() {
+	var r = new Array(CORE_PROPS.length);
+	for(var i = 0; i < CORE_PROPS.length; ++i) {
+		var f = CORE_PROPS[i];
+		var g = "(?:"+ f[0].substr(0,f[0].indexOf(":")) +":)"+ f[0].substr(f[0].indexOf(":")+1);
+		r[i] = new RegExp("<" + g + "[^>]*>(.*)<\/" + g + ">");
+	}
+	return r;
+})();
+
+function parse_core_props(data) {
+	var p = {};
+
+	for(var i = 0; i < CORE_PROPS.length; ++i) {
+		var f = CORE_PROPS[i], cur = data.match(CORE_PROPS_REGEX[i]);
+		if(cur != null && cur.length > 0) p[f[1]] = cur[1];
+		if(f[2] === 'date' && p[f[1]]) p[f[1]] = new Date(p[f[1]]);
+	}
+
+	return p;
+}
+
+var CORE_PROPS_XML_ROOT = writextag('cp:coreProperties', null, {
+	//'xmlns': XMLNS.CORE_PROPS,
+	'xmlns:cp': XMLNS.CORE_PROPS,
+	'xmlns:dc': XMLNS.dc,
+	'xmlns:dcterms': XMLNS.dcterms,
+	'xmlns:dcmitype': XMLNS.dcmitype,
+	'xmlns:xsi': XMLNS.xsi
+});
+
+function cp_doit(f, g, h, o, p) {
+	if(p[f] != null || g == null || g === "") return;
+	p[f] = g;
+	o[o.length] = (h ? writextag(f,g,h) : writetag(f,g));
+}
+
+function write_core_props(cp, opts) {
+	var o = [XML_HEADER, CORE_PROPS_XML_ROOT], p = {};
+	if(!cp) return o.join("");
+
+
+	if(cp.CreatedDate != null) cp_doit("dcterms:created", typeof cp.CreatedDate === "string" ? cp.CreatedDate : write_w3cdtf(cp.CreatedDate, opts.WTF), {"xsi:type":"dcterms:W3CDTF"}, o, p);
+	if(cp.ModifiedDate != null) cp_doit("dcterms:modified", typeof cp.ModifiedDate === "string" ? cp.ModifiedDate : write_w3cdtf(cp.ModifiedDate, opts.WTF), {"xsi:type":"dcterms:W3CDTF"}, o, p);
+
+	for(var i = 0; i != CORE_PROPS.length; ++i) { var f = CORE_PROPS[i]; cp_doit(f[0], cp[f[1]], null, o, p); }
+	if(o.length>2){ o[o.length] = ('</cp:coreProperties>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* 15.2.12.3 Extended File Properties Part */
+/* [MS-OSHARED] 2.3.3.2.[1-2].1 (PIDSI/PIDDSI) */
+var EXT_PROPS = [
+	["Application", "Application", "string"],
+	["AppVersion", "AppVersion", "string"],
+	["Company", "Company", "string"],
+	["DocSecurity", "DocSecurity", "string"],
+	["Manager", "Manager", "string"],
+	["HyperlinksChanged", "HyperlinksChanged", "bool"],
+	["SharedDoc", "SharedDoc", "bool"],
+	["LinksUpToDate", "LinksUpToDate", "bool"],
+	["ScaleCrop", "ScaleCrop", "bool"],
+	["HeadingPairs", "HeadingPairs", "raw"],
+	["TitlesOfParts", "TitlesOfParts", "raw"]
+];
+
+XMLNS.EXT_PROPS = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties";
+RELS.EXT_PROPS  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties';
+
+function parse_ext_props(data, p) {
+	var q = {}; if(!p) p = {};
+
+	EXT_PROPS.forEach(function(f) {
+		switch(f[2]) {
+			case "string": p[f[1]] = (data.match(matchtag(f[0]))||[])[1]; break;
+			case "bool": p[f[1]] = (data.match(matchtag(f[0]))||[])[1] === "true"; break;
+			case "raw":
+				var cur = data.match(new RegExp("<" + f[0] + "[^>]*>(.*)<\/" + f[0] + ">"));
+				if(cur && cur.length > 0) q[f[1]] = cur[1];
+				break;
+		}
+	});
+
+	if(q.HeadingPairs && q.TitlesOfParts) {
+		var v = parseVector(q.HeadingPairs);
+		var j = 0, widx = 0;
+		for(var i = 0; i !== v.length; ++i) {
+			switch(v[i].v) {
+				case "Worksheets": widx = j; p.Worksheets = +(v[++i].v); break;
+				case "Named Ranges": ++i; break; // TODO: Handle Named Ranges
+			}
+		}
+		var parts = parseVector(q.TitlesOfParts).map(function(x) { return utf8read(x.v); });
+		p.SheetNames = parts.slice(widx, widx + p.Worksheets);
+	}
+	return p;
+}
+
+var EXT_PROPS_XML_ROOT = writextag('Properties', null, {
+	'xmlns': XMLNS.EXT_PROPS,
+	'xmlns:vt': XMLNS.vt
+});
+
+function write_ext_props(cp, opts) {
+	var o = [], p = {}, W = writextag;
+	if(!cp) cp = {};
+	cp.Application = "SheetJS";
+	o[o.length] = (XML_HEADER);
+	o[o.length] = (EXT_PROPS_XML_ROOT);
+
+	EXT_PROPS.forEach(function(f) {
+		if(cp[f[1]] === undefined) return;
+		var v;
+		switch(f[2]) {
+			case 'string': v = cp[f[1]]; break;
+			case 'bool': v = cp[f[1]] ? 'true' : 'false'; break;
+		}
+		if(v !== undefined) o[o.length] = (W(f[0], v));
+	});
+
+	/* TODO: HeadingPairs, TitlesOfParts */
+	o[o.length] = (W('HeadingPairs', W('vt:vector', W('vt:variant', '<vt:lpstr>Worksheets</vt:lpstr>')+W('vt:variant', W('vt:i4', String(cp.Worksheets))), {size:2, baseType:"variant"})));
+	o[o.length] = (W('TitlesOfParts', W('vt:vector', cp.SheetNames.map(function(s) { return "<vt:lpstr>" + s + "</vt:lpstr>"; }).join(""), {size: cp.Worksheets, baseType:"lpstr"})));
+	if(o.length>2){ o[o.length] = ('</Properties>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* 15.2.12.2 Custom File Properties Part */
+XMLNS.CUST_PROPS = "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties";
+RELS.CUST_PROPS  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties';
+
+var custregex = /<[^>]+>[^<]*/g;
+function parse_cust_props(data, opts) {
+	var p = {}, name;
+	var m = data.match(custregex);
+	if(m) for(var i = 0; i != m.length; ++i) {
+		var x = m[i], y = parsexmltag(x);
+		switch(y[0]) {
+			case '<?xml': break;
+			case '<Properties':
+				if(y.xmlns !== XMLNS.CUST_PROPS) throw "unrecognized xmlns " + y.xmlns;
+				if(y.xmlnsvt && y.xmlnsvt !== XMLNS.vt) throw "unrecognized vt " + y.xmlnsvt;
+				break;
+			case '<property': name = y.name; break;
+			case '</property>': name = null; break;
+			default: if (x.indexOf('<vt:') === 0) {
+				var toks = x.split('>');
+				var type = toks[0].substring(4), text = toks[1];
+				/* 22.4.2.32 (CT_Variant). Omit the binary types from 22.4 (Variant Types) */
+				switch(type) {
+					case 'lpstr': case 'lpwstr': case 'bstr': case 'lpwstr':
+						p[name] = unescapexml(text);
+						break;
+					case 'bool':
+						p[name] = parsexmlbool(text, '<vt:bool>');
+						break;
+					case 'i1': case 'i2': case 'i4': case 'i8': case 'int': case 'uint':
+						p[name] = parseInt(text, 10);
+						break;
+					case 'r4': case 'r8': case 'decimal':
+						p[name] = parseFloat(text);
+						break;
+					case 'filetime': case 'date':
+						p[name] = new Date(text);
+						break;
+					case 'cy': case 'error':
+						p[name] = unescapexml(text);
+						break;
+					default:
+						if(typeof console !== 'undefined') console.warn('Unexpected', x, type, toks);
+				}
+			} else if(x.substr(0,2) === "</") {
+			} else if(opts.WTF) throw new Error(x);
+		}
+	}
+	return p;
+}
+
+var CUST_PROPS_XML_ROOT = writextag('Properties', null, {
+	'xmlns': XMLNS.CUST_PROPS,
+	'xmlns:vt': XMLNS.vt
+});
+
+function write_cust_props(cp, opts) {
+	var o = [XML_HEADER, CUST_PROPS_XML_ROOT];
+	if(!cp) return o.join("");
+	var pid = 1;
+	keys(cp).forEach(function custprop(k) { ++pid;
+		o[o.length] = (writextag('property', write_vt(cp[k]), {
+			'fmtid': '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
+			'pid': pid,
+			'name': k
+		}));
+	});
+	if(o.length>2){ o[o.length] = '</Properties>'; o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* 18.4.1 charset to codepage mapping */
+var CS2CP = {
+	0:    1252, /* ANSI */
+	1:   65001, /* DEFAULT */
+	2:   65001, /* SYMBOL */
+	77:  10000, /* MAC */
+	128:   932, /* SHIFTJIS */
+	129:   949, /* HANGUL */
+	130:  1361, /* JOHAB */
+	134:   936, /* GB2312 */
+	136:   950, /* CHINESEBIG5 */
+	161:  1253, /* GREEK */
+	162:  1254, /* TURKISH */
+	163:  1258, /* VIETNAMESE */
+	177:  1255, /* HEBREW */
+	178:  1256, /* ARABIC */
+	186:  1257, /* BALTIC */
+	204:  1251, /* RUSSIAN */
+	222:   874, /* THAI */
+	238:  1250, /* EASTEUROPE */
+	255:  1252, /* OEM */
+	69:   6969  /* MISC */
+};
+
+/* Parse a list of <r> tags */
+var parse_rs = (function parse_rs_factory() {
+	var tregex = matchtag("t"), rpregex = matchtag("rPr"), rregex = /<r>/g, rend = /<\/r>/, nlregex = /\r\n/g;
+	/* 18.4.7 rPr CT_RPrElt */
+	var parse_rpr = function parse_rpr(rpr, intro, outro) {
+		var font = {}, cp = 65001;
+		var m = rpr.match(tagregex), i = 0;
+		if(m) for(;i!=m.length; ++i) {
+			var y = parsexmltag(m[i]);
+			switch(y[0]) {
+				/* 18.8.12 condense CT_BooleanProperty */
+				/* ** not required . */
+				case '<condense': break;
+				/* 18.8.17 extend CT_BooleanProperty */
+				/* ** not required . */
+				case '<extend': break;
+				/* 18.8.36 shadow CT_BooleanProperty */
+				/* ** not required . */
+				case '<shadow':
+					/* falls through */
+				case '<shadow/>': break;
+
+				/* 18.4.1 charset CT_IntProperty TODO */
+				case '<charset':
+					if(y.val == '1') break;
+					cp = CS2CP[parseInt(y.val, 10)];
+					break;
+
+				/* 18.4.2 outline CT_BooleanProperty TODO */
+				case '<outline':
+					/* falls through */
+				case '<outline/>': break;
+
+				/* 18.4.5 rFont CT_FontName */
+				case '<rFont': font.name = y.val; break;
+
+				/* 18.4.11 sz CT_FontSize */
+				case '<sz': font.sz = y.val; break;
+
+				/* 18.4.10 strike CT_BooleanProperty */
+				case '<strike':
+					if(!y.val) break;
+					/* falls through */
+				case '<strike/>': font.strike = 1; break;
+				case '</strike>': break;
+
+				/* 18.4.13 u CT_UnderlineProperty */
+				case '<u':
+					if(!y.val) break;
+					/* falls through */
+				case '<u/>': font.u = 1; break;
+				case '</u>': break;
+
+				/* 18.8.2 b */
+				case '<b':
+					if(!y.val) break;
+					/* falls through */
+				case '<b/>': font.b = 1; break;
+				case '</b>': break;
+
+				/* 18.8.26 i */
+				case '<i':
+					if(!y.val) break;
+					/* falls through */
+				case '<i/>': font.i = 1; break;
+				case '</i>': break;
+
+				/* 18.3.1.15 color CT_Color TODO: tint, theme, auto, indexed */
+				case '<color':
+					if(y.rgb) font.color = y.rgb.substr(2,6);
+					break;
+
+				/* 18.8.18 family ST_FontFamily */
+				case '<family': font.family = y.val; break;
+
+				/* 18.4.14 vertAlign CT_VerticalAlignFontProperty TODO */
+				case '<vertAlign': break;
+
+				/* 18.8.35 scheme CT_FontScheme TODO */
+				case '<scheme': break;
+
+				default:
+					if(y[0].charCodeAt(1) !== 47) throw 'Unrecognized rich format ' + y[0];
+			}
+		}
+		/* TODO: These should be generated styles, not inline */
+		var style = [];
+		if(font.b) style.push("font-weight: bold;");
+		if(font.i) style.push("font-style: italic;");
+		intro.push('<span style="' + style.join("") + '">');
+		outro.push("</span>");
+		return cp;
+	};
+
+	/* 18.4.4 r CT_RElt */
+	function parse_r(r) {
+		var terms = [[],"",[]];
+		/* 18.4.12 t ST_Xstring */
+		var t = r.match(tregex), cp = 65001;
+		if(!isval(t)) return "";
+		terms[1] = t[1];
+
+		var rpr = r.match(rpregex);
+		if(isval(rpr)) cp = parse_rpr(rpr[1], terms[0], terms[2]);
+
+		return terms[0].join("") + terms[1].replace(nlregex,'<br/>') + terms[2].join("");
+	}
+	return function parse_rs(rs) {
+		return rs.replace(rregex,"").split(rend).map(parse_r).join("");
+	};
+})();
+
+/* 18.4.8 si CT_Rst */
+var sitregex = /<t[^>]*>([^<]*)<\/t>/g, sirregex = /<r>/;
+function parse_si(x, opts) {
+	var html = opts ? opts.cellHTML : true;
+	var z = {};
+	if(!x) return null;
+	var y;
+	/* 18.4.12 t ST_Xstring (Plaintext String) */
+	if(x.charCodeAt(1) === 116) {
+		z.t = utf8read(unescapexml(x.substr(x.indexOf(">")+1).split(/<\/t>/)[0]));
+		z.r = x;
+		if(html) z.h = z.t;
+	}
+	/* 18.4.4 r CT_RElt (Rich Text Run) */
+	else if((y = x.match(sirregex))) {
+		z.r = x;
+		z.t = utf8read(unescapexml(x.match(sitregex).join("").replace(tagregex,"")));
+		if(html) z.h = parse_rs(x);
+	}
+	/* 18.4.3 phoneticPr CT_PhoneticPr (TODO: needed for Asian support) */
+	/* 18.4.6 rPh CT_PhoneticRun (TODO: needed for Asian support) */
+	return z;
+}
+
+/* 18.4 Shared String Table */
+var sstr0 = /<sst([^>]*)>([\s\S]*)<\/sst>/;
+var sstr1 = /<(?:si|sstItem)>/g;
+var sstr2 = /<\/(?:si|sstItem)>/;
+function parse_sst_xml(data, opts) {
+	var s = [], ss;
+	/* 18.4.9 sst CT_Sst */
+	var sst = data.match(sstr0);
+	if(isval(sst)) {
+		ss = sst[2].replace(sstr1,"").split(sstr2);
+		for(var i = 0; i != ss.length; ++i) {
+			var o = parse_si(ss[i], opts);
+			if(o != null) s[s.length] = o;
+		}
+		sst = parsexmltag(sst[1]); s.Count = sst.count; s.Unique = sst.uniqueCount;
+	}
+	return s;
+}
+
+RELS.SST = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings";
+var straywsregex = /^\s|\s$|[\t\n\r]/;
+function write_sst_xml(sst, opts) {
+	if(!opts.bookSST) return "";
+	var o = [XML_HEADER];
+	o[o.length] = (writextag('sst', null, {
+		xmlns: XMLNS.main[0],
+		count: sst.Count,
+		uniqueCount: sst.Unique
+	}));
+	for(var i = 0; i != sst.length; ++i) { if(sst[i] == null) continue;
+		var s = sst[i];
+		var sitag = "<si>";
+		if(s.r) sitag += s.r;
+		else {
+			sitag += "<t";
+			if(s.t.match(straywsregex)) sitag += ' xml:space="preserve"';
+			sitag += ">" + escapexml(s.t) + "</t>";
+		}
+		sitag += "</si>";
+		o[o.length] = (sitag);
+	}
+	if(o.length>2){ o[o.length] = ('</sst>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* [MS-XLSB] 2.4.219 BrtBeginSst */
+function parse_BrtBeginSst(data, length) {
+	return [data.read_shift(4), data.read_shift(4)];
+}
+
+/* [MS-XLSB] 2.1.7.45 Shared Strings */
+function parse_sst_bin(data, opts) {
+	var s = [];
+	var pass = false;
+	recordhopper(data, function hopper_sst(val, R, RT) {
+		switch(R.n) {
+			case 'BrtBeginSst': s.Count = val[0]; s.Unique = val[1]; break;
+			case 'BrtSSTItem': s.push(val); break;
+			case 'BrtEndSst': return true;
+			/* TODO: produce a test case with a future record */
+			case 'BrtFRTBegin': pass = true; break;
+			case 'BrtFRTEnd': pass = false; break;
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + RT + " " + R.n);
+		}
+	});
+	return s;
+}
+
+function write_BrtBeginSst(sst, o) {
+	if(!o) o = new_buf(8);
+	o.write_shift(4, sst.Count);
+	o.write_shift(4, sst.Unique);
+	return o;
+}
+
+var write_BrtSSTItem = write_RichStr;
+
+function write_sst_bin(sst, opts) {
+	var ba = buf_array();
+	write_record(ba, "BrtBeginSst", write_BrtBeginSst(sst));
+	for(var i = 0; i < sst.length; ++i) write_record(ba, "BrtSSTItem", write_BrtSSTItem(sst[i]));
+	write_record(ba, "BrtEndSst");
+	return ba.end();
+}
+function hex2RGB(h) {
+	var o = h.substr(h[0]==="#"?1:0,6);
+	return [parseInt(o.substr(0,2),16),parseInt(o.substr(0,2),16),parseInt(o.substr(0,2),16)];
+}
+function rgb2Hex(rgb) {
+	for(var i=0,o=1; i!=3; ++i) o = o*256 + (rgb[i]>255?255:rgb[i]<0?0:rgb[i]);
+	return o.toString(16).toUpperCase().substr(1);
+}
+
+function rgb2HSL(rgb) {
+	var R = rgb[0]/255, G = rgb[1]/255, B=rgb[2]/255;
+	var M = Math.max(R, G, B), m = Math.min(R, G, B), C = M - m;
+	if(C === 0) return [0, 0, R];
+
+	var H6 = 0, S = 0, L2 = (M + m);
+	S = C / (L2 > 1 ? 2 - L2 : L2);
+	switch(M){
+		case R: H6 = ((G - B) / C + 6)%6; break;
+		case G: H6 = ((B - R) / C + 2); break;
+		case B: H6 = ((R - G) / C + 4); break;
+	}
+	return [H6 / 6, S, L2 / 2];
+}
+
+function hsl2RGB(hsl){
+	var H = hsl[0], S = hsl[1], L = hsl[2];
+	var C = S * 2 * (L < 0.5 ? L : 1 - L), m = L - C/2;
+	var rgb = [m,m,m], h6 = 6*H;
+
+	var X;
+	if(S !== 0) switch(h6|0) {
+		case 0: case 6: X = C * h6; rgb[0] += C; rgb[1] += X; break;
+		case 1: X = C * (2 - h6);   rgb[0] += X; rgb[1] += C; break;
+		case 2: X = C * (h6 - 2);   rgb[1] += C; rgb[2] += X; break;
+		case 3: X = C * (4 - h6);   rgb[1] += X; rgb[2] += C; break;
+		case 4: X = C * (h6 - 4);   rgb[2] += C; rgb[0] += X; break;
+		case 5: X = C * (6 - h6);   rgb[2] += X; rgb[0] += C; break;
+	}
+	for(var i = 0; i != 3; ++i) rgb[i] = Math.round(rgb[i]*255);
+	return rgb;
+}
+
+/* 18.8.3 bgColor tint algorithm */
+function rgb_tint(hex, tint) {
+	if(tint === 0) return hex;
+	var hsl = rgb2HSL(hex2RGB(hex));
+	if (tint < 0) hsl[2] = hsl[2] * (1 + tint);
+	else hsl[2] = 1 - (1 - hsl[2]) * (1 - tint);
+	return rgb2Hex(hsl2RGB(hsl));
+}
+
+/* 18.3.1.13 width calculations */
+var DEF_MDW = 7, MAX_MDW = 15, MIN_MDW = 1, MDW = DEF_MDW;
+function width2px(width) { return (( width + ((128/MDW)|0)/256 )* MDW )|0; }
+function px2char(px) { return (((px - 5)/MDW * 100 + 0.5)|0)/100; }
+function char2width(chr) { return (((chr * MDW + 5)/MDW*256)|0)/256; }
+function cycle_width(collw) { return char2width(px2char(width2px(collw))); }
+function find_mdw(collw, coll) {
+	if(cycle_width(collw) != collw) {
+		for(MDW=DEF_MDW; MDW>MIN_MDW; --MDW) if(cycle_width(collw) === collw) break;
+		if(MDW === MIN_MDW) for(MDW=DEF_MDW+1; MDW<MAX_MDW; ++MDW) if(cycle_width(collw) === collw) break;
+		if(MDW === MAX_MDW) MDW = DEF_MDW;
+	}
+}
+var styles = {}; // shared styles
+
+var themes = {}; // shared themes
+
+/* 18.8.21 fills CT_Fills */
+function parse_fills(t, opts) {
+	styles.Fills = [];
+	var fill = {};
+	t[0].match(tagregex).forEach(function(x) {
+		var y = parsexmltag(x);
+		switch(y[0]) {
+			case '<fills': case '<fills>': case '</fills>': break;
+
+			/* 18.8.20 fill CT_Fill */
+			case '<fill>': break;
+			case '</fill>': styles.Fills.push(fill); fill = {}; break;
+
+			/* 18.8.32 patternFill CT_PatternFill */
+			case '<patternFill':
+				if(y.patternType) fill.patternType = y.patternType;
+				break;
+			case '<patternFill/>': case '</patternFill>': break;
+
+			/* 18.8.3 bgColor CT_Color */
+			case '<bgColor':
+				if(!fill.bgColor) fill.bgColor = {};
+				if(y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
+				if(y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
+				if(y.tint) fill.bgColor.tint = parseFloat(y.tint);
+				/* Excel uses ARGB strings */
+				if(y.rgb) fill.bgColor.rgb = y.rgb.substring(y.rgb.length - 6);
+				break;
+			case '<bgColor/>': case '</bgColor>': break;
+
+			/* 18.8.19 fgColor CT_Color */
+			case '<fgColor':
+				if(!fill.fgColor) fill.fgColor = {};
+				if(y.theme) fill.fgColor.theme = parseInt(y.theme, 10);
+				if(y.tint) fill.fgColor.tint = parseFloat(y.tint);
+				/* Excel uses ARGB strings */
+				if(y.rgb) fill.fgColor.rgb = y.rgb.substring(y.rgb.length - 6);
+				break;
+			case '<bgColor/>': case '</fgColor>': break;
+
+			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in fills';
+		}
+	});
+}
+
+/* 18.8.31 numFmts CT_NumFmts */
+function parse_numFmts(t, opts) {
+	styles.NumberFmt = [];
+	var k = keys(SSF._table);
+	for(var i=0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
+	var m = t[0].match(tagregex);
+	for(i=0; i < m.length; ++i) {
+		var y = parsexmltag(m[i]);
+		switch(y[0]) {
+			case '<numFmts': case '</numFmts>': case '<numFmts/>': case '<numFmts>': break;
+			case '<numFmt': {
+				var f=unescapexml(utf8read(y.formatCode)), j=parseInt(y.numFmtId,10);
+				styles.NumberFmt[j] = f; if(j>0) SSF.load(f,j);
+			} break;
+			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in numFmts';
+		}
+	}
+}
+
+function write_numFmts(NF, opts) {
+	var o = ["<numFmts>"];
+	[[5,8],[23,26],[41,44],[63,66],[164,392]].forEach(function(r) {
+		for(var i = r[0]; i <= r[1]; ++i) if(NF[i] !== undefined) o[o.length] = (writextag('numFmt',null,{numFmtId:i,formatCode:escapexml(NF[i])}));
+	});
+	if(o.length === 1) return "";
+	o[o.length] = ("</numFmts>");
+	o[0] = writextag('numFmts', null, { count:o.length-2 }).replace("/>", ">");
+	return o.join("");
+}
+
+/* 18.8.10 cellXfs CT_CellXfs */
+function parse_cellXfs(t, opts) {
+	styles.CellXf = [];
+	t[0].match(tagregex).forEach(function(x) {
+		var y = parsexmltag(x);
+		switch(y[0]) {
+			case '<cellXfs': case '<cellXfs>': case '<cellXfs/>': case '</cellXfs>': break;
+
+			/* 18.8.45 xf CT_Xf */
+			case '<xf': delete y[0];
+				if(y.numFmtId) y.numFmtId = parseInt(y.numFmtId, 10);
+				if(y.fillId) y.fillId = parseInt(y.fillId, 10);
+				styles.CellXf.push(y); break;
+			case '</xf>': break;
+
+			/* 18.8.1 alignment CT_CellAlignment */
+			case '<alignment': case '<alignment/>': break;
+
+			/* 18.8.33 protection CT_CellProtection */
+			case '<protection': case '</protection>': case '<protection/>': break;
+
+			case '<extLst': case '</extLst>': break;
+			case '<ext': break;
+			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in cellXfs';
+		}
+	});
+}
+
+function write_cellXfs(cellXfs) {
+	var o = [];
+	o[o.length] = (writextag('cellXfs',null));
+	cellXfs.forEach(function(c) { o[o.length] = (writextag('xf', null, c)); });
+	o[o.length] = ("</cellXfs>");
+	if(o.length === 2) return "";
+	o[0] = writextag('cellXfs',null, {count:o.length-2}).replace("/>",">");
+	return o.join("");
+}
+
+/* 18.8 Styles CT_Stylesheet*/
+var parse_sty_xml= (function make_pstyx() {
+var numFmtRegex = /<numFmts([^>]*)>.*<\/numFmts>/;
+var cellXfRegex = /<cellXfs([^>]*)>.*<\/cellXfs>/;
+var fillsRegex = /<fills([^>]*)>.*<\/fills>/;
+
+return function parse_sty_xml(data, opts) {
+	/* 18.8.39 styleSheet CT_Stylesheet */
+	var t;
+
+	/* numFmts CT_NumFmts ? */
+	if((t=data.match(numFmtRegex))) parse_numFmts(t, opts);
+
+	/* fonts CT_Fonts ? */
+//	if((t=data.match(/<fonts([^>]*)>.*<\/fonts>/))) parse_fonts(t, opts);
+
+	/* fills CT_Fills */
+	if((t=data.match(fillsRegex))) parse_fills(t, opts);
+
+	/* borders CT_Borders ? */
+	/* cellStyleXfs CT_CellStyleXfs ? */
+
+	/* cellXfs CT_CellXfs ? */
+	if((t=data.match(cellXfRegex))) parse_cellXfs(t, opts);
+
+	/* dxfs CT_Dxfs ? */
+	/* tableStyles CT_TableStyles ? */
+	/* colors CT_Colors ? */
+	/* extLst CT_ExtensionList ? */
+
+	return styles;
+};
+})();
+
+var STYLES_XML_ROOT = writextag('styleSheet', null, {
+	'xmlns': XMLNS.main[0],
+	'xmlns:vt': XMLNS.vt
+});
+
+RELS.STY = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles";
+
+function write_sty_xml(wb, opts) {
+	var o = [XML_HEADER, STYLES_XML_ROOT], w;
+	if((w = write_numFmts(wb.SSF)) != null) o[o.length] = w;
+	o[o.length] = ('<fonts count="1"><font><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>');
+	o[o.length] = ('<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>');
+	o[o.length] = ('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>');
+	o[o.length] = ('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
+	if((w = write_cellXfs(opts.cellXfs))) o[o.length] = (w);
+	o[o.length] = ('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');
+	o[o.length] = ('<dxfs count="0"/>');
+	o[o.length] = ('<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>');
+
+	if(o.length>2){ o[o.length] = ('</styleSheet>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* [MS-XLSB] 2.4.651 BrtFmt */
+function parse_BrtFmt(data, length) {
+	var ifmt = data.read_shift(2);
+	var stFmtCode = parse_XLWideString(data,length-2);
+	return [ifmt, stFmtCode];
+}
+
+/* [MS-XLSB] 2.4.653 BrtFont TODO */
+function parse_BrtFont(data, length) {
+	var out = {flags:{}};
+	out.dyHeight = data.read_shift(2);
+	out.grbit = parse_FontFlags(data, 2);
+	out.bls = data.read_shift(2);
+	out.sss = data.read_shift(2);
+	out.uls = data.read_shift(1);
+	out.bFamily = data.read_shift(1);
+	out.bCharSet = data.read_shift(1);
+	data.l++;
+	out.brtColor = parse_BrtColor(data, 8);
+	out.bFontScheme = data.read_shift(1);
+	out.name = parse_XLWideString(data, length - 21);
+
+	out.flags.Bold = out.bls === 0x02BC;
+	out.flags.Italic = out.grbit.fItalic;
+	out.flags.Strikeout = out.grbit.fStrikeout;
+	out.flags.Outline = out.grbit.fOutline;
+	out.flags.Shadow = out.grbit.fShadow;
+	out.flags.Condense = out.grbit.fCondense;
+	out.flags.Extend = out.grbit.fExtend;
+	out.flags.Sub = out.sss & 0x2;
+	out.flags.Sup = out.sss & 0x1;
+	return out;
+}
+
+/* [MS-XLSB] 2.4.816 BrtXF */
+function parse_BrtXF(data, length) {
+	var ixfeParent = data.read_shift(2);
+	var ifmt = data.read_shift(2);
+	parsenoop(data, length-4);
+	return {ixfe:ixfeParent, ifmt:ifmt };
+}
+
+/* [MS-XLSB] 2.1.7.50 Styles */
+function parse_sty_bin(data, opts) {
+	styles.NumberFmt = [];
+	for(var y in SSF._table) styles.NumberFmt[y] = SSF._table[y];
+
+	styles.CellXf = [];
+	var state = ""; /* TODO: this should be a stack */
+	var pass = false;
+	recordhopper(data, function hopper_sty(val, R, RT) {
+		switch(R.n) {
+			case 'BrtFmt':
+				styles.NumberFmt[val[0]] = val[1]; SSF.load(val[1], val[0]);
+				break;
+			case 'BrtFont': break; /* TODO */
+			case 'BrtKnownFonts': break; /* TODO */
+			case 'BrtFill': break; /* TODO */
+			case 'BrtBorder': break; /* TODO */
+			case 'BrtXF':
+				if(state === "CELLXFS") {
+					styles.CellXf.push(val);
+				}
+				break; /* TODO */
+			case 'BrtStyle': break; /* TODO */
+			case 'BrtDXF': break; /* TODO */
+			case 'BrtMRUColor': break; /* TODO */
+			case 'BrtIndexedColor': break; /* TODO */
+			case 'BrtBeginStyleSheet': break;
+			case 'BrtEndStyleSheet': break;
+			case 'BrtBeginTableStyle': break;
+			case 'BrtTableStyleElement': break;
+			case 'BrtEndTableStyle': break;
+			case 'BrtBeginFmts': state = "FMTS"; break;
+			case 'BrtEndFmts': state = ""; break;
+			case 'BrtBeginFonts': state = "FONTS"; break;
+			case 'BrtEndFonts': state = ""; break;
+			case 'BrtACBegin': state = "ACFONTS"; break;
+			case 'BrtACEnd': state = ""; break;
+			case 'BrtBeginFills': state = "FILLS"; break;
+			case 'BrtEndFills': state = ""; break;
+			case 'BrtBeginBorders': state = "BORDERS"; break;
+			case 'BrtEndBorders': state = ""; break;
+			case 'BrtBeginCellStyleXFs': state = "CELLSTYLEXFS"; break;
+			case 'BrtEndCellStyleXFs': state = ""; break;
+			case 'BrtBeginCellXFs': state = "CELLXFS"; break;
+			case 'BrtEndCellXFs': state = ""; break;
+			case 'BrtBeginStyles': state = "STYLES"; break;
+			case 'BrtEndStyles': state = ""; break;
+			case 'BrtBeginDXFs': state = "DXFS"; break;
+			case 'BrtEndDXFs': state = ""; break;
+			case 'BrtBeginTableStyles': state = "TABLESTYLES"; break;
+			case 'BrtEndTableStyles': state = ""; break;
+			case 'BrtBeginColorPalette': state = "COLORPALETTE"; break;
+			case 'BrtEndColorPalette': state = ""; break;
+			case 'BrtBeginIndexedColors': state = "INDEXEDCOLORS"; break;
+			case 'BrtEndIndexedColors': state = ""; break;
+			case 'BrtBeginMRUColors': state = "MRUCOLORS"; break;
+			case 'BrtEndMRUColors': state = ""; break;
+			case 'BrtFRTBegin': pass = true; break;
+			case 'BrtFRTEnd': pass = false; break;
+			case 'BrtBeginStyleSheetExt14': break;
+			case 'BrtBeginSlicerStyles': break;
+			case 'BrtEndSlicerStyles': break;
+			case 'BrtBeginTimelineStylesheetExt15': break;
+			case 'BrtEndTimelineStylesheetExt15': break;
+			case 'BrtBeginTimelineStyles': break;
+			case 'BrtEndTimelineStyles': break;
+			case 'BrtEndStyleSheetExt14': break;
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + RT + " " + R.n);
+		}
+	});
+	return styles;
+}
+
+/* [MS-XLSB] 2.1.7.50 Styles */
+function write_sty_bin(data, opts) {
+	var ba = buf_array();
+	write_record(ba, "BrtBeginStyleSheet");
+	/* [FMTS] */
+	/* [FONTS] */
+	/* [FILLS] */
+	/* [BORDERS] */
+	/* CELLSTYLEXFS */
+	/* CELLXFS*/
+	/* STYLES */
+	/* DXFS */
+	/* TABLESTYLES */
+	/* [COLORPALETTE] */
+	/* FRTSTYLESHEET*/
+	write_record(ba, "BrtEndStyleSheet");
+	return ba.end();
+}
+RELS.THEME = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme";
+
+/* 20.1.6.2 clrScheme CT_ColorScheme */
+function parse_clrScheme(t, opts) {
+	themes.themeElements.clrScheme = [];
+	var color = {};
+	t[0].match(tagregex).forEach(function(x) {
+		var y = parsexmltag(x);
+		switch(y[0]) {
+			case '<a:clrScheme': case '</a:clrScheme>': break;
+
+			/* 20.1.2.3.32 srgbClr CT_SRgbColor */
+			case '<a:srgbClr': color.rgb = y.val; break;
+
+			/* 20.1.2.3.33 sysClr CT_SystemColor */
+			case '<a:sysClr': color.rgb = y.lastClr; break;
+
+			/* 20.1.4.1.9 dk1 (Dark 1) */
+			case '<a:dk1>':
+			case '</a:dk1>':
+			/* 20.1.4.1.10 dk2 (Dark 2) */
+			case '<a:dk2>':
+			case '</a:dk2>':
+			/* 20.1.4.1.22 lt1 (Light 1) */
+			case '<a:lt1>':
+			case '</a:lt1>':
+			/* 20.1.4.1.23 lt2 (Light 2) */
+			case '<a:lt2>':
+			case '</a:lt2>':
+			/* 20.1.4.1.1 accent1 (Accent 1) */
+			case '<a:accent1>':
+			case '</a:accent1>':
+			/* 20.1.4.1.2 accent2 (Accent 2) */
+			case '<a:accent2>':
+			case '</a:accent2>':
+			/* 20.1.4.1.3 accent3 (Accent 3) */
+			case '<a:accent3>':
+			case '</a:accent3>':
+			/* 20.1.4.1.4 accent4 (Accent 4) */
+			case '<a:accent4>':
+			case '</a:accent4>':
+			/* 20.1.4.1.5 accent5 (Accent 5) */
+			case '<a:accent5>':
+			case '</a:accent5>':
+			/* 20.1.4.1.6 accent6 (Accent 6) */
+			case '<a:accent6>':
+			case '</a:accent6>':
+			/* 20.1.4.1.19 hlink (Hyperlink) */
+			case '<a:hlink>':
+			case '</a:hlink>':
+			/* 20.1.4.1.15 folHlink (Followed Hyperlink) */
+			case '<a:folHlink>':
+			case '</a:folHlink>':
+				if (y[0][1] === '/') {
+					themes.themeElements.clrScheme.push(color);
+					color = {};
+				} else {
+					color.name = y[0].substring(3, y[0].length - 1);
+				}
+				break;
+
+			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in clrScheme';
+		}
+	});
+}
+
+var clrsregex = /<a:clrScheme([^>]*)>.*<\/a:clrScheme>/;
+/* 14.2.7 Theme Part */
+function parse_theme_xml(data, opts) {
+	if(!data || data.length === 0) return themes;
+	themes.themeElements = {};
+
+	var t;
+
+	/* clrScheme CT_ColorScheme */
+	if((t=data.match(clrsregex))) parse_clrScheme(t, opts);
+
+	return themes;
+}
+
+function write_theme() { return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Cambria"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Times New Roman"/><a:font script="Hebr" typeface="Times New Roman"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="MoolBoran"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Times New Roman"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Arial"/><a:font script="Hebr" typeface="Arial"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="DaunPenh"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Arial"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="50000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="35000"><a:schemeClr val="phClr"><a:tint val="37000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="15000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="1"/></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="100000"/><a:shade val="100000"/><a:satMod val="130000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="50000"/><a:shade val="100000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"><a:shade val="95000"/><a:satMod val="105000"/></a:schemeClr></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="20000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst><a:scene3d><a:camera prst="orthographicFront"><a:rot lat="0" lon="0" rev="0"/></a:camera><a:lightRig rig="threePt" dir="t"><a:rot lat="0" lon="0" rev="1200000"/></a:lightRig></a:scene3d><a:sp3d><a:bevelT w="63500" h="25400"/></a:sp3d></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="40000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="40000"><a:schemeClr val="phClr"><a:tint val="45000"/><a:shade val="99000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="20000"/><a:satMod val="255000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="-80000" r="50000" b="180000"/></a:path></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="80000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="30000"/><a:satMod val="200000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults><a:spDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="1"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="3"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="2"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></a:style></a:spDef><a:lnDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="2"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="0"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="1"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="tx1"/></a:fontRef></a:style></a:lnDef></a:objectDefaults><a:extraClrSchemeLst/></a:theme>'; }
+/* 18.6 Calculation Chain */
+function parse_cc_xml(data, opts) {
+	var d = [];
+	var l = 0, i = 1;
+	(data.match(tagregex)||[]).forEach(function(x) {
+		var y = parsexmltag(x);
+		switch(y[0]) {
+			case '<?xml': break;
+			/* 18.6.2  calcChain CT_CalcChain 1 */
+			case '<calcChain': case '<calcChain>': case '</calcChain>': break;
+			/* 18.6.1  c CT_CalcCell 1 */
+			case '<c': delete y[0]; if(y.i) i = y.i; else y.i = i; d.push(y); break;
+		}
+	});
+	return d;
+}
+
+function write_cc_xml(data, opts) { }
+/* [MS-XLSB] 2.6.4.1 */
+function parse_BrtCalcChainItem$(data, length) {
+	var out = {};
+	out.i = data.read_shift(4);
+	var cell = {};
+	cell.r = data.read_shift(4);
+	cell.c = data.read_shift(4);
+	out.r = encode_cell(cell);
+	var flags = data.read_shift(1);
+	if(flags & 0x2) out.l = '1';
+	if(flags & 0x8) out.a = '1';
+	return out;
+}
+
+/* 18.6 Calculation Chain */
+function parse_cc_bin(data, opts) {
+	var out = [];
+	var pass = false;
+	recordhopper(data, function hopper_cc(val, R, RT) {
+		switch(R.n) {
+			case 'BrtCalcChainItem$': out.push(val); break;
+			case 'BrtBeginCalcChain$': break;
+			case 'BrtEndCalcChain$': break;
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + RT + " " + R.n);
+		}
+	});
+	return out;
+}
+
+function write_cc_bin(data, opts) { }
+
+function parse_comments(zip, dirComments, sheets, sheetRels, opts) {
+	for(var i = 0; i != dirComments.length; ++i) {
+		var canonicalpath=dirComments[i];
+		var comments=parse_cmnt(getzipdata(zip, canonicalpath.replace(/^\//,''), true), canonicalpath, opts);
+		if(!comments || !comments.length) continue;
+		// find the sheets targeted by these comments
+		var sheetNames = keys(sheets);
+		for(var j = 0; j != sheetNames.length; ++j) {
+			var sheetName = sheetNames[j];
+			var rels = sheetRels[sheetName];
+			if(rels) {
+				var rel = rels[canonicalpath];
+				if(rel) insertCommentsIntoSheet(sheetName, sheets[sheetName], comments);
+			}
+		}
+	}
+}
+
+function insertCommentsIntoSheet(sheetName, sheet, comments) {
+	comments.forEach(function(comment) {
+		var cell = sheet[comment.ref];
+		if (!cell) {
+			cell = {};
+			sheet[comment.ref] = cell;
+			var range = safe_decode_range(sheet["!ref"]||"BDWGO1000001:A1");
+			var thisCell = decode_cell(comment.ref);
+			if(range.s.r > thisCell.r) range.s.r = thisCell.r;
+			if(range.e.r < thisCell.r) range.e.r = thisCell.r;
+			if(range.s.c > thisCell.c) range.s.c = thisCell.c;
+			if(range.e.c < thisCell.c) range.e.c = thisCell.c;
+			var encoded = encode_range(range);
+			if (encoded !== sheet["!ref"]) sheet["!ref"] = encoded;
+		}
+
+		if (!cell.c) cell.c = [];
+		var o = {a: comment.author, t: comment.t, r: comment.r};
+		if(comment.h) o.h = comment.h;
+		cell.c.push(o);
+	});
+}
+
+/* 18.7.3 CT_Comment */
+function parse_comments_xml(data, opts) {
+	if(data.match(/<(?:\w+:)?comments *\/>/)) return [];
+	var authors = [];
+	var commentList = [];
+	data.match(/<(?:\w+:)?authors>([^\u2603]*)<\/(?:\w+:)?authors>/)[1].split(/<\/\w*:?author>/).forEach(function(x) {
+		if(x === "" || x.trim() === "") return;
+		authors.push(x.match(/<(?:\w+:)?author[^>]*>(.*)/)[1]);
+	});
+	(data.match(/<(?:\w+:)?commentList>([^\u2603]*)<\/(?:\w+:)?commentList>/)||["",""])[1].split(/<\/\w*:?comment>/).forEach(function(x, index) {
+		if(x === "" || x.trim() === "") return;
+		var y = parsexmltag(x.match(/<(?:\w+:)?comment[^>]*>/)[0]);
+		var comment = { author: y.authorId && authors[y.authorId] ? authors[y.authorId] : undefined, ref: y.ref, guid: y.guid };
+		var cell = decode_cell(y.ref);
+		if(opts.sheetRows && opts.sheetRows <= cell.r) return;
+		var textMatch = x.match(/<text>([^\u2603]*)<\/text>/);
+		if (!textMatch || !textMatch[1]) return; // a comment may contain an empty text tag.
+		var rt = parse_si(textMatch[1]);
+		comment.r = rt.r;
+		comment.t = rt.t;
+		if(opts.cellHTML) comment.h = rt.h;
+		commentList.push(comment);
+	});
+	return commentList;
+}
+
+function write_comments_xml(data, opts) { }
+/* [MS-XLSB] 2.4.28 BrtBeginComment */
+function parse_BrtBeginComment(data, length) {
+	var out = {};
+	out.iauthor = data.read_shift(4);
+	var rfx = parse_UncheckedRfX(data, 16);
+	out.rfx = rfx.s;
+	out.ref = encode_cell(rfx.s);
+	data.l += 16; /*var guid = parse_GUID(data); */
+	return out;
+}
+
+/* [MS-XLSB] 2.4.324 BrtCommentAuthor */
+var parse_BrtCommentAuthor = parse_XLWideString;
+
+/* [MS-XLSB] 2.4.325 BrtCommentText */
+var parse_BrtCommentText = parse_RichStr;
+
+/* [MS-XLSB] 2.1.7.8 Comments */
+function parse_comments_bin(data, opts) {
+	var out = [];
+	var authors = [];
+	var c = {};
+	var pass = false;
+	recordhopper(data, function hopper_cmnt(val, R, RT) {
+		switch(R.n) {
+			case 'BrtCommentAuthor': authors.push(val); break;
+			case 'BrtBeginComment': c = val; break;
+			case 'BrtCommentText': c.t = val.t; c.h = val.h; c.r = val.r; break;
+			case 'BrtEndComment':
+				c.author = authors[c.iauthor];
+				delete c.iauthor;
+				if(opts.sheetRows && opts.sheetRows <= c.rfx.r) break;
+				delete c.rfx; out.push(c); break;
+			case 'BrtBeginComments': break;
+			case 'BrtEndComments': break;
+			case 'BrtBeginCommentAuthors': break;
+			case 'BrtEndCommentAuthors': break;
+			case 'BrtBeginCommentList': break;
+			case 'BrtEndCommentList': break;
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + RT + " " + R.n);
+		}
+	});
+	return out;
+}
+
+function write_comments_bin(data, opts) { }
+/* [MS-XLSB] 2.5.97.4 CellParsedFormula TODO: use similar logic to js-xls */
+function parse_CellParsedFormula(data, length) {
+	var cce = data.read_shift(4);
+	return parsenoop(data, length-4);
+}
+var strs = {}; // shared strings
+var _ssfopts = {}; // spreadsheet formatting options
+
+RELS.WS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet";
+
+function get_sst_id(sst, str) {
+	for(var i = 0, len = sst.length; i < len; ++i) if(sst[i].t === str) { sst.Count ++; return i; }
+	sst[len] = {t:str}; sst.Count ++; sst.Unique ++; return len;
+}
+
+function get_cell_style(styles, cell, opts) {
+	var z = opts.revssf[cell.z != null ? cell.z : "General"];
+	for(var i = 0, len = styles.length; i != len; ++i) if(styles[i].numFmtId === z) return i;
+	styles[len] = {
+		numFmtId:z,
+		fontId:0,
+		fillId:0,
+		borderId:0,
+		xfId:0,
+		applyNumberFormat:1
+	};
+	return len;
+}
+
+function safe_format(p, fmtid, fillid, opts) {
+	try {
+		if(fmtid === 0) {
+			if(p.t === 'n') {
+				if((p.v|0) === p.v) p.w = SSF._general_int(p.v,_ssfopts);
+				else p.w = SSF._general_num(p.v,_ssfopts);
+			}
+			else if(p.v === undefined) return "";
+			else p.w = SSF._general(p.v,_ssfopts);
+		}
+		else p.w = SSF.format(fmtid,p.v,_ssfopts);
+		if(opts.cellNF) p.z = SSF._table[fmtid];
+	} catch(e) { if(opts.WTF) throw e; }
+	if(fillid) try {
+		p.s = styles.Fills[fillid];
+		if (p.s.fgColor && p.s.fgColor.theme) {
+			p.s.fgColor.rgb = rgb_tint(themes.themeElements.clrScheme[p.s.fgColor.theme].rgb, p.s.fgColor.tint || 0);
+			if(opts.WTF) p.s.fgColor.raw_rgb = themes.themeElements.clrScheme[p.s.fgColor.theme].rgb;
+		}
+		if (p.s.bgColor && p.s.bgColor.theme) {
+			p.s.bgColor.rgb = rgb_tint(themes.themeElements.clrScheme[p.s.bgColor.theme].rgb, p.s.bgColor.tint || 0);
+			if(opts.WTF) p.s.bgColor.raw_rgb = themes.themeElements.clrScheme[p.s.bgColor.theme].rgb;
+		}
+	} catch(e) { if(opts.WTF) throw e; }
+}
+function parse_ws_xml_dim(ws, s) {
+	var d = safe_decode_range(s);
+	if(d.s.r<=d.e.r && d.s.c<=d.e.c && d.s.r>=0 && d.s.c>=0) ws["!ref"] = encode_range(d);
+}
+var mergecregex = /<mergeCell ref="[A-Z0-9:]+"\s*\/>/g;
+var sheetdataregex = /<(?:\w+:)?sheetData>([^\u2603]*)<\/(?:\w+:)?sheetData>/;
+var hlinkregex = /<hyperlink[^>]*\/>/g;
+var dimregex = /"(\w*:\w*)"/;
+var colregex = /<col[^>]*\/>/g;
+/* 18.3 Worksheets */
+function parse_ws_xml(data, opts, rels) {
+	if(!data) return data;
+	/* 18.3.1.99 worksheet CT_Worksheet */
+	var s = {};
+
+	/* 18.3.1.35 dimension CT_SheetDimension ? */
+	var ridx = data.indexOf("<dimension");
+	if(ridx > 0) {
+		var ref = data.substr(ridx,50).match(dimregex);
+		if(ref != null) parse_ws_xml_dim(s, ref[1]);
+	}
+
+	/* 18.3.1.55 mergeCells CT_MergeCells */
+	var mergecells = [];
+	if(data.indexOf("</mergeCells>")!==-1) {
+		var merges = data.match(mergecregex);
+		for(ridx = 0; ridx != merges.length; ++ridx)
+			mergecells[ridx] = safe_decode_range(merges[ridx].substr(merges[ridx].indexOf("\"")+1));
+	}
+
+	/* 18.3.1.17 cols CT_Cols */
+	var columns = [];
+	if(opts.cellStyles && data.indexOf("</cols>")!==-1) {
+		/* 18.3.1.13 col CT_Col */
+		var cols = data.match(colregex);
+		parse_ws_xml_cols(columns, cols);
+	}
+
+	var refguess = {s: {r:1000000, c:1000000}, e: {r:0, c:0} };
+
+	/* 18.3.1.80 sheetData CT_SheetData ? */
+	var mtch=data.match(sheetdataregex);
+	if(mtch) parse_ws_xml_data(mtch[1], s, opts, refguess);
+
+	/* 18.3.1.48 hyperlinks CT_Hyperlinks */
+	if(data.indexOf("</hyperlinks>")!==-1) parse_ws_xml_hlinks(s, data.match(hlinkregex), rels);
+
+	if(!s["!ref"] && refguess.e.c >= refguess.s.c && refguess.e.r >= refguess.s.r) s["!ref"] = encode_range(refguess);
+	if(opts.sheetRows > 0 && s["!ref"]) {
+		var tmpref = safe_decode_range(s["!ref"]);
+		if(opts.sheetRows < +tmpref.e.r) {
+			tmpref.e.r = opts.sheetRows - 1;
+			if(tmpref.e.r > refguess.e.r) tmpref.e.r = refguess.e.r;
+			if(tmpref.e.r < tmpref.s.r) tmpref.s.r = tmpref.e.r;
+			if(tmpref.e.c > refguess.e.c) tmpref.e.c = refguess.e.c;
+			if(tmpref.e.c < tmpref.s.c) tmpref.s.c = tmpref.e.c;
+			s["!fullref"] = s["!ref"];
+			s["!ref"] = encode_range(tmpref);
+		}
+	}
+	if(mergecells.length > 0) s["!merges"] = mergecells;
+	if(columns.length > 0) s["!cols"] = columns;
+	return s;
+}
+
+
+function parse_ws_xml_hlinks(s, data, rels) {
+	for(var i = 0; i != data.length; ++i) {
+		var val = parsexmltag(data[i], true);
+		if(!val.ref) return;
+		var rel = rels['!id'][val.id];
+		if(rel) {
+			val.Target = rel.Target;
+			if(val.location) val.Target += "#"+val.location;
+			val.Rel = rel;
+		}
+		var rng = safe_decode_range(val.ref);
+		for(var R=rng.s.r;R<=rng.e.r;++R) for(var C=rng.s.c;C<=rng.e.c;++C) {
+			var addr = encode_cell({c:C,r:R});
+			if(!s[addr]) s[addr] = {t:"str",v:undefined};
+			s[addr].l = val;
+		}
+	}
+}
+
+function parse_ws_xml_cols(columns, cols) {
+	var seencol = false;
+	for(var coli = 0; coli != cols.length; ++coli) {
+		var coll = parsexmltag(cols[coli], true);
+		var colm=parseInt(coll.min, 10)-1, colM=parseInt(coll.max,10)-1;
+		delete coll.min; delete coll.max;
+		if(!seencol && coll.width) { seencol = true; find_mdw(+coll.width, coll); }
+		if(coll.width) {
+			coll.wpx = width2px(+coll.width);
+			coll.wch = px2char(coll.wpx);
+			coll.MDW = MDW;
+		}
+		while(colm <= colM) columns[colm++] = coll;
+	}
+}
+
+function write_ws_xml_cols(ws, cols) {
+	var o = ["<cols>"], col, width;
+	for(var i = 0; i != cols.length; ++i) {
+		if(!(col = cols[i])) continue;
+		var p = {min:i+1,max:i+1};
+		/* wch (chars), wpx (pixels) */
+		width = -1;
+		if(col.wpx) width = px2char(col.wpx);
+		else if(col.wch) width = col.wch;
+		if(width > -1) { p.width = char2width(width); p.customWidth= 1; }
+		o[o.length] = (writextag('col', null, p));
+	}
+	o[o.length] = "</cols>";
+	return o.join("");
+}
+
+function write_ws_xml_cell(cell, ref, ws, opts, idx, wb) {
+	if(cell.v === undefined) return "";
+	var vv = "";
+	switch(cell.t) {
+		case 'b': vv = cell.v ? "1" : "0"; break;
+		case 'n': case 'e': vv = ''+cell.v; break;
+		default: vv = cell.v; break;
+	}
+	var v = writetag('v', escapexml(vv)), o = {r:ref};
+	/* TODO: cell style */
+	var os = get_cell_style(opts.cellXfs, cell, opts);
+	if(os !== 0) o.s = os;
+	switch(cell.t) {
+		case 'n': break;
+		case 'b': o.t = "b"; break;
+		case 'e': o.t = "e"; break;
+		default:
+			if(opts.bookSST) {
+				v = writetag('v', ''+get_sst_id(opts.Strings, cell.v));
+				o.t = "s"; break;
+			}
+			o.t = "str"; break;
+	}
+	return writextag('c', v, o);
+}
+
+var parse_ws_xml_data = (function parse_ws_xml_data_factory() {
+	var cellregex = /<(?:\w+:)?c /, rowregex = /<\/(?:\w+:)?row>/;
+	var rregex = /r=["']([^"']*)["']/, isregex = /<is>([\S\s]*?)<\/is>/;
+	var match_v = matchtag("v"), match_f = matchtag("f");
+
+return function parse_ws_xml_data(sdata, s, opts, guess) {
+	var ri = 0, x = "", cells = [], cref = [], idx = 0, i=0, cc=0, d="", p;
+	var tag;
+	var sstr;
+	var fmtid = 0, fillid = 0, do_format = Array.isArray(styles.CellXf), cf;
+	for(var marr = sdata.split(rowregex), mt = 0, marrlen = marr.length; mt != marrlen; ++mt) {
+		x = marr[mt].trim();
+		var xlen = x.length;
+		if(xlen === 0) continue;
+
+		/* 18.3.1.73 row CT_Row */
+		for(ri = 0; ri < xlen; ++ri) if(x.charCodeAt(ri) === 62) break; ++ri;
+		tag = parsexmltag(x.substr(0,ri), true);
+		var tagr = parseInt(tag.r, 10);
+		if(opts.sheetRows && opts.sheetRows < tagr) continue;
+		if(guess.s.r > tagr - 1) guess.s.r = tagr - 1;
+		if(guess.e.r < tagr - 1) guess.e.r = tagr - 1;
+
+		/* 18.3.1.4 c CT_Cell */
+		cells = x.substr(ri).split(cellregex);
+		for(ri = 1, cellen = cells.length; ri != cellen; ++ri) {
+			x = cells[ri].trim();
+			if(x.length === 0) continue;
+			cref = x.match(rregex); idx = ri; i=0; cc=0;
+			x = "<c " + x;
+			if(cref !== null && cref.length === 2) {
+				idx = 0; d=cref[1];
+				for(i=0; i != d.length; ++i) {
+					if((cc=d.charCodeAt(i)-64) < 1 || cc > 26) break;
+					idx = 26*idx + cc;
+				}
+				--idx;
+			}
+
+			for(i = 0; i != x.length; ++i) if(x.charCodeAt(i) === 62) break; ++i;
+			tag = parsexmltag(x.substr(0,i), true);
+			d = x.substr(i);
+			p = {t:""};
+
+			if((cref=d.match(match_v))!== null) p.v=unescapexml(cref[1]);
+			if(opts.cellFormula && (cref=d.match(match_f))!== null) p.f=unescapexml(cref[1]);
+
+			/* SCHEMA IS ACTUALLY INCORRECT HERE.  IF A CELL HAS NO T, EMIT "" */
+			if(tag.t === undefined && p.v === undefined) {
+				if(!opts.sheetStubs) continue;
+				p.t = "str";
+			}
+			else p.t = tag.t || "n";
+			if(guess.s.c > idx) guess.s.c = idx;
+			if(guess.e.c < idx) guess.e.c = idx;
+			/* 18.18.11 t ST_CellType */
+			switch(p.t) {
+				case 'n': p.v = parseFloat(p.v); break;
+				case 's':
+					sstr = strs[parseInt(p.v, 10)];
+					p.v = sstr.t;
+					p.r = sstr.r;
+					if(opts.cellHTML) p.h = sstr.h;
+					break;
+				case 'str': if(p.v != null) p.v = utf8read(p.v); else p.v = ""; break;
+				case 'inlineStr':
+					cref = d.match(isregex);
+					p.t = 'str';
+					if(cref !== null) { sstr = parse_si(cref[1]); p.v = sstr.t; } else p.v = "";
+					break; // inline string
+				case 'b': p.v = parsexmlbool(p.v); break;
+				case 'd':
+					p.v = datenum(p.v);
+					p.t = 'n';
+					break;
+				/* in case of error, stick value in .raw */
+				case 'e': p.raw = RBErr[p.v]; break;
+			}
+			/* formatting */
+			fmtid = fillid = 0;
+			if(do_format && tag.s !== undefined) {
+				cf = styles.CellXf[tag.s];
+				if(cf != null) {
+					if(cf.numFmtId != null) fmtid = cf.numFmtId;
+					if(opts.cellStyles && cf.fillId != null) fillid = cf.fillId;
+				}
+			}
+			safe_format(p, fmtid, fillid, opts);
+			s[tag.r] = p;
+		}
+	}
+}; })();
+
+function write_ws_xml_data(ws, opts, idx, wb) {
+	var o = [], r = [], range = safe_decode_range(ws['!ref']), cell, ref, rr = "", cols = [], R, C;
+	for(C = range.s.c; C <= range.e.c; ++C) cols[C] = encode_col(C);
+	for(R = range.s.r; R <= range.e.r; ++R) {
+		r = [];
+		rr = encode_row(R);
+		for(C = range.s.c; C <= range.e.c; ++C) {
+			ref = cols[C] + rr;
+			if(ws[ref] === undefined) continue;
+			if((cell = write_ws_xml_cell(ws[ref], ref, ws, opts, idx, wb)) != null) r.push(cell);
+		}
+		if(r.length > 0) o[o.length] = (writextag('row', r.join(""), {r:rr}));
+	}
+	return o.join("");
+}
+
+var WS_XML_ROOT = writextag('worksheet', null, {
+	'xmlns': XMLNS.main[0],
+	'xmlns:r': XMLNS.r
+});
+
+function write_ws_xml(idx, opts, wb) {
+	var o = [XML_HEADER, WS_XML_ROOT];
+	var s = wb.SheetNames[idx], sidx = 0, rdata = "";
+	var ws = wb.Sheets[s];
+	if(ws === undefined) ws = {};
+	var ref = ws['!ref']; if(ref === undefined) ref = 'A1';
+	o[o.length] = (writextag('dimension', null, {'ref': ref}));
+
+	if(ws['!cols'] !== undefined && ws['!cols'].length > 0) o[o.length] = (write_ws_xml_cols(ws, ws['!cols']));
+	o[sidx = o.length] = '<sheetData/>';
+	if(ws['!ref'] !== undefined) {
+		rdata = write_ws_xml_data(ws, opts, idx, wb);
+		if(rdata.length > 0) o[o.length] = (rdata);
+	}
+	if(o.length>sidx+1) { o[o.length] = ('</sheetData>'); o[sidx]=o[sidx].replace("/>",">"); }
+
+	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+
+/* [MS-XLSB] 2.4.718 BrtRowHdr */
+function parse_BrtRowHdr(data, length) {
+	var z = [];
+	z.r = data.read_shift(4);
+	data.l += length-4;
+	return z;
+}
+
+/* [MS-XLSB] 2.4.812 BrtWsDim */
+var parse_BrtWsDim = parse_UncheckedRfX;
+var write_BrtWsDim = write_UncheckedRfX;
+
+/* [MS-XLSB] 2.4.815 BrtWsProp */
+function parse_BrtWsProp(data, length) {
+	var z = {};
+	/* TODO: pull flags */
+	data.l += 19;
+	z.name = parse_CodeName(data, length - 19);
+	return z;
+}
+
+/* [MS-XLSB] 2.4.303 BrtCellBlank */
+function parse_BrtCellBlank(data, length) {
+	var cell = parse_Cell(data);
+	return [cell];
+}
+function write_BrtCellBlank(cell, val, o) {
+	if(o == null) o = new_buf(8);
+	return write_Cell(val, o);
+}
+
+
+/* [MS-XLSB] 2.4.304 BrtCellBool */
+function parse_BrtCellBool(data, length) {
+	var cell = parse_Cell(data);
+	var fBool = data.read_shift(1);
+	return [cell, fBool, 'b'];
+}
+
+/* [MS-XLSB] 2.4.305 BrtCellError */
+function parse_BrtCellError(data, length) {
+	var cell = parse_Cell(data);
+	var fBool = data.read_shift(1);
+	return [cell, fBool, 'e'];
+}
+
+/* [MS-XLSB] 2.4.308 BrtCellIsst */
+function parse_BrtCellIsst(data, length) {
+	var cell = parse_Cell(data);
+	var isst = data.read_shift(4);
+	return [cell, isst, 's'];
+}
+
+/* [MS-XLSB] 2.4.310 BrtCellReal */
+function parse_BrtCellReal(data, length) {
+	var cell = parse_Cell(data);
+	var value = parse_Xnum(data);
+	return [cell, value, 'n'];
+}
+
+/* [MS-XLSB] 2.4.311 BrtCellRk */
+function parse_BrtCellRk(data, length) {
+	var cell = parse_Cell(data);
+	var value = parse_RkNumber(data);
+	return [cell, value, 'n'];
+}
+
+/* [MS-XLSB] 2.4.314 BrtCellSt */
+function parse_BrtCellSt(data, length) {
+	var cell = parse_Cell(data);
+	var value = parse_XLWideString(data);
+	return [cell, value, 'str'];
+}
+
+/* [MS-XLSB] 2.4.647 BrtFmlaBool */
+function parse_BrtFmlaBool(data, length, opts) {
+	var cell = parse_Cell(data);
+	var value = data.read_shift(1);
+	var o = [cell, value, 'b'];
+	if(opts.cellFormula) {
+		var formula = parse_CellParsedFormula(data, length-9);
+		o[3] = ""; /* TODO */
+	}
+	else data.l += length-9;
+	return o;
+}
+
+/* [MS-XLSB] 2.4.648 BrtFmlaError */
+function parse_BrtFmlaError(data, length, opts) {
+	var cell = parse_Cell(data);
+	var value = data.read_shift(1);
+	var o = [cell, value, 'e'];
+	if(opts.cellFormula) {
+		var formula = parse_CellParsedFormula(data, length-9);
+		o[3] = ""; /* TODO */
+	}
+	else data.l += length-9;
+	return o;
+}
+
+/* [MS-XLSB] 2.4.649 BrtFmlaNum */
+function parse_BrtFmlaNum(data, length, opts) {
+	var cell = parse_Cell(data);
+	var value = parse_Xnum(data);
+	var o = [cell, value, 'n'];
+	if(opts.cellFormula) {
+		var formula = parse_CellParsedFormula(data, length - 16);
+		o[3] = ""; /* TODO */
+	}
+	else data.l += length-16;
+	return o;
+}
+
+/* [MS-XLSB] 2.4.650 BrtFmlaString */
+function parse_BrtFmlaString(data, length, opts) {
+	var start = data.l;
+	var cell = parse_Cell(data);
+	var value = parse_XLWideString(data);
+	var o = [cell, value, 'str'];
+	if(opts.cellFormula) {
+		var formula = parse_CellParsedFormula(data, start + length - data.l);
+	}
+	else data.l = start + length;
+	return o;
+}
+
+/* [MS-XLSB] 2.4.676 BrtMergeCell */
+var parse_BrtMergeCell = parse_UncheckedRfX;
+
+/* [MS-XLSB] 2.4.656 BrtHLink */
+function parse_BrtHLink(data, length, opts) {
+	var end = data.l + length;
+	var rfx = parse_UncheckedRfX(data, 16);
+	var relId = parse_XLNullableWideString(data);
+	var loc = parse_XLWideString(data);
+	var tooltip = parse_XLWideString(data);
+	var display = parse_XLWideString(data);
+	data.l = end;
+	return {rfx:rfx, relId:relId, loc:loc, tooltip:tooltip, display:display};
+}
+
+/* [MS-XLSB] 2.1.7.61 Worksheet */
+function parse_ws_bin(data, opts, rels) {
+	if(!data) return data;
+	if(!rels) rels = {'!id':{}};
+	var s = {};
+
+	var ref;
+	var refguess = {s: {r:1000000, c:1000000}, e: {r:0, c:0} };
+
+	var pass = false, end = false;
+	var row, p, cf, R, C, addr, sstr, rr;
+	var mergecells = [];
+	recordhopper(data, function ws_parse(val, R) {
+		if(end) return;
+		switch(R.n) {
+			case 'BrtWsDim': ref = val; break;
+			case 'BrtRowHdr':
+				row = val;
+				if(opts.sheetRows && opts.sheetRows <= row.r) end=true;
+				rr = encode_row(row.r);
+				break;
+
+			case 'BrtFmlaBool':
+			case 'BrtFmlaError':
+			case 'BrtFmlaNum':
+			case 'BrtFmlaString':
+			case 'BrtCellBool':
+			case 'BrtCellError':
+			case 'BrtCellIsst':
+			case 'BrtCellReal':
+			case 'BrtCellRk':
+			case 'BrtCellSt':
+				p = {t:val[2]};
+				switch(val[2]) {
+					case 'n': p.v = val[1]; break;
+					case 's': sstr = strs[val[1]]; p.v = sstr.t; p.r = sstr.r; break;
+					case 'b': p.v = val[1] ? true : false; break;
+					case 'e': p.raw = val[1]; p.v = BErr[p.raw]; break;
+					case 'str': p.v = utf8read(val[1]); break;
+				}
+				if(opts.cellFormula && val.length > 3) p.f = val[3];
+				if((cf = styles.CellXf[val[0].iStyleRef])) safe_format(p,cf.ifmt,null,opts);
+				s[encode_col(C=val[0].c) + rr] = p;
+				if(refguess.s.r > row.r) refguess.s.r = row.r;
+				if(refguess.s.c > C) refguess.s.c = C;
+				if(refguess.e.r < row.r) refguess.e.r = row.r;
+				if(refguess.e.c < C) refguess.e.c = C;
+				break;
+
+			case 'BrtCellBlank': if(!opts.sheetStubs) break;
+				p = {t:'str',v:undefined};
+				s[encode_col(C=val[0].c) + rr] = p;
+				if(refguess.s.r > row.r) refguess.s.r = row.r;
+				if(refguess.s.c > C) refguess.s.c = C;
+				if(refguess.e.r < row.r) refguess.e.r = row.r;
+				if(refguess.e.c < C) refguess.e.c = C;
+				break;
+
+			/* Merge Cells */
+			case 'BrtBeginMergeCells': break;
+			case 'BrtEndMergeCells': break;
+			case 'BrtMergeCell': mergecells.push(val); break;
+
+			case 'BrtHLink':
+				var rel = rels['!id'][val.relId];
+				if(rel) {
+					val.Target = rel.Target;
+					if(val.loc) val.Target += "#"+val.loc;
+					val.Rel = rel;
+				}
+				for(R=val.rfx.s.r;R<=val.rfx.e.r;++R) for(C=val.rfx.s.c;C<=val.rfx.e.c;++C) {
+					addr = encode_cell({c:C,r:R});
+					if(!s[addr]) s[addr] = {t:"str",v:undefined};
+					s[addr].l = val;
+				}
+				break;
+
+			case 'BrtArrFmla': break; // TODO
+			case 'BrtShrFmla': break; // TODO
+			case 'BrtBeginSheet': break;
+			case 'BrtWsProp': break; // TODO
+			case 'BrtSheetCalcProp': break; // TODO
+			case 'BrtBeginWsViews': break; // TODO
+			case 'BrtBeginWsView': break; // TODO
+			case 'BrtPane': break; // TODO
+			case 'BrtSel': break; // TODO
+			case 'BrtEndWsView': break; // TODO
+			case 'BrtEndWsViews': break; // TODO
+			case 'BrtACBegin': break; // TODO
+			case 'BrtRwDescent': break; // TODO
+			case 'BrtACEnd': break; // TODO
+			case 'BrtWsFmtInfoEx14': break; // TODO
+			case 'BrtWsFmtInfo': break; // TODO
+			case 'BrtBeginColInfos': break; // TODO
+			case 'BrtColInfo': break; // TODO
+			case 'BrtEndColInfos': break; // TODO
+			case 'BrtBeginSheetData': break; // TODO
+			case 'BrtEndSheetData': break; // TODO
+			case 'BrtSheetProtection': break; // TODO
+			case 'BrtPrintOptions': break; // TODO
+			case 'BrtMargins': break; // TODO
+			case 'BrtPageSetup': break; // TODO
+			case 'BrtFRTBegin': pass = true; break;
+			case 'BrtFRTEnd': pass = false; break;
+			case 'BrtEndSheet': break; // TODO
+			case 'BrtDrawing': break; // TODO
+			case 'BrtLegacyDrawing': break; // TODO
+			case 'BrtLegacyDrawingHF': break; // TODO
+			case 'BrtPhoneticInfo': break; // TODO
+			case 'BrtBeginHeaderFooter': break; // TODO
+			case 'BrtEndHeaderFooter': break; // TODO
+			case 'BrtBrk': break; // TODO
+			case 'BrtBeginRwBrk': break; // TODO
+			case 'BrtEndRwBrk': break; // TODO
+			case 'BrtBeginColBrk': break; // TODO
+			case 'BrtEndColBrk': break; // TODO
+			case 'BrtBeginUserShViews': break; // TODO
+			case 'BrtBeginUserShView': break; // TODO
+			case 'BrtEndUserShView': break; // TODO
+			case 'BrtEndUserShViews': break; // TODO
+			case 'BrtBkHim': break; // TODO
+			case 'BrtBeginOleObjects': break; // TODO
+			case 'BrtOleObject': break; // TODO
+			case 'BrtEndOleObjects': break; // TODO
+			case 'BrtBeginListParts': break; // TODO
+			case 'BrtListPart': break; // TODO
+			case 'BrtEndListParts': break; // TODO
+			case 'BrtBeginSortState': break; // TODO
+			case 'BrtBeginSortCond': break; // TODO
+			case 'BrtEndSortCond': break; // TODO
+			case 'BrtEndSortState': break; // TODO
+			case 'BrtBeginConditionalFormatting': break; // TODO
+			case 'BrtEndConditionalFormatting': break; // TODO
+			case 'BrtBeginCFRule': break; // TODO
+			case 'BrtEndCFRule': break; // TODO
+			case 'BrtBeginDVals': break; // TODO
+			case 'BrtDVal': break; // TODO
+			case 'BrtEndDVals': break; // TODO
+			case 'BrtRangeProtection': break; // TODO
+			case 'BrtBeginDCon': break; // TODO
+			case 'BrtEndDCon': break; // TODO
+			case 'BrtBeginDRefs': break;
+			case 'BrtDRef': break;
+			case 'BrtEndDRefs': break;
+
+			/* ActiveX */
+			case 'BrtBeginActiveXControls': break;
+			case 'BrtActiveX': break;
+			case 'BrtEndActiveXControls': break;
+
+			/* AutoFilter */
+			case 'BrtBeginAFilter': break;
+			case 'BrtEndAFilter': break;
+			case 'BrtBeginFilterColumn': break;
+			case 'BrtBeginFilters': break;
+			case 'BrtFilter': break;
+			case 'BrtEndFilters': break;
+			case 'BrtEndFilterColumn': break;
+			case 'BrtDynamicFilter': break;
+			case 'BrtTop10Filter': break;
+			case 'BrtBeginCustomFilters': break;
+			case 'BrtCustomFilter': break;
+			case 'BrtEndCustomFilters': break;
+
+			/* Smart Tags */
+			case 'BrtBeginSmartTags': break;
+			case 'BrtBeginCellSmartTags': break;
+			case 'BrtBeginCellSmartTag': break;
+			case 'BrtCellSmartTagProperty': break;
+			case 'BrtEndCellSmartTag': break;
+			case 'BrtEndCellSmartTags': break;
+			case 'BrtEndSmartTags': break;
+
+			/* Cell Watch */
+			case 'BrtBeginCellWatches': break;
+			case 'BrtCellWatch': break;
+			case 'BrtEndCellWatches': break;
+
+			/* Table */
+			case 'BrtTable': break;
+
+			/* Ignore Cell Errors */
+			case 'BrtBeginCellIgnoreECs': break;
+			case 'BrtCellIgnoreEC': break;
+			case 'BrtEndCellIgnoreECs': break;
+
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + R.n);
+		}
+	}, opts);
+	if(!s["!ref"] && (refguess.s.r < 1000000 || ref.e.r > 0 || ref.e.c > 0 || ref.s.r > 0 || ref.s.c > 0)) s["!ref"] = encode_range(ref);
+	if(opts.sheetRows && s["!ref"]) {
+		var tmpref = safe_decode_range(s["!ref"]);
+		if(opts.sheetRows < +tmpref.e.r) {
+			tmpref.e.r = opts.sheetRows - 1;
+			if(tmpref.e.r > refguess.e.r) tmpref.e.r = refguess.e.r;
+			if(tmpref.e.r < tmpref.s.r) tmpref.s.r = tmpref.e.r;
+			if(tmpref.e.c > refguess.e.c) tmpref.e.c = refguess.e.c;
+			if(tmpref.e.c < tmpref.s.c) tmpref.s.c = tmpref.e.c;
+			s["!fullref"] = s["!ref"];
+			s["!ref"] = encode_range(tmpref);
+		}
+	}
+	if(mergecells.length > 0) s["!merges"] = mergecells;
+	return s;
+}
+
+/* TODO: something useful -- this is a stub */
+function write_ws_bin_cell(ba, cell, R, C, opts) {
+	if(cell.v === undefined) return "";
+	var vv = "";
+	switch(cell.t) {
+		case 'b': vv = cell.v ? "1" : "0"; break;
+		case 'n': case 'e': vv = ''+cell.v; break;
+		default: vv = cell.v; break;
+	}
+	var o = {r:R, c:C};
+	/* TODO: cell style */
+	o.s = get_cell_style(opts.cellXfs, cell, opts);
+	switch(cell.t) {
+		case 's': case 'str':
+			if(opts.bookSST) {
+				vv = get_sst_id(opts.Strings, cell.v);
+				o.t = "s"; break;
+			}
+			o.t = "str"; break;
+		case 'n': break;
+		case 'b': o.t = "b"; break;
+		case 'e': o.t = "e"; break;
+	}
+	write_record(ba, "BrtCellBlank", write_BrtCellBlank(cell, o));
+}
+
+function write_CELLTABLE(ba, ws, idx, opts, wb) {
+	var range = safe_decode_range(ws['!ref'] || "A1"), ref, rr = "", cols = [];
+	write_record(ba, 'BrtBeginSheetData');
+	for(var R = range.s.r; R <= range.e.r; ++R) {
+		rr = encode_row(R);
+		/* [ACCELLTABLE] */
+		/* BrtRowHdr */
+		for(var C = range.s.c; C <= range.e.c; ++C) {
+			/* *16384CELL */
+			if(R === range.s.r) cols[C] = encode_col(C);
+			ref = cols[C] + rr;
+			if(!ws[ref]) continue;
+			/* write cell */
+			write_ws_bin_cell(ba, ws[ref], R, C, opts);
+		}
+	}
+	write_record(ba, 'BrtEndSheetData');
+}
+
+function write_ws_bin(idx, opts, wb) {
+	var ba = buf_array();
+	var s = wb.SheetNames[idx], ws = wb.Sheets[s] || {};
+	var r = safe_decode_range(ws['!ref'] || "A1");
+	write_record(ba, "BrtBeginSheet");
+	/* [BrtWsProp] */
+	write_record(ba, "BrtWsDim", write_BrtWsDim(r));
+	/* [WSVIEWS2] */
+	/* [WSFMTINFO] */
+	/* *COLINFOS */
+	write_CELLTABLE(ba, ws, idx, opts, wb);
+	/* [BrtSheetCalcProp] */
+	/* [[BrtSheetProtectionIso] BrtSheetProtection] */
+	/* *([BrtRangeProtectionIso] BrtRangeProtection) */
+	/* [SCENMAN] */
+	/* [AUTOFILTER] */
+	/* [SORTSTATE] */
+	/* [DCON] */
+	/* [USERSHVIEWS] */
+	/* [MERGECELLS] */
+	/* [BrtPhoneticInfo] */
+	/* *CONDITIONALFORMATTING */
+	/* [DVALS] */
+	/* *BrtHLink */
+	/* [BrtPrintOptions] */
+	/* [BrtMargins] */
+	/* [BrtPageSetup] */
+	/* [HEADERFOOTER] */
+	/* [RWBRK] */
+	/* [COLBRK] */
+	/* *BrtBigName */
+	/* [CELLWATCHES] */
+	/* [IGNOREECS] */
+	/* [SMARTTAGS] */
+	/* [BrtDrawing] */
+	/* [BrtLegacyDrawing] */
+	/* [BrtLegacyDrawingHF] */
+	/* [BrtBkHim] */
+	/* [OLEOBJECTS] */
+	/* [ACTIVEXCONTROLS] */
+	/* [WEBPUBITEMS] */
+	/* [LISTPARTS] */
+	/* FRTWORKSHEET */
+	write_record(ba, "BrtEndSheet");
+	return ba.end();
+}
+/* 18.2.28 (CT_WorkbookProtection) Defaults */
+var WBPropsDef = [
+	['allowRefreshQuery', '0'],
+	['autoCompressPictures', '1'],
+	['backupFile', '0'],
+	['checkCompatibility', '0'],
+	['codeName', ''],
+	['date1904', '0'],
+	['dateCompatibility', '1'],
+	//['defaultThemeVersion', '0'],
+	['filterPrivacy', '0'],
+	['hidePivotFieldList', '0'],
+	['promptedSolutions', '0'],
+	['publishItems', '0'],
+	['refreshAllConnections', false],
+	['saveExternalLinkValues', '1'],
+	['showBorderUnselectedTables', '1'],
+	['showInkAnnotation', '1'],
+	['showObjects', 'all'],
+	['showPivotChartFilter', '0']
+	//['updateLinks', 'userSet']
+];
+
+/* 18.2.30 (CT_BookView) Defaults */
+var WBViewDef = [
+	['activeTab', '0'],
+	['autoFilterDateGrouping', '1'],
+	['firstSheet', '0'],
+	['minimized', '0'],
+	['showHorizontalScroll', '1'],
+	['showSheetTabs', '1'],
+	['showVerticalScroll', '1'],
+	['tabRatio', '600'],
+	['visibility', 'visible']
+	//window{Height,Width}, {x,y}Window
+];
+
+/* 18.2.19 (CT_Sheet) Defaults */
+var SheetDef = [
+	['state', 'visible']
+];
+
+/* 18.2.2  (CT_CalcPr) Defaults */
+var CalcPrDef = [
+	['calcCompleted', 'true'],
+	['calcMode', 'auto'],
+	['calcOnSave', 'true'],
+	['concurrentCalc', 'true'],
+	['fullCalcOnLoad', 'false'],
+	['fullPrecision', 'true'],
+	['iterate', 'false'],
+	['iterateCount', '100'],
+	['iterateDelta', '0.001'],
+	['refMode', 'A1']
+];
+
+/* 18.2.3 (CT_CustomWorkbookView) Defaults */
+var CustomWBViewDef = [
+	['autoUpdate', 'false'],
+	['changesSavedWin', 'false'],
+	['includeHiddenRowCol', 'true'],
+	['includePrintSettings', 'true'],
+	['maximized', 'false'],
+	['minimized', 'false'],
+	['onlySync', 'false'],
+	['personalView', 'false'],
+	['showComments', 'commIndicator'],
+	['showFormulaBar', 'true'],
+	['showHorizontalScroll', 'true'],
+	['showObjects', 'all'],
+	['showSheetTabs', 'true'],
+	['showStatusbar', 'true'],
+	['showVerticalScroll', 'true'],
+	['tabRatio', '600'],
+	['xWindow', '0'],
+	['yWindow', '0']
+];
+
+function push_defaults_array(target, defaults) {
+	for(var j = 0; j != target.length; ++j) { var w = target[j];
+		for(var i=0; i != defaults.length; ++i) { var z = defaults[i];
+			if(w[z[0]] == null) w[z[0]] = z[1];
+		}
+	}
+}
+function push_defaults(target, defaults) {
+	for(var i = 0; i != defaults.length; ++i) { var z = defaults[i];
+		if(target[z[0]] == null) target[z[0]] = z[1];
+	}
+}
+
+function parse_wb_defaults(wb) {
+	push_defaults(wb.WBProps, WBPropsDef);
+	push_defaults(wb.CalcPr, CalcPrDef);
+
+	push_defaults_array(wb.WBView, WBViewDef);
+	push_defaults_array(wb.Sheets, SheetDef);
+
+	_ssfopts.date1904 = parsexmlbool(wb.WBProps.date1904, 'date1904');
+}
+/* 18.2 Workbook */
+var wbnsregex = /<\w+:workbook/;
+function parse_wb_xml(data, opts) {
+	var wb = { AppVersion:{}, WBProps:{}, WBView:[], Sheets:[], CalcPr:{}, xmlns: "" };
+	var pass = false, xmlns = "xmlns";
+	data.match(tagregex).forEach(function xml_wb(x) {
+		var y = parsexmltag(x);
+		switch(strip_ns(y[0])) {
+			case '<?xml': break;
+
+			/* 18.2.27 workbook CT_Workbook 1 */
+			case '<workbook':
+				if(x.match(wbnsregex)) xmlns = "xmlns" + x.match(/<(\w+):/)[1];
+				wb.xmlns = y[xmlns];
+				break;
+			case '</workbook>': break;
+
+			/* 18.2.13 fileVersion CT_FileVersion ? */
+			case '<fileVersion': delete y[0]; wb.AppVersion = y; break;
+			case '<fileVersion/>': break;
+
+			/* 18.2.12 fileSharing CT_FileSharing ? */
+			case '<fileSharing': case '<fileSharing/>': break;
+
+			/* 18.2.28 workbookPr CT_WorkbookPr ? */
+			case '<workbookPr': delete y[0]; wb.WBProps = y; break;
+			case '<workbookPr/>': delete y[0]; wb.WBProps = y; break;
+
+			/* 18.2.29 workbookProtection CT_WorkbookProtection ? */
+			case '<workbookProtection': break;
+			case '<workbookProtection/>': break;
+
+			/* 18.2.1  bookViews CT_BookViews ? */
+			case '<bookViews>': case '</bookViews>': break;
+			/* 18.2.30   workbookView CT_BookView + */
+			case '<workbookView': delete y[0]; wb.WBView.push(y); break;
+
+			/* 18.2.20 sheets CT_Sheets 1 */
+			case '<sheets>': case '</sheets>': break; // aggregate sheet
+			/* 18.2.19   sheet CT_Sheet + */
+			case '<sheet': delete y[0]; y.name = utf8read(y.name); wb.Sheets.push(y); break;
+
+			/* 18.2.15 functionGroups CT_FunctionGroups ? */
+			case '<functionGroups': case '<functionGroups/>': break;
+			/* 18.2.14   functionGroup CT_FunctionGroup + */
+			case '<functionGroup': break;
+
+			/* 18.2.9  externalReferences CT_ExternalReferences ? */
+			case '<externalReferences': case '</externalReferences>': case '<externalReferences>': break;
+			/* 18.2.8    externalReference CT_ExternalReference + */
+			case '<externalReference': break;
+
+			/* 18.2.6  definedNames CT_DefinedNames ? */
+			case '<definedNames/>': break;
+			case '<definedNames>': case '<definedNames': pass=true; break;
+			case '</definedNames>': pass=false; break;
+			/* 18.2.5    definedName CT_DefinedName + */
+			case '<definedName': case '<definedName/>': case '</definedName>': break;
+
+			/* 18.2.2  calcPr CT_CalcPr ? */
+			case '<calcPr': delete y[0]; wb.CalcPr = y; break;
+			case '<calcPr/>': delete y[0]; wb.CalcPr = y; break;
+
+			/* 18.2.16 oleSize CT_OleSize ? (ref required) */
+			case '<oleSize': break;
+
+			/* 18.2.4  customWorkbookViews CT_CustomWorkbookViews ? */
+			case '<customWorkbookViews>': case '</customWorkbookViews>': case '<customWorkbookViews': break;
+			/* 18.2.3    customWorkbookView CT_CustomWorkbookView + */
+			case '<customWorkbookView': case '</customWorkbookView>': break;
+
+			/* 18.2.18 pivotCaches CT_PivotCaches ? */
+			case '<pivotCaches>': case '</pivotCaches>': case '<pivotCaches': break;
+			/* 18.2.17 pivotCache CT_PivotCache ? */
+			case '<pivotCache': break;
+
+			/* 18.2.21 smartTagPr CT_SmartTagPr ? */
+			case '<smartTagPr': case '<smartTagPr/>': break;
+
+			/* 18.2.23 smartTagTypes CT_SmartTagTypes ? */
+			case '<smartTagTypes': case '<smartTagTypes>': case '</smartTagTypes>': break;
+			/* 18.2.22   smartTagType CT_SmartTagType ? */
+			case '<smartTagType': break;
+
+			/* 18.2.24 webPublishing CT_WebPublishing ? */
+			case '<webPublishing': case '<webPublishing/>': break;
+
+			/* 18.2.11 fileRecoveryPr CT_FileRecoveryPr ? */
+			case '<fileRecoveryPr': case '<fileRecoveryPr/>': break;
+
+			/* 18.2.26 webPublishObjects CT_WebPublishObjects ? */
+			case '<webPublishObjects>': case '<webPublishObjects': case '</webPublishObjects>': break;
+			/* 18.2.25 webPublishObject CT_WebPublishObject ? */
+			case '<webPublishObject': break;
+
+			/* 18.2.10 extLst CT_ExtensionList ? */
+			case '<extLst>': case '</extLst>': case '<extLst/>': break;
+			/* 18.2.7    ext CT_Extension + */
+			case '<ext': pass=true; break; //TODO: check with versions of excel
+			case '</ext>': pass=false; break;
+
+			/* Others */
+			case '<ArchID': break;
+			case '<AlternateContent': pass=true; break;
+			case '</AlternateContent>': pass=false; break;
+
+			default: if(!pass && opts.WTF) throw 'unrecognized ' + y[0] + ' in workbook';
+		}
+	});
+	if(XMLNS.main.indexOf(wb.xmlns) === -1) throw new Error("Unknown Namespace: " + wb.xmlns);
+
+	parse_wb_defaults(wb);
+
+	return wb;
+}
+
+var WB_XML_ROOT = writextag('workbook', null, {
+	'xmlns': XMLNS.main[0],
+	//'xmlns:mx': XMLNS.mx,
+	//'xmlns:s': XMLNS.main[0],
+	'xmlns:r': XMLNS.r
+});
+
+function safe1904(wb) {
+	/* TODO: store date1904 somewhere else */
+	try { return parsexmlbool(wb.Workbook.WBProps.date1904) ? "true" : "false"; } catch(e) { return "false"; }
+}
+
+function write_wb_xml(wb, opts) {
+	var o = [XML_HEADER];
+	o[o.length] = WB_XML_ROOT;
+	o[o.length] = (writextag('workbookPr', null, {date1904:safe1904(wb)}));
+	o[o.length] = "<sheets>";
+	for(var i = 0; i != wb.SheetNames.length; ++i)
+		o[o.length] = (writextag('sheet',null,{name:wb.SheetNames[i].substr(0,31), sheetId:""+(i+1), "r:id":"rId"+(i+1)}));
+	o[o.length] = "</sheets>";
+	if(o.length>2){ o[o.length] = '</workbook>'; o[1]=o[1].replace("/>",">"); }
+	return o.join("");
+}
+/* [MS-XLSB] 2.4.301 BrtBundleSh */
+function parse_BrtBundleSh(data, length) {
+	var z = {};
+	z.hsState = data.read_shift(4); //ST_SheetState
+	z.iTabID = data.read_shift(4);
+	z.strRelID = parse_RelID(data,length-8);
+	z.name = parse_XLWideString(data);
+	return z;
+}
+function write_BrtBundleSh(data, o) {
+	if(!o) o = new_buf(127);
+	o.write_shift(4, data.hsState);
+	o.write_shift(4, data.iTabID);
+	write_RelID(data.strRelID, o);
+	write_XLWideString(data.name.substr(0,31), o);
+	return o;
+}
+
+/* [MS-XLSB] 2.4.807 BrtWbProp */
+function parse_BrtWbProp(data, length) {
+	data.read_shift(4);
+	var dwThemeVersion = data.read_shift(4);
+	var strName = (length > 8) ? parse_XLWideString(data) : "";
+	return [dwThemeVersion, strName];
+}
+function write_BrtWbProp(data, o) {
+	if(!o) o = new_buf(8);
+	o.write_shift(4, 0);
+	o.write_shift(4, 0);
+	return o;
+}
+
+function parse_BrtFRTArchID$(data, length) {
+	var o = {};
+	data.read_shift(4);
+	o.ArchID = data.read_shift(4);
+	data.l += length - 8;
+	return o;
+}
+
+/* [MS-XLSB] 2.1.7.60 Workbook */
+function parse_wb_bin(data, opts) {
+	var wb = { AppVersion:{}, WBProps:{}, WBView:[], Sheets:[], CalcPr:{}, xmlns: "" };
+	var pass = false, z;
+
+	recordhopper(data, function hopper_wb(val, R) {
+		switch(R.n) {
+			case 'BrtBundleSh': wb.Sheets.push(val); break;
+
+			case 'BrtBeginBook': break;
+			case 'BrtFileVersion': break;
+			case 'BrtWbProp': break;
+			case 'BrtACBegin': break;
+			case 'BrtAbsPath15': break;
+			case 'BrtACEnd': break;
+			case 'BrtWbFactoid': break;
+			/*case 'BrtBookProtectionIso': break;*/
+			case 'BrtBookProtection': break;
+			case 'BrtBeginBookViews': break;
+			case 'BrtBookView': break;
+			case 'BrtEndBookViews': break;
+			case 'BrtBeginBundleShs': break;
+			case 'BrtEndBundleShs': break;
+			case 'BrtBeginFnGroup': break;
+			case 'BrtEndFnGroup': break;
+			case 'BrtBeginExternals': break;
+			case 'BrtSupSelf': break;
+			case 'BrtSupBookSrc': break;
+			case 'BrtExternSheet': break;
+			case 'BrtEndExternals': break;
+			case 'BrtName': break;
+			case 'BrtCalcProp': break;
+			case 'BrtUserBookView': break;
+			case 'BrtBeginPivotCacheIDs': break;
+			case 'BrtBeginPivotCacheID': break;
+			case 'BrtEndPivotCacheID': break;
+			case 'BrtEndPivotCacheIDs': break;
+			case 'BrtWebOpt': break;
+			case 'BrtFileRecover': break;
+			case 'BrtFileSharing': break;
+			/*case 'BrtBeginWebPubItems': break;
+			case 'BrtBeginWebPubItem': break;
+			case 'BrtEndWebPubItem': break;
+			case 'BrtEndWebPubItems': break;*/
+
+			/* Smart Tags */
+			case 'BrtBeginSmartTagTypes': break;
+			case 'BrtSmartTagType': break;
+			case 'BrtEndSmartTagTypes': break;
+
+			case 'BrtFRTBegin': pass = true; break;
+			case 'BrtFRTArchID$': break;
+			case 'BrtWorkBookPr15': break;
+			case 'BrtFRTEnd': pass = false; break;
+			case 'BrtEndBook': break;
+			default: if(!pass || opts.WTF) throw new Error("Unexpected record " + R.n);
+		}
+	});
+
+	parse_wb_defaults(wb);
+
+	return wb;
+}
+
+/* [MS-XLSB] 2.1.7.60 Workbook */
+function write_BUNDLESHS(ba, wb, opts) {
+	write_record(ba, "BrtBeginBundleShs");
+	for(var idx = 0; idx != wb.SheetNames.length; ++idx) {
+		var d = { hsState: 0, iTabID: idx+1, strRelID: 'rId' + (idx+1), name: wb.SheetNames[idx] };
+		write_record(ba, "BrtBundleSh", write_BrtBundleSh(d));
+	}
+	write_record(ba, "BrtEndBundleShs");
+}
+
+/* [MS-XLSB] 2.4.643 BrtFileVersion */
+function write_BrtFileVersion(data, o) {
+	if(!o) o = new_buf(127);
+	for(var i = 0; i != 4; ++i) o.write_shift(4, 0);
+	write_XLWideString("SheetJS", o);
+	write_XLWideString(XLSX.version, o);
+	write_XLWideString(XLSX.version, o);
+	write_XLWideString("7262", o);
+	o.length = o.l;
+	return o;
+}
+
+/* [MS-XLSB] 2.1.7.60 Workbook */
+function write_BOOKVIEWS(ba, wb, opts) {
+	write_record(ba, "BrtBeginBookViews");
+	/* 1*(BrtBookView *FRT) */
+	write_record(ba, "BrtEndBookViews");
+}
+
+/* [MS-XLSB] 2.4.302 BrtCalcProp */
+function write_BrtCalcProp(data, o) {
+	if(!o) o = new_buf(26);
+	o.write_shift(4,0); /* force recalc */
+	o.write_shift(4,1);
+	o.write_shift(4,0);
+	write_Xnum(0, o);
+	o.write_shift(-4, 1023);
+	o.write_shift(1, 0x33);
+	o.write_shift(1, 0x00);
+	return o;
+}
+
+function write_BrtFileRecover(data, o) {
+	if(!o) o = new_buf(1);
+	o.write_shift(1,0);
+	return o;
+}
+
+/* [MS-XLSB] 2.1.7.60 Workbook */
+function write_wb_bin(wb, opts) {
+	var ba = buf_array();
+	write_record(ba, "BrtBeginBook");
+	write_record(ba, "BrtFileVersion", write_BrtFileVersion());
+	/* [[BrtFileSharingIso] BrtFileSharing] */
+	write_record(ba, "BrtWbProp", write_BrtWbProp());
+	/* [ACABSPATH] */
+	/* [[BrtBookProtectionIso] BrtBookProtection] */
+	write_BOOKVIEWS(ba, wb, opts);
+	write_BUNDLESHS(ba, wb, opts);
+	/* [FNGROUP] */
+	/* [EXTERNALS] */
+	/* *BrtName */
+	write_record(ba, "BrtCalcProp", write_BrtCalcProp());
+	/* [BrtOleSize] */
+	/* *(BrtUserBookView *FRT) */
+	/* [PIVOTCACHEIDS] */
+	/* [BrtWbFactoid] */
+	/* [SMARTTAGTYPES] */
+	/* [BrtWebOpt] */
+	write_record(ba, "BrtFileRecover", write_BrtFileRecover());
+	/* [WEBPUBITEMS] */
+	/* [CRERRS] */
+	/* FRTWORKBOOK */
+	write_record(ba, "BrtEndBook");
+
+	return ba.end();
+}
+function parse_wb(data, name, opts) {
+	return (name.substr(-4)===".bin" ? parse_wb_bin : parse_wb_xml)(data, opts);
+}
+
+function parse_ws(data, name, opts, rels) {
+	return (name.substr(-4)===".bin" ? parse_ws_bin : parse_ws_xml)(data, opts, rels);
+}
+
+function parse_sty(data, name, opts) {
+	return (name.substr(-4)===".bin" ? parse_sty_bin : parse_sty_xml)(data, opts);
+}
+
+function parse_theme(data, name, opts) {
+	return parse_theme_xml(data, opts);
+}
+
+function parse_sst(data, name, opts) {
+	return (name.substr(-4)===".bin" ? parse_sst_bin : parse_sst_xml)(data, opts);
+}
+
+function parse_cmnt(data, name, opts) {
+	return (name.substr(-4)===".bin" ? parse_comments_bin : parse_comments_xml)(data, opts);
+}
+
+function parse_cc(data, name, opts) {
+	return (name.substr(-4)===".bin" ? parse_cc_bin : parse_cc_xml)(data, opts);
+}
+
+function write_wb(wb, name, opts) {
+	return (name.substr(-4)===".bin" ? write_wb_bin : write_wb_xml)(wb, opts);
+}
+
+function write_ws(data, name, opts, wb) {
+	return (name.substr(-4)===".bin" ? write_ws_bin : write_ws_xml)(data, opts, wb);
+}
+
+function write_sty(data, name, opts) {
+	return (name.substr(-4)===".bin" ? write_sty_bin : write_sty_xml)(data, opts);
+}
+
+function write_sst(data, name, opts) {
+	return (name.substr(-4)===".bin" ? write_sst_bin : write_sst_xml)(data, opts);
+}
+/*
+function write_cmnt(data, name, opts) {
+	return (name.substr(-4)===".bin" ? write_comments_bin : write_comments_xml)(data, opts);
+}
+
+function write_cc(data, name, opts) {
+	return (name.substr(-4)===".bin" ? write_cc_bin : write_cc_xml)(data, opts);
+}
+*/
+/* [MS-XLSB] 2.3 Record Enumeration */
+var RecordEnum = {
+	0x0000: { n:"BrtRowHdr", f:parse_BrtRowHdr },
+	0x0001: { n:"BrtCellBlank", f:parse_BrtCellBlank },
+	0x0002: { n:"BrtCellRk", f:parse_BrtCellRk },
+	0x0003: { n:"BrtCellError", f:parse_BrtCellError },
+	0x0004: { n:"BrtCellBool", f:parse_BrtCellBool },
+	0x0005: { n:"BrtCellReal", f:parse_BrtCellReal },
+	0x0006: { n:"BrtCellSt", f:parse_BrtCellSt },
+	0x0007: { n:"BrtCellIsst", f:parse_BrtCellIsst },
+	0x0008: { n:"BrtFmlaString", f:parse_BrtFmlaString },
+	0x0009: { n:"BrtFmlaNum", f:parse_BrtFmlaNum },
+	0x000A: { n:"BrtFmlaBool", f:parse_BrtFmlaBool },
+	0x000B: { n:"BrtFmlaError", f:parse_BrtFmlaError },
+	0x0010: { n:"BrtFRTArchID$", f:parse_BrtFRTArchID$ },
+	0x0013: { n:"BrtSSTItem", f:parse_RichStr },
+	0x0014: { n:"BrtPCDIMissing", f:parsenoop },
+	0x0015: { n:"BrtPCDINumber", f:parsenoop },
+	0x0016: { n:"BrtPCDIBoolean", f:parsenoop },
+	0x0017: { n:"BrtPCDIError", f:parsenoop },
+	0x0018: { n:"BrtPCDIString", f:parsenoop },
+	0x0019: { n:"BrtPCDIDatetime", f:parsenoop },
+	0x001A: { n:"BrtPCDIIndex", f:parsenoop },
+	0x001B: { n:"BrtPCDIAMissing", f:parsenoop },
+	0x001C: { n:"BrtPCDIANumber", f:parsenoop },
+	0x001D: { n:"BrtPCDIABoolean", f:parsenoop },
+	0x001E: { n:"BrtPCDIAError", f:parsenoop },
+	0x001F: { n:"BrtPCDIAString", f:parsenoop },
+	0x0020: { n:"BrtPCDIADatetime", f:parsenoop },
+	0x0021: { n:"BrtPCRRecord", f:parsenoop },
+	0x0022: { n:"BrtPCRRecordDt", f:parsenoop },
+	0x0023: { n:"BrtFRTBegin", f:parsenoop },
+	0x0024: { n:"BrtFRTEnd", f:parsenoop },
+	0x0025: { n:"BrtACBegin", f:parsenoop },
+	0x0026: { n:"BrtACEnd", f:parsenoop },
+	0x0027: { n:"BrtName", f:parsenoop },
+	0x0028: { n:"BrtIndexRowBlock", f:parsenoop },
+	0x002A: { n:"BrtIndexBlock", f:parsenoop },
+	0x002B: { n:"BrtFont", f:parse_BrtFont },
+	0x002C: { n:"BrtFmt", f:parse_BrtFmt },
+	0x002D: { n:"BrtFill", f:parsenoop },
+	0x002E: { n:"BrtBorder", f:parsenoop },
+	0x002F: { n:"BrtXF", f:parse_BrtXF },
+	0x0030: { n:"BrtStyle", f:parsenoop },
+	0x0031: { n:"BrtCellMeta", f:parsenoop },
+	0x0032: { n:"BrtValueMeta", f:parsenoop },
+	0x0033: { n:"BrtMdb", f:parsenoop },
+	0x0034: { n:"BrtBeginFmd", f:parsenoop },
+	0x0035: { n:"BrtEndFmd", f:parsenoop },
+	0x0036: { n:"BrtBeginMdx", f:parsenoop },
+	0x0037: { n:"BrtEndMdx", f:parsenoop },
+	0x0038: { n:"BrtBeginMdxTuple", f:parsenoop },
+	0x0039: { n:"BrtEndMdxTuple", f:parsenoop },
+	0x003A: { n:"BrtMdxMbrIstr", f:parsenoop },
+	0x003B: { n:"BrtStr", f:parsenoop },
+	0x003C: { n:"BrtColInfo", f:parsenoop },
+	0x003E: { n:"BrtCellRString", f:parsenoop },
+	0x003F: { n:"BrtCalcChainItem$", f:parse_BrtCalcChainItem$ },
+	0x0040: { n:"BrtDVal", f:parsenoop },
+	0x0041: { n:"BrtSxvcellNum", f:parsenoop },
+	0x0042: { n:"BrtSxvcellStr", f:parsenoop },
+	0x0043: { n:"BrtSxvcellBool", f:parsenoop },
+	0x0044: { n:"BrtSxvcellErr", f:parsenoop },
+	0x0045: { n:"BrtSxvcellDate", f:parsenoop },
+	0x0046: { n:"BrtSxvcellNil", f:parsenoop },
+	0x0080: { n:"BrtFileVersion", f:parsenoop },
+	0x0081: { n:"BrtBeginSheet", f:parsenoop },
+	0x0082: { n:"BrtEndSheet", f:parsenoop },
+	0x0083: { n:"BrtBeginBook", f:parsenoop, p:0 },
+	0x0084: { n:"BrtEndBook", f:parsenoop },
+	0x0085: { n:"BrtBeginWsViews", f:parsenoop },
+	0x0086: { n:"BrtEndWsViews", f:parsenoop },
+	0x0087: { n:"BrtBeginBookViews", f:parsenoop },
+	0x0088: { n:"BrtEndBookViews", f:parsenoop },
+	0x0089: { n:"BrtBeginWsView", f:parsenoop },
+	0x008A: { n:"BrtEndWsView", f:parsenoop },
+	0x008B: { n:"BrtBeginCsViews", f:parsenoop },
+	0x008C: { n:"BrtEndCsViews", f:parsenoop },
+	0x008D: { n:"BrtBeginCsView", f:parsenoop },
+	0x008E: { n:"BrtEndCsView", f:parsenoop },
+	0x008F: { n:"BrtBeginBundleShs", f:parsenoop },
+	0x0090: { n:"BrtEndBundleShs", f:parsenoop },
+	0x0091: { n:"BrtBeginSheetData", f:parsenoop },
+	0x0092: { n:"BrtEndSheetData", f:parsenoop },
+	0x0093: { n:"BrtWsProp", f:parse_BrtWsProp },
+	0x0094: { n:"BrtWsDim", f:parse_BrtWsDim, p:16 },
+	0x0097: { n:"BrtPane", f:parsenoop },
+	0x0098: { n:"BrtSel", f:parsenoop },
+	0x0099: { n:"BrtWbProp", f:parse_BrtWbProp },
+	0x009A: { n:"BrtWbFactoid", f:parsenoop },
+	0x009B: { n:"BrtFileRecover", f:parsenoop },
+	0x009C: { n:"BrtBundleSh", f:parse_BrtBundleSh },
+	0x009D: { n:"BrtCalcProp", f:parsenoop },
+	0x009E: { n:"BrtBookView", f:parsenoop },
+	0x009F: { n:"BrtBeginSst", f:parse_BrtBeginSst },
+	0x00A0: { n:"BrtEndSst", f:parsenoop },
+	0x00A1: { n:"BrtBeginAFilter", f:parsenoop },
+	0x00A2: { n:"BrtEndAFilter", f:parsenoop },
+	0x00A3: { n:"BrtBeginFilterColumn", f:parsenoop },
+	0x00A4: { n:"BrtEndFilterColumn", f:parsenoop },
+	0x00A5: { n:"BrtBeginFilters", f:parsenoop },
+	0x00A6: { n:"BrtEndFilters", f:parsenoop },
+	0x00A7: { n:"BrtFilter", f:parsenoop },
+	0x00A8: { n:"BrtColorFilter", f:parsenoop },
+	0x00A9: { n:"BrtIconFilter", f:parsenoop },
+	0x00AA: { n:"BrtTop10Filter", f:parsenoop },
+	0x00AB: { n:"BrtDynamicFilter", f:parsenoop },
+	0x00AC: { n:"BrtBeginCustomFilters", f:parsenoop },
+	0x00AD: { n:"BrtEndCustomFilters", f:parsenoop },
+	0x00AE: { n:"BrtCustomFilter", f:parsenoop },
+	0x00AF: { n:"BrtAFilterDateGroupItem", f:parsenoop },
+	0x00B0: { n:"BrtMergeCell", f:parse_BrtMergeCell },
+	0x00B1: { n:"BrtBeginMergeCells", f:parsenoop },
+	0x00B2: { n:"BrtEndMergeCells", f:parsenoop },
+	0x00B3: { n:"BrtBeginPivotCacheDef", f:parsenoop },
+	0x00B4: { n:"BrtEndPivotCacheDef", f:parsenoop },
+	0x00B5: { n:"BrtBeginPCDFields", f:parsenoop },
+	0x00B6: { n:"BrtEndPCDFields", f:parsenoop },
+	0x00B7: { n:"BrtBeginPCDField", f:parsenoop },
+	0x00B8: { n:"BrtEndPCDField", f:parsenoop },
+	0x00B9: { n:"BrtBeginPCDSource", f:parsenoop },
+	0x00BA: { n:"BrtEndPCDSource", f:parsenoop },
+	0x00BB: { n:"BrtBeginPCDSRange", f:parsenoop },
+	0x00BC: { n:"BrtEndPCDSRange", f:parsenoop },
+	0x00BD: { n:"BrtBeginPCDFAtbl", f:parsenoop },
+	0x00BE: { n:"BrtEndPCDFAtbl", f:parsenoop },
+	0x00BF: { n:"BrtBeginPCDIRun", f:parsenoop },
+	0x00C0: { n:"BrtEndPCDIRun", f:parsenoop },
+	0x00C1: { n:"BrtBeginPivotCacheRecords", f:parsenoop },
+	0x00C2: { n:"BrtEndPivotCacheRecords", f:parsenoop },
+	0x00C3: { n:"BrtBeginPCDHierarchies", f:parsenoop },
+	0x00C4: { n:"BrtEndPCDHierarchies", f:parsenoop },
+	0x00C5: { n:"BrtBeginPCDHierarchy", f:parsenoop },
+	0x00C6: { n:"BrtEndPCDHierarchy", f:parsenoop },
+	0x00C7: { n:"BrtBeginPCDHFieldsUsage", f:parsenoop },
+	0x00C8: { n:"BrtEndPCDHFieldsUsage", f:parsenoop },
+	0x00C9: { n:"BrtBeginExtConnection", f:parsenoop },
+	0x00CA: { n:"BrtEndExtConnection", f:parsenoop },
+	0x00CB: { n:"BrtBeginECDbProps", f:parsenoop },
+	0x00CC: { n:"BrtEndECDbProps", f:parsenoop },
+	0x00CD: { n:"BrtBeginECOlapProps", f:parsenoop },
+	0x00CE: { n:"BrtEndECOlapProps", f:parsenoop },
+	0x00CF: { n:"BrtBeginPCDSConsol", f:parsenoop },
+	0x00D0: { n:"BrtEndPCDSConsol", f:parsenoop },
+	0x00D1: { n:"BrtBeginPCDSCPages", f:parsenoop },
+	0x00D2: { n:"BrtEndPCDSCPages", f:parsenoop },
+	0x00D3: { n:"BrtBeginPCDSCPage", f:parsenoop },
+	0x00D4: { n:"BrtEndPCDSCPage", f:parsenoop },
+	0x00D5: { n:"BrtBeginPCDSCPItem", f:parsenoop },
+	0x00D6: { n:"BrtEndPCDSCPItem", f:parsenoop },
+	0x00D7: { n:"BrtBeginPCDSCSets", f:parsenoop },
+	0x00D8: { n:"BrtEndPCDSCSets", f:parsenoop },
+	0x00D9: { n:"BrtBeginPCDSCSet", f:parsenoop },
+	0x00DA: { n:"BrtEndPCDSCSet", f:parsenoop },
+	0x00DB: { n:"BrtBeginPCDFGroup", f:parsenoop },
+	0x00DC: { n:"BrtEndPCDFGroup", f:parsenoop },
+	0x00DD: { n:"BrtBeginPCDFGItems", f:parsenoop },
+	0x00DE: { n:"BrtEndPCDFGItems", f:parsenoop },
+	0x00DF: { n:"BrtBeginPCDFGRange", f:parsenoop },
+	0x00E0: { n:"BrtEndPCDFGRange", f:parsenoop },
+	0x00E1: { n:"BrtBeginPCDFGDiscrete", f:parsenoop },
+	0x00E2: { n:"BrtEndPCDFGDiscrete", f:parsenoop },
+	0x00E3: { n:"BrtBeginPCDSDTupleCache", f:parsenoop },
+	0x00E4: { n:"BrtEndPCDSDTupleCache", f:parsenoop },
+	0x00E5: { n:"BrtBeginPCDSDTCEntries", f:parsenoop },
+	0x00E6: { n:"BrtEndPCDSDTCEntries", f:parsenoop },
+	0x00E7: { n:"BrtBeginPCDSDTCEMembers", f:parsenoop },
+	0x00E8: { n:"BrtEndPCDSDTCEMembers", f:parsenoop },
+	0x00E9: { n:"BrtBeginPCDSDTCEMember", f:parsenoop },
+	0x00EA: { n:"BrtEndPCDSDTCEMember", f:parsenoop },
+	0x00EB: { n:"BrtBeginPCDSDTCQueries", f:parsenoop },
+	0x00EC: { n:"BrtEndPCDSDTCQueries", f:parsenoop },
+	0x00ED: { n:"BrtBeginPCDSDTCQuery", f:parsenoop },
+	0x00EE: { n:"BrtEndPCDSDTCQuery", f:parsenoop },
+	0x00EF: { n:"BrtBeginPCDSDTCSets", f:parsenoop },
+	0x00F0: { n:"BrtEndPCDSDTCSets", f:parsenoop },
+	0x00F1: { n:"BrtBeginPCDSDTCSet", f:parsenoop },
+	0x00F2: { n:"BrtEndPCDSDTCSet", f:parsenoop },
+	0x00F3: { n:"BrtBeginPCDCalcItems", f:parsenoop },
+	0x00F4: { n:"BrtEndPCDCalcItems", f:parsenoop },
+	0x00F5: { n:"BrtBeginPCDCalcItem", f:parsenoop },
+	0x00F6: { n:"BrtEndPCDCalcItem", f:parsenoop },
+	0x00F7: { n:"BrtBeginPRule", f:parsenoop },
+	0x00F8: { n:"BrtEndPRule", f:parsenoop },
+	0x00F9: { n:"BrtBeginPRFilters", f:parsenoop },
+	0x00FA: { n:"BrtEndPRFilters", f:parsenoop },
+	0x00FB: { n:"BrtBeginPRFilter", f:parsenoop },
+	0x00FC: { n:"BrtEndPRFilter", f:parsenoop },
+	0x00FD: { n:"BrtBeginPNames", f:parsenoop },
+	0x00FE: { n:"BrtEndPNames", f:parsenoop },
+	0x00FF: { n:"BrtBeginPName", f:parsenoop },
+	0x0100: { n:"BrtEndPName", f:parsenoop },
+	0x0101: { n:"BrtBeginPNPairs", f:parsenoop },
+	0x0102: { n:"BrtEndPNPairs", f:parsenoop },
+	0x0103: { n:"BrtBeginPNPair", f:parsenoop },
+	0x0104: { n:"BrtEndPNPair", f:parsenoop },
+	0x0105: { n:"BrtBeginECWebProps", f:parsenoop },
+	0x0106: { n:"BrtEndECWebProps", f:parsenoop },
+	0x0107: { n:"BrtBeginEcWpTables", f:parsenoop },
+	0x0108: { n:"BrtEndECWPTables", f:parsenoop },
+	0x0109: { n:"BrtBeginECParams", f:parsenoop },
+	0x010A: { n:"BrtEndECParams", f:parsenoop },
+	0x010B: { n:"BrtBeginECParam", f:parsenoop },
+	0x010C: { n:"BrtEndECParam", f:parsenoop },
+	0x010D: { n:"BrtBeginPCDKPIs", f:parsenoop },
+	0x010E: { n:"BrtEndPCDKPIs", f:parsenoop },
+	0x010F: { n:"BrtBeginPCDKPI", f:parsenoop },
+	0x0110: { n:"BrtEndPCDKPI", f:parsenoop },
+	0x0111: { n:"BrtBeginDims", f:parsenoop },
+	0x0112: { n:"BrtEndDims", f:parsenoop },
+	0x0113: { n:"BrtBeginDim", f:parsenoop },
+	0x0114: { n:"BrtEndDim", f:parsenoop },
+	0x0115: { n:"BrtIndexPartEnd", f:parsenoop },
+	0x0116: { n:"BrtBeginStyleSheet", f:parsenoop },
+	0x0117: { n:"BrtEndStyleSheet", f:parsenoop },
+	0x0118: { n:"BrtBeginSXView", f:parsenoop },
+	0x0119: { n:"BrtEndSXVI", f:parsenoop },
+	0x011A: { n:"BrtBeginSXVI", f:parsenoop },
+	0x011B: { n:"BrtBeginSXVIs", f:parsenoop },
+	0x011C: { n:"BrtEndSXVIs", f:parsenoop },
+	0x011D: { n:"BrtBeginSXVD", f:parsenoop },
+	0x011E: { n:"BrtEndSXVD", f:parsenoop },
+	0x011F: { n:"BrtBeginSXVDs", f:parsenoop },
+	0x0120: { n:"BrtEndSXVDs", f:parsenoop },
+	0x0121: { n:"BrtBeginSXPI", f:parsenoop },
+	0x0122: { n:"BrtEndSXPI", f:parsenoop },
+	0x0123: { n:"BrtBeginSXPIs", f:parsenoop },
+	0x0124: { n:"BrtEndSXPIs", f:parsenoop },
+	0x0125: { n:"BrtBeginSXDI", f:parsenoop },
+	0x0126: { n:"BrtEndSXDI", f:parsenoop },
+	0x0127: { n:"BrtBeginSXDIs", f:parsenoop },
+	0x0128: { n:"BrtEndSXDIs", f:parsenoop },
+	0x0129: { n:"BrtBeginSXLI", f:parsenoop },
+	0x012A: { n:"BrtEndSXLI", f:parsenoop },
+	0x012B: { n:"BrtBeginSXLIRws", f:parsenoop },
+	0x012C: { n:"BrtEndSXLIRws", f:parsenoop },
+	0x012D: { n:"BrtBeginSXLICols", f:parsenoop },
+	0x012E: { n:"BrtEndSXLICols", f:parsenoop },
+	0x012F: { n:"BrtBeginSXFormat", f:parsenoop },
+	0x0130: { n:"BrtEndSXFormat", f:parsenoop },
+	0x0131: { n:"BrtBeginSXFormats", f:parsenoop },
+	0x0132: { n:"BrtEndSxFormats", f:parsenoop },
+	0x0133: { n:"BrtBeginSxSelect", f:parsenoop },
+	0x0134: { n:"BrtEndSxSelect", f:parsenoop },
+	0x0135: { n:"BrtBeginISXVDRws", f:parsenoop },
+	0x0136: { n:"BrtEndISXVDRws", f:parsenoop },
+	0x0137: { n:"BrtBeginISXVDCols", f:parsenoop },
+	0x0138: { n:"BrtEndISXVDCols", f:parsenoop },
+	0x0139: { n:"BrtEndSXLocation", f:parsenoop },
+	0x013A: { n:"BrtBeginSXLocation", f:parsenoop },
+	0x013B: { n:"BrtEndSXView", f:parsenoop },
+	0x013C: { n:"BrtBeginSXTHs", f:parsenoop },
+	0x013D: { n:"BrtEndSXTHs", f:parsenoop },
+	0x013E: { n:"BrtBeginSXTH", f:parsenoop },
+	0x013F: { n:"BrtEndSXTH", f:parsenoop },
+	0x0140: { n:"BrtBeginISXTHRws", f:parsenoop },
+	0x0141: { n:"BrtEndISXTHRws", f:parsenoop },
+	0x0142: { n:"BrtBeginISXTHCols", f:parsenoop },
+	0x0143: { n:"BrtEndISXTHCols", f:parsenoop },
+	0x0144: { n:"BrtBeginSXTDMPS", f:parsenoop },
+	0x0145: { n:"BrtEndSXTDMPs", f:parsenoop },
+	0x0146: { n:"BrtBeginSXTDMP", f:parsenoop },
+	0x0147: { n:"BrtEndSXTDMP", f:parsenoop },
+	0x0148: { n:"BrtBeginSXTHItems", f:parsenoop },
+	0x0149: { n:"BrtEndSXTHItems", f:parsenoop },
+	0x014A: { n:"BrtBeginSXTHItem", f:parsenoop },
+	0x014B: { n:"BrtEndSXTHItem", f:parsenoop },
+	0x014C: { n:"BrtBeginMetadata", f:parsenoop },
+	0x014D: { n:"BrtEndMetadata", f:parsenoop },
+	0x014E: { n:"BrtBeginEsmdtinfo", f:parsenoop },
+	0x014F: { n:"BrtMdtinfo", f:parsenoop },
+	0x0150: { n:"BrtEndEsmdtinfo", f:parsenoop },
+	0x0151: { n:"BrtBeginEsmdb", f:parsenoop },
+	0x0152: { n:"BrtEndEsmdb", f:parsenoop },
+	0x0153: { n:"BrtBeginEsfmd", f:parsenoop },
+	0x0154: { n:"BrtEndEsfmd", f:parsenoop },
+	0x0155: { n:"BrtBeginSingleCells", f:parsenoop },
+	0x0156: { n:"BrtEndSingleCells", f:parsenoop },
+	0x0157: { n:"BrtBeginList", f:parsenoop },
+	0x0158: { n:"BrtEndList", f:parsenoop },
+	0x0159: { n:"BrtBeginListCols", f:parsenoop },
+	0x015A: { n:"BrtEndListCols", f:parsenoop },
+	0x015B: { n:"BrtBeginListCol", f:parsenoop },
+	0x015C: { n:"BrtEndListCol", f:parsenoop },
+	0x015D: { n:"BrtBeginListXmlCPr", f:parsenoop },
+	0x015E: { n:"BrtEndListXmlCPr", f:parsenoop },
+	0x015F: { n:"BrtListCCFmla", f:parsenoop },
+	0x0160: { n:"BrtListTrFmla", f:parsenoop },
+	0x0161: { n:"BrtBeginExternals", f:parsenoop },
+	0x0162: { n:"BrtEndExternals", f:parsenoop },
+	0x0163: { n:"BrtSupBookSrc", f:parsenoop },
+	0x0165: { n:"BrtSupSelf", f:parsenoop },
+	0x0166: { n:"BrtSupSame", f:parsenoop },
+	0x0167: { n:"BrtSupTabs", f:parsenoop },
+	0x0168: { n:"BrtBeginSupBook", f:parsenoop },
+	0x0169: { n:"BrtPlaceholderName", f:parsenoop },
+	0x016A: { n:"BrtExternSheet", f:parsenoop },
+	0x016B: { n:"BrtExternTableStart", f:parsenoop },
+	0x016C: { n:"BrtExternTableEnd", f:parsenoop },
+	0x016E: { n:"BrtExternRowHdr", f:parsenoop },
+	0x016F: { n:"BrtExternCellBlank", f:parsenoop },
+	0x0170: { n:"BrtExternCellReal", f:parsenoop },
+	0x0171: { n:"BrtExternCellBool", f:parsenoop },
+	0x0172: { n:"BrtExternCellError", f:parsenoop },
+	0x0173: { n:"BrtExternCellString", f:parsenoop },
+	0x0174: { n:"BrtBeginEsmdx", f:parsenoop },
+	0x0175: { n:"BrtEndEsmdx", f:parsenoop },
+	0x0176: { n:"BrtBeginMdxSet", f:parsenoop },
+	0x0177: { n:"BrtEndMdxSet", f:parsenoop },
+	0x0178: { n:"BrtBeginMdxMbrProp", f:parsenoop },
+	0x0179: { n:"BrtEndMdxMbrProp", f:parsenoop },
+	0x017A: { n:"BrtBeginMdxKPI", f:parsenoop },
+	0x017B: { n:"BrtEndMdxKPI", f:parsenoop },
+	0x017C: { n:"BrtBeginEsstr", f:parsenoop },
+	0x017D: { n:"BrtEndEsstr", f:parsenoop },
+	0x017E: { n:"BrtBeginPRFItem", f:parsenoop },
+	0x017F: { n:"BrtEndPRFItem", f:parsenoop },
+	0x0180: { n:"BrtBeginPivotCacheIDs", f:parsenoop },
+	0x0181: { n:"BrtEndPivotCacheIDs", f:parsenoop },
+	0x0182: { n:"BrtBeginPivotCacheID", f:parsenoop },
+	0x0183: { n:"BrtEndPivotCacheID", f:parsenoop },
+	0x0184: { n:"BrtBeginISXVIs", f:parsenoop },
+	0x0185: { n:"BrtEndISXVIs", f:parsenoop },
+	0x0186: { n:"BrtBeginColInfos", f:parsenoop },
+	0x0187: { n:"BrtEndColInfos", f:parsenoop },
+	0x0188: { n:"BrtBeginRwBrk", f:parsenoop },
+	0x0189: { n:"BrtEndRwBrk", f:parsenoop },
+	0x018A: { n:"BrtBeginColBrk", f:parsenoop },
+	0x018B: { n:"BrtEndColBrk", f:parsenoop },
+	0x018C: { n:"BrtBrk", f:parsenoop },
+	0x018D: { n:"BrtUserBookView", f:parsenoop },
+	0x018E: { n:"BrtInfo", f:parsenoop },
+	0x018F: { n:"BrtCUsr", f:parsenoop },
+	0x0190: { n:"BrtUsr", f:parsenoop },
+	0x0191: { n:"BrtBeginUsers", f:parsenoop },
+	0x0193: { n:"BrtEOF", f:parsenoop },
+	0x0194: { n:"BrtUCR", f:parsenoop },
+	0x0195: { n:"BrtRRInsDel", f:parsenoop },
+	0x0196: { n:"BrtRREndInsDel", f:parsenoop },
+	0x0197: { n:"BrtRRMove", f:parsenoop },
+	0x0198: { n:"BrtRREndMove", f:parsenoop },
+	0x0199: { n:"BrtRRChgCell", f:parsenoop },
+	0x019A: { n:"BrtRREndChgCell", f:parsenoop },
+	0x019B: { n:"BrtRRHeader", f:parsenoop },
+	0x019C: { n:"BrtRRUserView", f:parsenoop },
+	0x019D: { n:"BrtRRRenSheet", f:parsenoop },
+	0x019E: { n:"BrtRRInsertSh", f:parsenoop },
+	0x019F: { n:"BrtRRDefName", f:parsenoop },
+	0x01A0: { n:"BrtRRNote", f:parsenoop },
+	0x01A1: { n:"BrtRRConflict", f:parsenoop },
+	0x01A2: { n:"BrtRRTQSIF", f:parsenoop },
+	0x01A3: { n:"BrtRRFormat", f:parsenoop },
+	0x01A4: { n:"BrtRREndFormat", f:parsenoop },
+	0x01A5: { n:"BrtRRAutoFmt", f:parsenoop },
+	0x01A6: { n:"BrtBeginUserShViews", f:parsenoop },
+	0x01A7: { n:"BrtBeginUserShView", f:parsenoop },
+	0x01A8: { n:"BrtEndUserShView", f:parsenoop },
+	0x01A9: { n:"BrtEndUserShViews", f:parsenoop },
+	0x01AA: { n:"BrtArrFmla", f:parsenoop },
+	0x01AB: { n:"BrtShrFmla", f:parsenoop },
+	0x01AC: { n:"BrtTable", f:parsenoop },
+	0x01AD: { n:"BrtBeginExtConnections", f:parsenoop },
+	0x01AE: { n:"BrtEndExtConnections", f:parsenoop },
+	0x01AF: { n:"BrtBeginPCDCalcMems", f:parsenoop },
+	0x01B0: { n:"BrtEndPCDCalcMems", f:parsenoop },
+	0x01B1: { n:"BrtBeginPCDCalcMem", f:parsenoop },
+	0x01B2: { n:"BrtEndPCDCalcMem", f:parsenoop },
+	0x01B3: { n:"BrtBeginPCDHGLevels", f:parsenoop },
+	0x01B4: { n:"BrtEndPCDHGLevels", f:parsenoop },
+	0x01B5: { n:"BrtBeginPCDHGLevel", f:parsenoop },
+	0x01B6: { n:"BrtEndPCDHGLevel", f:parsenoop },
+	0x01B7: { n:"BrtBeginPCDHGLGroups", f:parsenoop },
+	0x01B8: { n:"BrtEndPCDHGLGroups", f:parsenoop },
+	0x01B9: { n:"BrtBeginPCDHGLGroup", f:parsenoop },
+	0x01BA: { n:"BrtEndPCDHGLGroup", f:parsenoop },
+	0x01BB: { n:"BrtBeginPCDHGLGMembers", f:parsenoop },
+	0x01BC: { n:"BrtEndPCDHGLGMembers", f:parsenoop },
+	0x01BD: { n:"BrtBeginPCDHGLGMember", f:parsenoop },
+	0x01BE: { n:"BrtEndPCDHGLGMember", f:parsenoop },
+	0x01BF: { n:"BrtBeginQSI", f:parsenoop },
+	0x01C0: { n:"BrtEndQSI", f:parsenoop },
+	0x01C1: { n:"BrtBeginQSIR", f:parsenoop },
+	0x01C2: { n:"BrtEndQSIR", f:parsenoop },
+	0x01C3: { n:"BrtBeginDeletedNames", f:parsenoop },
+	0x01C4: { n:"BrtEndDeletedNames", f:parsenoop },
+	0x01C5: { n:"BrtBeginDeletedName", f:parsenoop },
+	0x01C6: { n:"BrtEndDeletedName", f:parsenoop },
+	0x01C7: { n:"BrtBeginQSIFs", f:parsenoop },
+	0x01C8: { n:"BrtEndQSIFs", f:parsenoop },
+	0x01C9: { n:"BrtBeginQSIF", f:parsenoop },
+	0x01CA: { n:"BrtEndQSIF", f:parsenoop },
+	0x01CB: { n:"BrtBeginAutoSortScope", f:parsenoop },
+	0x01CC: { n:"BrtEndAutoSortScope", f:parsenoop },
+	0x01CD: { n:"BrtBeginConditionalFormatting", f:parsenoop },
+	0x01CE: { n:"BrtEndConditionalFormatting", f:parsenoop },
+	0x01CF: { n:"BrtBeginCFRule", f:parsenoop },
+	0x01D0: { n:"BrtEndCFRule", f:parsenoop },
+	0x01D1: { n:"BrtBeginIconSet", f:parsenoop },
+	0x01D2: { n:"BrtEndIconSet", f:parsenoop },
+	0x01D3: { n:"BrtBeginDatabar", f:parsenoop },
+	0x01D4: { n:"BrtEndDatabar", f:parsenoop },
+	0x01D5: { n:"BrtBeginColorScale", f:parsenoop },
+	0x01D6: { n:"BrtEndColorScale", f:parsenoop },
+	0x01D7: { n:"BrtCFVO", f:parsenoop },
+	0x01D8: { n:"BrtExternValueMeta", f:parsenoop },
+	0x01D9: { n:"BrtBeginColorPalette", f:parsenoop },
+	0x01DA: { n:"BrtEndColorPalette", f:parsenoop },
+	0x01DB: { n:"BrtIndexedColor", f:parsenoop },
+	0x01DC: { n:"BrtMargins", f:parsenoop },
+	0x01DD: { n:"BrtPrintOptions", f:parsenoop },
+	0x01DE: { n:"BrtPageSetup", f:parsenoop },
+	0x01DF: { n:"BrtBeginHeaderFooter", f:parsenoop },
+	0x01E0: { n:"BrtEndHeaderFooter", f:parsenoop },
+	0x01E1: { n:"BrtBeginSXCrtFormat", f:parsenoop },
+	0x01E2: { n:"BrtEndSXCrtFormat", f:parsenoop },
+	0x01E3: { n:"BrtBeginSXCrtFormats", f:parsenoop },
+	0x01E4: { n:"BrtEndSXCrtFormats", f:parsenoop },
+	0x01E5: { n:"BrtWsFmtInfo", f:parsenoop },
+	0x01E6: { n:"BrtBeginMgs", f:parsenoop },
+	0x01E7: { n:"BrtEndMGs", f:parsenoop },
+	0x01E8: { n:"BrtBeginMGMaps", f:parsenoop },
+	0x01E9: { n:"BrtEndMGMaps", f:parsenoop },
+	0x01EA: { n:"BrtBeginMG", f:parsenoop },
+	0x01EB: { n:"BrtEndMG", f:parsenoop },
+	0x01EC: { n:"BrtBeginMap", f:parsenoop },
+	0x01ED: { n:"BrtEndMap", f:parsenoop },
+	0x01EE: { n:"BrtHLink", f:parse_BrtHLink },
+	0x01EF: { n:"BrtBeginDCon", f:parsenoop },
+	0x01F0: { n:"BrtEndDCon", f:parsenoop },
+	0x01F1: { n:"BrtBeginDRefs", f:parsenoop },
+	0x01F2: { n:"BrtEndDRefs", f:parsenoop },
+	0x01F3: { n:"BrtDRef", f:parsenoop },
+	0x01F4: { n:"BrtBeginScenMan", f:parsenoop },
+	0x01F5: { n:"BrtEndScenMan", f:parsenoop },
+	0x01F6: { n:"BrtBeginSct", f:parsenoop },
+	0x01F7: { n:"BrtEndSct", f:parsenoop },
+	0x01F8: { n:"BrtSlc", f:parsenoop },
+	0x01F9: { n:"BrtBeginDXFs", f:parsenoop },
+	0x01FA: { n:"BrtEndDXFs", f:parsenoop },
+	0x01FB: { n:"BrtDXF", f:parsenoop },
+	0x01FC: { n:"BrtBeginTableStyles", f:parsenoop },
+	0x01FD: { n:"BrtEndTableStyles", f:parsenoop },
+	0x01FE: { n:"BrtBeginTableStyle", f:parsenoop },
+	0x01FF: { n:"BrtEndTableStyle", f:parsenoop },
+	0x0200: { n:"BrtTableStyleElement", f:parsenoop },
+	0x0201: { n:"BrtTableStyleClient", f:parsenoop },
+	0x0202: { n:"BrtBeginVolDeps", f:parsenoop },
+	0x0203: { n:"BrtEndVolDeps", f:parsenoop },
+	0x0204: { n:"BrtBeginVolType", f:parsenoop },
+	0x0205: { n:"BrtEndVolType", f:parsenoop },
+	0x0206: { n:"BrtBeginVolMain", f:parsenoop },
+	0x0207: { n:"BrtEndVolMain", f:parsenoop },
+	0x0208: { n:"BrtBeginVolTopic", f:parsenoop },
+	0x0209: { n:"BrtEndVolTopic", f:parsenoop },
+	0x020A: { n:"BrtVolSubtopic", f:parsenoop },
+	0x020B: { n:"BrtVolRef", f:parsenoop },
+	0x020C: { n:"BrtVolNum", f:parsenoop },
+	0x020D: { n:"BrtVolErr", f:parsenoop },
+	0x020E: { n:"BrtVolStr", f:parsenoop },
+	0x020F: { n:"BrtVolBool", f:parsenoop },
+	0x0210: { n:"BrtBeginCalcChain$", f:parsenoop },
+	0x0211: { n:"BrtEndCalcChain$", f:parsenoop },
+	0x0212: { n:"BrtBeginSortState", f:parsenoop },
+	0x0213: { n:"BrtEndSortState", f:parsenoop },
+	0x0214: { n:"BrtBeginSortCond", f:parsenoop },
+	0x0215: { n:"BrtEndSortCond", f:parsenoop },
+	0x0216: { n:"BrtBookProtection", f:parsenoop },
+	0x0217: { n:"BrtSheetProtection", f:parsenoop },
+	0x0218: { n:"BrtRangeProtection", f:parsenoop },
+	0x0219: { n:"BrtPhoneticInfo", f:parsenoop },
+	0x021A: { n:"BrtBeginECTxtWiz", f:parsenoop },
+	0x021B: { n:"BrtEndECTxtWiz", f:parsenoop },
+	0x021C: { n:"BrtBeginECTWFldInfoLst", f:parsenoop },
+	0x021D: { n:"BrtEndECTWFldInfoLst", f:parsenoop },
+	0x021E: { n:"BrtBeginECTwFldInfo", f:parsenoop },
+	0x0224: { n:"BrtFileSharing", f:parsenoop },
+	0x0225: { n:"BrtOleSize", f:parsenoop },
+	0x0226: { n:"BrtDrawing", f:parsenoop },
+	0x0227: { n:"BrtLegacyDrawing", f:parsenoop },
+	0x0228: { n:"BrtLegacyDrawingHF", f:parsenoop },
+	0x0229: { n:"BrtWebOpt", f:parsenoop },
+	0x022A: { n:"BrtBeginWebPubItems", f:parsenoop },
+	0x022B: { n:"BrtEndWebPubItems", f:parsenoop },
+	0x022C: { n:"BrtBeginWebPubItem", f:parsenoop },
+	0x022D: { n:"BrtEndWebPubItem", f:parsenoop },
+	0x022E: { n:"BrtBeginSXCondFmt", f:parsenoop },
+	0x022F: { n:"BrtEndSXCondFmt", f:parsenoop },
+	0x0230: { n:"BrtBeginSXCondFmts", f:parsenoop },
+	0x0231: { n:"BrtEndSXCondFmts", f:parsenoop },
+	0x0232: { n:"BrtBkHim", f:parsenoop },
+	0x0234: { n:"BrtColor", f:parsenoop },
+	0x0235: { n:"BrtBeginIndexedColors", f:parsenoop },
+	0x0236: { n:"BrtEndIndexedColors", f:parsenoop },
+	0x0239: { n:"BrtBeginMRUColors", f:parsenoop },
+	0x023A: { n:"BrtEndMRUColors", f:parsenoop },
+	0x023C: { n:"BrtMRUColor", f:parsenoop },
+	0x023D: { n:"BrtBeginDVals", f:parsenoop },
+	0x023E: { n:"BrtEndDVals", f:parsenoop },
+	0x0241: { n:"BrtSupNameStart", f:parsenoop },
+	0x0242: { n:"BrtSupNameValueStart", f:parsenoop },
+	0x0243: { n:"BrtSupNameValueEnd", f:parsenoop },
+	0x0244: { n:"BrtSupNameNum", f:parsenoop },
+	0x0245: { n:"BrtSupNameErr", f:parsenoop },
+	0x0246: { n:"BrtSupNameSt", f:parsenoop },
+	0x0247: { n:"BrtSupNameNil", f:parsenoop },
+	0x0248: { n:"BrtSupNameBool", f:parsenoop },
+	0x0249: { n:"BrtSupNameFmla", f:parsenoop },
+	0x024A: { n:"BrtSupNameBits", f:parsenoop },
+	0x024B: { n:"BrtSupNameEnd", f:parsenoop },
+	0x024C: { n:"BrtEndSupBook", f:parsenoop },
+	0x024D: { n:"BrtCellSmartTagProperty", f:parsenoop },
+	0x024E: { n:"BrtBeginCellSmartTag", f:parsenoop },
+	0x024F: { n:"BrtEndCellSmartTag", f:parsenoop },
+	0x0250: { n:"BrtBeginCellSmartTags", f:parsenoop },
+	0x0251: { n:"BrtEndCellSmartTags", f:parsenoop },
+	0x0252: { n:"BrtBeginSmartTags", f:parsenoop },
+	0x0253: { n:"BrtEndSmartTags", f:parsenoop },
+	0x0254: { n:"BrtSmartTagType", f:parsenoop },
+	0x0255: { n:"BrtBeginSmartTagTypes", f:parsenoop },
+	0x0256: { n:"BrtEndSmartTagTypes", f:parsenoop },
+	0x0257: { n:"BrtBeginSXFilters", f:parsenoop },
+	0x0258: { n:"BrtEndSXFilters", f:parsenoop },
+	0x0259: { n:"BrtBeginSXFILTER", f:parsenoop },
+	0x025A: { n:"BrtEndSXFilter", f:parsenoop },
+	0x025B: { n:"BrtBeginFills", f:parsenoop },
+	0x025C: { n:"BrtEndFills", f:parsenoop },
+	0x025D: { n:"BrtBeginCellWatches", f:parsenoop },
+	0x025E: { n:"BrtEndCellWatches", f:parsenoop },
+	0x025F: { n:"BrtCellWatch", f:parsenoop },
+	0x0260: { n:"BrtBeginCRErrs", f:parsenoop },
+	0x0261: { n:"BrtEndCRErrs", f:parsenoop },
+	0x0262: { n:"BrtCrashRecErr", f:parsenoop },
+	0x0263: { n:"BrtBeginFonts", f:parsenoop },
+	0x0264: { n:"BrtEndFonts", f:parsenoop },
+	0x0265: { n:"BrtBeginBorders", f:parsenoop },
+	0x0266: { n:"BrtEndBorders", f:parsenoop },
+	0x0267: { n:"BrtBeginFmts", f:parsenoop },
+	0x0268: { n:"BrtEndFmts", f:parsenoop },
+	0x0269: { n:"BrtBeginCellXFs", f:parsenoop },
+	0x026A: { n:"BrtEndCellXFs", f:parsenoop },
+	0x026B: { n:"BrtBeginStyles", f:parsenoop },
+	0x026C: { n:"BrtEndStyles", f:parsenoop },
+	0x0271: { n:"BrtBigName", f:parsenoop },
+	0x0272: { n:"BrtBeginCellStyleXFs", f:parsenoop },
+	0x0273: { n:"BrtEndCellStyleXFs", f:parsenoop },
+	0x0274: { n:"BrtBeginComments", f:parsenoop },
+	0x0275: { n:"BrtEndComments", f:parsenoop },
+	0x0276: { n:"BrtBeginCommentAuthors", f:parsenoop },
+	0x0277: { n:"BrtEndCommentAuthors", f:parsenoop },
+	0x0278: { n:"BrtCommentAuthor", f:parse_BrtCommentAuthor },
+	0x0279: { n:"BrtBeginCommentList", f:parsenoop },
+	0x027A: { n:"BrtEndCommentList", f:parsenoop },
+	0x027B: { n:"BrtBeginComment", f:parse_BrtBeginComment},
+	0x027C: { n:"BrtEndComment", f:parsenoop },
+	0x027D: { n:"BrtCommentText", f:parse_BrtCommentText },
+	0x027E: { n:"BrtBeginOleObjects", f:parsenoop },
+	0x027F: { n:"BrtOleObject", f:parsenoop },
+	0x0280: { n:"BrtEndOleObjects", f:parsenoop },
+	0x0281: { n:"BrtBeginSxrules", f:parsenoop },
+	0x0282: { n:"BrtEndSxRules", f:parsenoop },
+	0x0283: { n:"BrtBeginActiveXControls", f:parsenoop },
+	0x0284: { n:"BrtActiveX", f:parsenoop },
+	0x0285: { n:"BrtEndActiveXControls", f:parsenoop },
+	0x0286: { n:"BrtBeginPCDSDTCEMembersSortBy", f:parsenoop },
+	0x0288: { n:"BrtBeginCellIgnoreECs", f:parsenoop },
+	0x0289: { n:"BrtCellIgnoreEC", f:parsenoop },
+	0x028A: { n:"BrtEndCellIgnoreECs", f:parsenoop },
+	0x028B: { n:"BrtCsProp", f:parsenoop },
+	0x028C: { n:"BrtCsPageSetup", f:parsenoop },
+	0x028D: { n:"BrtBeginUserCsViews", f:parsenoop },
+	0x028E: { n:"BrtEndUserCsViews", f:parsenoop },
+	0x028F: { n:"BrtBeginUserCsView", f:parsenoop },
+	0x0290: { n:"BrtEndUserCsView", f:parsenoop },
+	0x0291: { n:"BrtBeginPcdSFCIEntries", f:parsenoop },
+	0x0292: { n:"BrtEndPCDSFCIEntries", f:parsenoop },
+	0x0293: { n:"BrtPCDSFCIEntry", f:parsenoop },
+	0x0294: { n:"BrtBeginListParts", f:parsenoop },
+	0x0295: { n:"BrtListPart", f:parsenoop },
+	0x0296: { n:"BrtEndListParts", f:parsenoop },
+	0x0297: { n:"BrtSheetCalcProp", f:parsenoop },
+	0x0298: { n:"BrtBeginFnGroup", f:parsenoop },
+	0x0299: { n:"BrtFnGroup", f:parsenoop },
+	0x029A: { n:"BrtEndFnGroup", f:parsenoop },
+	0x029B: { n:"BrtSupAddin", f:parsenoop },
+	0x029C: { n:"BrtSXTDMPOrder", f:parsenoop },
+	0x029D: { n:"BrtCsProtection", f:parsenoop },
+	0x029F: { n:"BrtBeginWsSortMap", f:parsenoop },
+	0x02A0: { n:"BrtEndWsSortMap", f:parsenoop },
+	0x02A1: { n:"BrtBeginRRSort", f:parsenoop },
+	0x02A2: { n:"BrtEndRRSort", f:parsenoop },
+	0x02A3: { n:"BrtRRSortItem", f:parsenoop },
+	0x02A4: { n:"BrtFileSharingIso", f:parsenoop },
+	0x02A5: { n:"BrtBookProtectionIso", f:parsenoop },
+	0x02A6: { n:"BrtSheetProtectionIso", f:parsenoop },
+	0x02A7: { n:"BrtCsProtectionIso", f:parsenoop },
+	0x02A8: { n:"BrtRangeProtectionIso", f:parsenoop },
+	0x0400: { n:"BrtRwDescent", f:parsenoop },
+	0x0401: { n:"BrtKnownFonts", f:parsenoop },
+	0x0402: { n:"BrtBeginSXTupleSet", f:parsenoop },
+	0x0403: { n:"BrtEndSXTupleSet", f:parsenoop },
+	0x0404: { n:"BrtBeginSXTupleSetHeader", f:parsenoop },
+	0x0405: { n:"BrtEndSXTupleSetHeader", f:parsenoop },
+	0x0406: { n:"BrtSXTupleSetHeaderItem", f:parsenoop },
+	0x0407: { n:"BrtBeginSXTupleSetData", f:parsenoop },
+	0x0408: { n:"BrtEndSXTupleSetData", f:parsenoop },
+	0x0409: { n:"BrtBeginSXTupleSetRow", f:parsenoop },
+	0x040A: { n:"BrtEndSXTupleSetRow", f:parsenoop },
+	0x040B: { n:"BrtSXTupleSetRowItem", f:parsenoop },
+	0x040C: { n:"BrtNameExt", f:parsenoop },
+	0x040D: { n:"BrtPCDH14", f:parsenoop },
+	0x040E: { n:"BrtBeginPCDCalcMem14", f:parsenoop },
+	0x040F: { n:"BrtEndPCDCalcMem14", f:parsenoop },
+	0x0410: { n:"BrtSXTH14", f:parsenoop },
+	0x0411: { n:"BrtBeginSparklineGroup", f:parsenoop },
+	0x0412: { n:"BrtEndSparklineGroup", f:parsenoop },
+	0x0413: { n:"BrtSparkline", f:parsenoop },
+	0x0414: { n:"BrtSXDI14", f:parsenoop },
+	0x0415: { n:"BrtWsFmtInfoEx14", f:parsenoop },
+	0x0416: { n:"BrtBeginConditionalFormatting14", f:parsenoop },
+	0x0417: { n:"BrtEndConditionalFormatting14", f:parsenoop },
+	0x0418: { n:"BrtBeginCFRule14", f:parsenoop },
+	0x0419: { n:"BrtEndCFRule14", f:parsenoop },
+	0x041A: { n:"BrtCFVO14", f:parsenoop },
+	0x041B: { n:"BrtBeginDatabar14", f:parsenoop },
+	0x041C: { n:"BrtBeginIconSet14", f:parsenoop },
+	0x041D: { n:"BrtDVal14", f:parsenoop },
+	0x041E: { n:"BrtBeginDVals14", f:parsenoop },
+	0x041F: { n:"BrtColor14", f:parsenoop },
+	0x0420: { n:"BrtBeginSparklines", f:parsenoop },
+	0x0421: { n:"BrtEndSparklines", f:parsenoop },
+	0x0422: { n:"BrtBeginSparklineGroups", f:parsenoop },
+	0x0423: { n:"BrtEndSparklineGroups", f:parsenoop },
+	0x0425: { n:"BrtSXVD14", f:parsenoop },
+	0x0426: { n:"BrtBeginSxview14", f:parsenoop },
+	0x0427: { n:"BrtEndSxview14", f:parsenoop },
+	0x042A: { n:"BrtBeginPCD14", f:parsenoop },
+	0x042B: { n:"BrtEndPCD14", f:parsenoop },
+	0x042C: { n:"BrtBeginExtConn14", f:parsenoop },
+	0x042D: { n:"BrtEndExtConn14", f:parsenoop },
+	0x042E: { n:"BrtBeginSlicerCacheIDs", f:parsenoop },
+	0x042F: { n:"BrtEndSlicerCacheIDs", f:parsenoop },
+	0x0430: { n:"BrtBeginSlicerCacheID", f:parsenoop },
+	0x0431: { n:"BrtEndSlicerCacheID", f:parsenoop },
+	0x0433: { n:"BrtBeginSlicerCache", f:parsenoop },
+	0x0434: { n:"BrtEndSlicerCache", f:parsenoop },
+	0x0435: { n:"BrtBeginSlicerCacheDef", f:parsenoop },
+	0x0436: { n:"BrtEndSlicerCacheDef", f:parsenoop },
+	0x0437: { n:"BrtBeginSlicersEx", f:parsenoop },
+	0x0438: { n:"BrtEndSlicersEx", f:parsenoop },
+	0x0439: { n:"BrtBeginSlicerEx", f:parsenoop },
+	0x043A: { n:"BrtEndSlicerEx", f:parsenoop },
+	0x043B: { n:"BrtBeginSlicer", f:parsenoop },
+	0x043C: { n:"BrtEndSlicer", f:parsenoop },
+	0x043D: { n:"BrtSlicerCachePivotTables", f:parsenoop },
+	0x043E: { n:"BrtBeginSlicerCacheOlapImpl", f:parsenoop },
+	0x043F: { n:"BrtEndSlicerCacheOlapImpl", f:parsenoop },
+	0x0440: { n:"BrtBeginSlicerCacheLevelsData", f:parsenoop },
+	0x0441: { n:"BrtEndSlicerCacheLevelsData", f:parsenoop },
+	0x0442: { n:"BrtBeginSlicerCacheLevelData", f:parsenoop },
+	0x0443: { n:"BrtEndSlicerCacheLevelData", f:parsenoop },
+	0x0444: { n:"BrtBeginSlicerCacheSiRanges", f:parsenoop },
+	0x0445: { n:"BrtEndSlicerCacheSiRanges", f:parsenoop },
+	0x0446: { n:"BrtBeginSlicerCacheSiRange", f:parsenoop },
+	0x0447: { n:"BrtEndSlicerCacheSiRange", f:parsenoop },
+	0x0448: { n:"BrtSlicerCacheOlapItem", f:parsenoop },
+	0x0449: { n:"BrtBeginSlicerCacheSelections", f:parsenoop },
+	0x044A: { n:"BrtSlicerCacheSelection", f:parsenoop },
+	0x044B: { n:"BrtEndSlicerCacheSelections", f:parsenoop },
+	0x044C: { n:"BrtBeginSlicerCacheNative", f:parsenoop },
+	0x044D: { n:"BrtEndSlicerCacheNative", f:parsenoop },
+	0x044E: { n:"BrtSlicerCacheNativeItem", f:parsenoop },
+	0x044F: { n:"BrtRangeProtection14", f:parsenoop },
+	0x0450: { n:"BrtRangeProtectionIso14", f:parsenoop },
+	0x0451: { n:"BrtCellIgnoreEC14", f:parsenoop },
+	0x0457: { n:"BrtList14", f:parsenoop },
+	0x0458: { n:"BrtCFIcon", f:parsenoop },
+	0x0459: { n:"BrtBeginSlicerCachesPivotCacheIDs", f:parsenoop },
+	0x045A: { n:"BrtEndSlicerCachesPivotCacheIDs", f:parsenoop },
+	0x045B: { n:"BrtBeginSlicers", f:parsenoop },
+	0x045C: { n:"BrtEndSlicers", f:parsenoop },
+	0x045D: { n:"BrtWbProp14", f:parsenoop },
+	0x045E: { n:"BrtBeginSXEdit", f:parsenoop },
+	0x045F: { n:"BrtEndSXEdit", f:parsenoop },
+	0x0460: { n:"BrtBeginSXEdits", f:parsenoop },
+	0x0461: { n:"BrtEndSXEdits", f:parsenoop },
+	0x0462: { n:"BrtBeginSXChange", f:parsenoop },
+	0x0463: { n:"BrtEndSXChange", f:parsenoop },
+	0x0464: { n:"BrtBeginSXChanges", f:parsenoop },
+	0x0465: { n:"BrtEndSXChanges", f:parsenoop },
+	0x0466: { n:"BrtSXTupleItems", f:parsenoop },
+	0x0468: { n:"BrtBeginSlicerStyle", f:parsenoop },
+	0x0469: { n:"BrtEndSlicerStyle", f:parsenoop },
+	0x046A: { n:"BrtSlicerStyleElement", f:parsenoop },
+	0x046B: { n:"BrtBeginStyleSheetExt14", f:parsenoop },
+	0x046C: { n:"BrtEndStyleSheetExt14", f:parsenoop },
+	0x046D: { n:"BrtBeginSlicerCachesPivotCacheID", f:parsenoop },
+	0x046E: { n:"BrtEndSlicerCachesPivotCacheID", f:parsenoop },
+	0x046F: { n:"BrtBeginConditionalFormattings", f:parsenoop },
+	0x0470: { n:"BrtEndConditionalFormattings", f:parsenoop },
+	0x0471: { n:"BrtBeginPCDCalcMemExt", f:parsenoop },
+	0x0472: { n:"BrtEndPCDCalcMemExt", f:parsenoop },
+	0x0473: { n:"BrtBeginPCDCalcMemsExt", f:parsenoop },
+	0x0474: { n:"BrtEndPCDCalcMemsExt", f:parsenoop },
+	0x0475: { n:"BrtPCDField14", f:parsenoop },
+	0x0476: { n:"BrtBeginSlicerStyles", f:parsenoop },
+	0x0477: { n:"BrtEndSlicerStyles", f:parsenoop },
+	0x0478: { n:"BrtBeginSlicerStyleElements", f:parsenoop },
+	0x0479: { n:"BrtEndSlicerStyleElements", f:parsenoop },
+	0x047A: { n:"BrtCFRuleExt", f:parsenoop },
+	0x047B: { n:"BrtBeginSXCondFmt14", f:parsenoop },
+	0x047C: { n:"BrtEndSXCondFmt14", f:parsenoop },
+	0x047D: { n:"BrtBeginSXCondFmts14", f:parsenoop },
+	0x047E: { n:"BrtEndSXCondFmts14", f:parsenoop },
+	0x0480: { n:"BrtBeginSortCond14", f:parsenoop },
+	0x0481: { n:"BrtEndSortCond14", f:parsenoop },
+	0x0482: { n:"BrtEndDVals14", f:parsenoop },
+	0x0483: { n:"BrtEndIconSet14", f:parsenoop },
+	0x0484: { n:"BrtEndDatabar14", f:parsenoop },
+	0x0485: { n:"BrtBeginColorScale14", f:parsenoop },
+	0x0486: { n:"BrtEndColorScale14", f:parsenoop },
+	0x0487: { n:"BrtBeginSxrules14", f:parsenoop },
+	0x0488: { n:"BrtEndSxrules14", f:parsenoop },
+	0x0489: { n:"BrtBeginPRule14", f:parsenoop },
+	0x048A: { n:"BrtEndPRule14", f:parsenoop },
+	0x048B: { n:"BrtBeginPRFilters14", f:parsenoop },
+	0x048C: { n:"BrtEndPRFilters14", f:parsenoop },
+	0x048D: { n:"BrtBeginPRFilter14", f:parsenoop },
+	0x048E: { n:"BrtEndPRFilter14", f:parsenoop },
+	0x048F: { n:"BrtBeginPRFItem14", f:parsenoop },
+	0x0490: { n:"BrtEndPRFItem14", f:parsenoop },
+	0x0491: { n:"BrtBeginCellIgnoreECs14", f:parsenoop },
+	0x0492: { n:"BrtEndCellIgnoreECs14", f:parsenoop },
+	0x0493: { n:"BrtDxf14", f:parsenoop },
+	0x0494: { n:"BrtBeginDxF14s", f:parsenoop },
+	0x0495: { n:"BrtEndDxf14s", f:parsenoop },
+	0x0499: { n:"BrtFilter14", f:parsenoop },
+	0x049A: { n:"BrtBeginCustomFilters14", f:parsenoop },
+	0x049C: { n:"BrtCustomFilter14", f:parsenoop },
+	0x049D: { n:"BrtIconFilter14", f:parsenoop },
+	0x049E: { n:"BrtPivotCacheConnectionName", f:parsenoop },
+	0x0800: { n:"BrtBeginDecoupledPivotCacheIDs", f:parsenoop },
+	0x0801: { n:"BrtEndDecoupledPivotCacheIDs", f:parsenoop },
+	0x0802: { n:"BrtDecoupledPivotCacheID", f:parsenoop },
+	0x0803: { n:"BrtBeginPivotTableRefs", f:parsenoop },
+	0x0804: { n:"BrtEndPivotTableRefs", f:parsenoop },
+	0x0805: { n:"BrtPivotTableRef", f:parsenoop },
+	0x0806: { n:"BrtSlicerCacheBookPivotTables", f:parsenoop },
+	0x0807: { n:"BrtBeginSxvcells", f:parsenoop },
+	0x0808: { n:"BrtEndSxvcells", f:parsenoop },
+	0x0809: { n:"BrtBeginSxRow", f:parsenoop },
+	0x080A: { n:"BrtEndSxRow", f:parsenoop },
+	0x080C: { n:"BrtPcdCalcMem15", f:parsenoop },
+	0x0813: { n:"BrtQsi15", f:parsenoop },
+	0x0814: { n:"BrtBeginWebExtensions", f:parsenoop },
+	0x0815: { n:"BrtEndWebExtensions", f:parsenoop },
+	0x0816: { n:"BrtWebExtension", f:parsenoop },
+	0x0817: { n:"BrtAbsPath15", f:parsenoop },
+	0x0818: { n:"BrtBeginPivotTableUISettings", f:parsenoop },
+	0x0819: { n:"BrtEndPivotTableUISettings", f:parsenoop },
+	0x081B: { n:"BrtTableSlicerCacheIDs", f:parsenoop },
+	0x081C: { n:"BrtTableSlicerCacheID", f:parsenoop },
+	0x081D: { n:"BrtBeginTableSlicerCache", f:parsenoop },
+	0x081E: { n:"BrtEndTableSlicerCache", f:parsenoop },
+	0x081F: { n:"BrtSxFilter15", f:parsenoop },
+	0x0820: { n:"BrtBeginTimelineCachePivotCacheIDs", f:parsenoop },
+	0x0821: { n:"BrtEndTimelineCachePivotCacheIDs", f:parsenoop },
+	0x0822: { n:"BrtTimelineCachePivotCacheID", f:parsenoop },
+	0x0823: { n:"BrtBeginTimelineCacheIDs", f:parsenoop },
+	0x0824: { n:"BrtEndTimelineCacheIDs", f:parsenoop },
+	0x0825: { n:"BrtBeginTimelineCacheID", f:parsenoop },
+	0x0826: { n:"BrtEndTimelineCacheID", f:parsenoop },
+	0x0827: { n:"BrtBeginTimelinesEx", f:parsenoop },
+	0x0828: { n:"BrtEndTimelinesEx", f:parsenoop },
+	0x0829: { n:"BrtBeginTimelineEx", f:parsenoop },
+	0x082A: { n:"BrtEndTimelineEx", f:parsenoop },
+	0x082B: { n:"BrtWorkBookPr15", f:parsenoop },
+	0x082C: { n:"BrtPCDH15", f:parsenoop },
+	0x082D: { n:"BrtBeginTimelineStyle", f:parsenoop },
+	0x082E: { n:"BrtEndTimelineStyle", f:parsenoop },
+	0x082F: { n:"BrtTimelineStyleElement", f:parsenoop },
+	0x0830: { n:"BrtBeginTimelineStylesheetExt15", f:parsenoop },
+	0x0831: { n:"BrtEndTimelineStylesheetExt15", f:parsenoop },
+	0x0832: { n:"BrtBeginTimelineStyles", f:parsenoop },
+	0x0833: { n:"BrtEndTimelineStyles", f:parsenoop },
+	0x0834: { n:"BrtBeginTimelineStyleElements", f:parsenoop },
+	0x0835: { n:"BrtEndTimelineStyleElements", f:parsenoop },
+	0x0836: { n:"BrtDxf15", f:parsenoop },
+	0x0837: { n:"BrtBeginDxfs15", f:parsenoop },
+	0x0838: { n:"brtEndDxfs15", f:parsenoop },
+	0x0839: { n:"BrtSlicerCacheHideItemsWithNoData", f:parsenoop },
+	0x083A: { n:"BrtBeginItemUniqueNames", f:parsenoop },
+	0x083B: { n:"BrtEndItemUniqueNames", f:parsenoop },
+	0x083C: { n:"BrtItemUniqueName", f:parsenoop },
+	0x083D: { n:"BrtBeginExtConn15", f:parsenoop },
+	0x083E: { n:"BrtEndExtConn15", f:parsenoop },
+	0x083F: { n:"BrtBeginOledbPr15", f:parsenoop },
+	0x0840: { n:"BrtEndOledbPr15", f:parsenoop },
+	0x0841: { n:"BrtBeginDataFeedPr15", f:parsenoop },
+	0x0842: { n:"BrtEndDataFeedPr15", f:parsenoop },
+	0x0843: { n:"BrtTextPr15", f:parsenoop },
+	0x0844: { n:"BrtRangePr15", f:parsenoop },
+	0x0845: { n:"BrtDbCommand15", f:parsenoop },
+	0x0846: { n:"BrtBeginDbTables15", f:parsenoop },
+	0x0847: { n:"BrtEndDbTables15", f:parsenoop },
+	0x0848: { n:"BrtDbTable15", f:parsenoop },
+	0x0849: { n:"BrtBeginDataModel", f:parsenoop },
+	0x084A: { n:"BrtEndDataModel", f:parsenoop },
+	0x084B: { n:"BrtBeginModelTables", f:parsenoop },
+	0x084C: { n:"BrtEndModelTables", f:parsenoop },
+	0x084D: { n:"BrtModelTable", f:parsenoop },
+	0x084E: { n:"BrtBeginModelRelationships", f:parsenoop },
+	0x084F: { n:"BrtEndModelRelationships", f:parsenoop },
+	0x0850: { n:"BrtModelRelationship", f:parsenoop },
+	0x0851: { n:"BrtBeginECTxtWiz15", f:parsenoop },
+	0x0852: { n:"BrtEndECTxtWiz15", f:parsenoop },
+	0x0853: { n:"BrtBeginECTWFldInfoLst15", f:parsenoop },
+	0x0854: { n:"BrtEndECTWFldInfoLst15", f:parsenoop },
+	0x0855: { n:"BrtBeginECTWFldInfo15", f:parsenoop },
+	0x0856: { n:"BrtFieldListActiveItem", f:parsenoop },
+	0x0857: { n:"BrtPivotCacheIdVersion", f:parsenoop },
+	0x0858: { n:"BrtSXDI15", f:parsenoop },
+	0xFFFF: { n:"", f:parsenoop }
+};
+
+var evert_RE = evert_key(RecordEnum, 'n');
+function fix_opts_func(defaults) {
+	return function fix_opts(opts) {
+		for(var i = 0; i != defaults.length; ++i) {
+			var d = defaults[i];
+			if(opts[d[0]] === undefined) opts[d[0]] = d[1];
+			if(d[2] === 'n') opts[d[0]] = Number(opts[d[0]]);
+		}
+	};
+}
+
+var fix_read_opts = fix_opts_func([
+	['cellNF', false], /* emit cell number format string as .z */
+	['cellHTML', true], /* emit html string as .h */
+	['cellFormula', true], /* emit formulae as .f */
+	['cellStyles', false], /* emits style/theme as .s */
+
+	['sheetStubs', false], /* emit empty cells */
+	['sheetRows', 0, 'n'], /* read n rows (0 = read all rows) */
+
+	['bookDeps', false], /* parse calculation chains */
+	['bookSheets', false], /* only try to get sheet names (no Sheets) */
+	['bookProps', false], /* only try to get properties (no Sheets) */
+	['bookFiles', false], /* include raw file structure (keys, files) */
+	['bookVBA', false], /* include vba raw data (vbaraw) */
+
+	['WTF', false] /* WTF mode (throws errors) */
+]);
+
+
+var fix_write_opts = fix_opts_func([
+	['bookSST', false], /* Generate Shared String Table */
+
+	['bookType', 'xlsx'], /* Type of workbook (xlsx/m/b) */
+
+	['WTF', false] /* WTF mode (throws errors) */
+]);
+function safe_parse_wbrels(wbrels, sheets) {
+	if(!wbrels) return 0;
+	try {
+		wbrels = sheets.map(function pwbr(w) { return [w.name, wbrels['!id'][w.id].Target]; });
+	} catch(e) { return null; }
+	return !wbrels || wbrels.length === 0 ? null : wbrels;
+}
+
+function safe_parse_ws(zip, path, relsPath, sheet, sheetRels, sheets, opts) {
+	try {
+		sheetRels[sheet]=parse_rels(getzipdata(zip, relsPath, true), path);
+		sheets[sheet]=parse_ws(getzipdata(zip, path),path,opts,sheetRels[sheet]);
+	} catch(e) { if(opts.WTF) throw e; }
+}
+
+var nodirs = function nodirs(x){return x.substr(-1) != '/';};
+function parse_zip(zip, opts) {
+	make_ssf(SSF);
+	opts = opts || {};
+	fix_read_opts(opts);
+	reset_cp();
+	var entries = keys(zip.files).filter(nodirs).sort();
+	var dir = parse_ct(getzipdata(zip, '[Content_Types].xml'), opts);
+	var xlsb = false;
+	var sheets, binname;
+	if(dir.workbooks.length === 0) {
+		binname = "xl/workbook.xml";
+		if(getzipdata(zip,binname, true)) dir.workbooks.push(binname);
+	}
+	if(dir.workbooks.length === 0) {
+		binname = "xl/workbook.bin";
+		if(!getzipfile(zip,binname,true)) throw new Error("Could not find workbook");
+		dir.workbooks.push(binname);
+		xlsb = true;
+	}
+	if(dir.workbooks[0].substr(-3) == "bin") xlsb = true;
+	if(xlsb) set_cp(1200);
+
+	if(!opts.bookSheets && !opts.bookProps) {
+		strs = [];
+		if(dir.sst) strs=parse_sst(getzipdata(zip, dir.sst.replace(/^\//,'')), dir.sst, opts);
+
+		styles = {};
+		if(dir.style) styles = parse_sty(getzipdata(zip, dir.style.replace(/^\//,'')),dir.style, opts);
+
+		themes = {};
+		if(opts.cellStyles && dir.themes.length) themes = parse_theme(getzipdata(zip, dir.themes[0].replace(/^\//,''), true),dir.themes[0], opts);
+	}
+
+	var wb = parse_wb(getzipdata(zip, dir.workbooks[0].replace(/^\//,'')), dir.workbooks[0], opts);
+
+	var props = {}, propdata = "";
+
+	if(dir.coreprops.length !== 0) {
+		propdata = getzipdata(zip, dir.coreprops[0].replace(/^\//,''), true);
+		if(propdata) props = parse_core_props(propdata);
+		if(dir.extprops.length !== 0) {
+			propdata = getzipdata(zip, dir.extprops[0].replace(/^\//,''), true);
+			if(propdata) parse_ext_props(propdata, props);
+		}
+	}
+
+	var custprops = {};
+	if(!opts.bookSheets || opts.bookProps) {
+		if (dir.custprops.length !== 0) {
+			propdata = getzipdata(zip, dir.custprops[0].replace(/^\//,''), true);
+			if(propdata) custprops = parse_cust_props(propdata, opts);
+		}
+	}
+
+	var out = {};
+	if(opts.bookSheets || opts.bookProps) {
+		if(props.Worksheets && props.SheetNames.length > 0) sheets=props.SheetNames;
+		else if(wb.Sheets) sheets = wb.Sheets.map(function pluck(x){ return x.name; });
+		if(opts.bookProps) { out.Props = props; out.Custprops = custprops; }
+		if(typeof sheets !== 'undefined') out.SheetNames = sheets;
+		if(opts.bookSheets ? out.SheetNames : opts.bookProps) return out;
+	}
+	sheets = {};
+
+	var deps = {};
+	if(opts.bookDeps && dir.calcchain) deps=parse_cc(getzipdata(zip, dir.calcchain.replace(/^\//,'')),dir.calcchain,opts);
+
+	var i=0;
+	var sheetRels = {};
+	var path, relsPath;
+	if(!props.Worksheets) {
+		var wbsheets = wb.Sheets;
+		props.Worksheets = wbsheets.length;
+		props.SheetNames = [];
+		for(var j = 0; j != wbsheets.length; ++j) {
+			props.SheetNames[j] = wbsheets[j].name;
+		}
+	}
+
+	var wbext = xlsb ? "bin" : "xml";
+	var wbrelsfile = 'xl/_rels/workbook.' + wbext + '.rels';
+	var wbrels = parse_rels(getzipdata(zip, wbrelsfile, true), wbrelsfile);
+	if(wbrels) wbrels = safe_parse_wbrels(wbrels, wb.Sheets);
+	/* Numbers iOS hack */
+	var nmode = (getzipdata(zip,"xl/worksheets/sheet.xml",true))?1:0;
+	for(i = 0; i != props.Worksheets; ++i) {
+		if(wbrels) path = 'xl/' + (wbrels[i][1]).replace(/[\/]?xl\//, "");
+		else {
+			path = 'xl/worksheets/sheet'+(i+1-nmode)+"." + wbext;
+			path = path.replace(/sheet0\./,"sheet.");
+		}
+		relsPath = path.replace(/^(.*)(\/)([^\/]*)$/, "$1/_rels/$3.rels");
+		safe_parse_ws(zip, path, relsPath, props.SheetNames[i], sheetRels, sheets, opts);
+	}
+
+	if(dir.comments) parse_comments(zip, dir.comments, sheets, sheetRels, opts);
+
+	out = {
+		Directory: dir,
+		Workbook: wb,
+		Props: props,
+		Custprops: custprops,
+		Deps: deps,
+		Sheets: sheets,
+		SheetNames: props.SheetNames,
+		Strings: strs,
+		Styles: styles,
+		Themes: themes,
+		SSF: SSF.get_table()
+	};
+	if(opts.bookFiles) {
+		out.keys = entries;
+		out.files = zip.files;
+	}
+	if(opts.bookVBA) {
+		if(dir.vba.length > 0) out.vbaraw = getzipdata(zip,dir.vba[0],true);
+		else if(dir.defaults.bin === 'application/vnd.ms-office.vbaProject') out.vbaraw = getzipdata(zip,'xl/vbaProject.bin',true);
+	}
+	return out;
+}
+function add_rels(rels, rId, f, type, relobj) {
+	if(!relobj) relobj = {};
+	if(!rels['!id']) rels['!id'] = {};
+	relobj.Id = 'rId' + rId;
+	relobj.Type = type;
+	relobj.Target = f;
+	if(rels['!id'][relobj.Id]) throw new Error("Cannot rewrite rId " + rId);
+	rels['!id'][relobj.Id] = relobj;
+	rels[('/' + relobj.Target).replace("//","/")] = relobj;
+}
+
+function write_zip(wb, opts) {
+	if(wb && !wb.SSF) {
+		wb.SSF = SSF.get_table();
+	}
+	if(wb && wb.SSF) {
+		make_ssf(SSF); SSF.load_table(wb.SSF);
+		opts.revssf = evert_num(wb.SSF); opts.revssf[wb.SSF[65535]] = 0;
+	}
+	opts.rels = {}; opts.wbrels = {};
+	opts.Strings = []; opts.Strings.Count = 0; opts.Strings.Unique = 0;
+	var wbext = opts.bookType == "xlsb" ? "bin" : "xml";
+	var ct = { workbooks: [], sheets: [], calcchains: [], themes: [], styles: [],
+		coreprops: [], extprops: [], custprops: [], strs:[], comments: [], vba: [],
+		TODO:[], rels:[], xmlns: "" };
+	fix_write_opts(opts = opts || {});
+	var zip = new jszip();
+	var f = "", rId = 0;
+
+	opts.cellXfs = [];
+	get_cell_style(opts.cellXfs, {}, {revssf:{"General":0}});
+
+	f = "docProps/core.xml";
+	zip.file(f, write_core_props(wb.Props, opts));
+	ct.coreprops.push(f);
+	add_rels(opts.rels, 2, f, RELS.CORE_PROPS);
+
+	f = "docProps/app.xml";
+	if(!wb.Props) wb.Props = {};
+	wb.Props.SheetNames = wb.SheetNames;
+	wb.Props.Worksheets = wb.SheetNames.length;
+	zip.file(f, write_ext_props(wb.Props, opts));
+	ct.extprops.push(f);
+	add_rels(opts.rels, 3, f, RELS.EXT_PROPS);
+
+	if(wb.Custprops !== wb.Props && keys(wb.Custprops||{}).length > 0) {
+		f = "docProps/custom.xml";
+		zip.file(f, write_cust_props(wb.Custprops, opts));
+		ct.custprops.push(f);
+		add_rels(opts.rels, 4, f, RELS.CUST_PROPS);
+	}
+
+	f = "xl/workbook." + wbext;
+	zip.file(f, write_wb(wb, f, opts));
+	ct.workbooks.push(f);
+	add_rels(opts.rels, 1, f, RELS.WB);
+
+	for(rId=1;rId <= wb.SheetNames.length; ++rId) {
+		f = "xl/worksheets/sheet" + rId + "." + wbext;
+		zip.file(f, write_ws(rId-1, f, opts, wb));
+		ct.sheets.push(f);
+		add_rels(opts.wbrels, rId, "worksheets/sheet" + rId + "." + wbext, RELS.WS);
+	}
+
+	if(opts.Strings != null && opts.Strings.length > 0) {
+		f = "xl/sharedStrings." + wbext;
+		zip.file(f, write_sst(opts.Strings, f, opts));
+		ct.strs.push(f);
+		add_rels(opts.wbrels, ++rId, "sharedStrings." + wbext, RELS.SST);
+	}
+
+	/* TODO: something more intelligent with themes */
+
+	f = "xl/theme/theme1.xml";
+	zip.file(f, write_theme());
+	ct.themes.push(f);
+	add_rels(opts.wbrels, ++rId, "theme/theme1.xml", RELS.THEME);
+
+	/* TODO: something more intelligent with styles */
+
+	f = "xl/styles." + wbext;
+	zip.file(f, write_sty(wb, f, opts));
+	ct.styles.push(f);
+	add_rels(opts.wbrels, ++rId, "styles." + wbext, RELS.STY);
+
+	zip.file("[Content_Types].xml", write_ct(ct, opts));
+	zip.file('_rels/.rels', write_rels(opts.rels));
+	zip.file('xl/_rels/workbook.' + wbext + '.rels', write_rels(opts.wbrels));
+	return zip;
+}
+function readSync(data, opts) {
+	var zip, d = data;
+	var o = opts||{};
+	if(!o.type) o.type = (has_buf && Buffer.isBuffer(data)) ? "buffer" : "base64";
+	switch(o.type) {
+		case "base64": zip = new jszip(d, { base64:true }); break;
+		case "binary": zip = new jszip(d, { base64:false }); break;
+		case "buffer": zip = new jszip(d); break;
+		case "file": zip=new jszip(d=_fs.readFileSync(data)); break;
+		default: throw new Error("Unrecognized type " + o.type);
+	}
+	return parse_zip(zip, o);
+}
+
+function readFileSync(data, opts) {
+	var o = opts||{}; o.type = 'file';
+	return readSync(data, o);
+}
+
+function writeSync(wb, opts) {
+	var o = opts||{};
+	var z = write_zip(wb, o);
+	switch(o.type) {
+		case "base64": return z.generate({type:"base64"});
+		case "binary": return z.generate({type:"string"});
+		case "buffer": return z.generate({type:"nodebuffer"});
+		case "file": return _fs.writeFileSync(o.file, z.generate({type:"nodebuffer"}));
+		default: throw new Error("Unrecognized type " + o.type);
+	}
+}
+
+function writeFileSync(wb, filename, opts) {
+	var o = opts||{}; o.type = 'file';
+	o.file = filename;
+	switch(o.file.substr(-5).toLowerCase()) {
+		case '.xlsm': o.bookType = 'xlsm'; break;
+		case '.xlsb': o.bookType = 'xlsb'; break;
+	}
+	return writeSync(wb, o);
+}
+
+function decode_row(rowstr) { return parseInt(unfix_row(rowstr),10) - 1; }
+function encode_row(row) { return "" + (row + 1); }
+function fix_row(cstr) { return cstr.replace(/([A-Z]|^)(\d+)$/,"$1$$$2"); }
+function unfix_row(cstr) { return cstr.replace(/\$(\d+)$/,"$1"); }
+
+function decode_col(colstr) { var c = unfix_col(colstr), d = 0, i = 0; for(; i !== c.length; ++i) d = 26*d + c.charCodeAt(i) - 64; return d - 1; }
+function encode_col(col) { var s=""; for(++col; col; col=Math.floor((col-1)/26)) s = String.fromCharCode(((col-1)%26) + 65) + s; return s; }
+function fix_col(cstr) { return cstr.replace(/^([A-Z])/,"$$$1"); }
+function unfix_col(cstr) { return cstr.replace(/^\$([A-Z])/,"$1"); }
+
+function split_cell(cstr) { return cstr.replace(/(\$?[A-Z]*)(\$?\d*)/,"$1,$2").split(","); }
+function decode_cell(cstr) { var splt = split_cell(cstr); return { c:decode_col(splt[0]), r:decode_row(splt[1]) }; }
+function encode_cell(cell) { return encode_col(cell.c) + encode_row(cell.r); }
+function fix_cell(cstr) { return fix_col(fix_row(cstr)); }
+function unfix_cell(cstr) { return unfix_col(unfix_row(cstr)); }
+function decode_range(range) { var x =range.split(":").map(decode_cell); return {s:x[0],e:x[x.length-1]}; }
+function encode_range(cs,ce) {
+	if(ce === undefined || typeof ce === 'number') return encode_range(cs.s, cs.e);
+	if(typeof cs !== 'string') cs = encode_cell(cs); if(typeof ce !== 'string') ce = encode_cell(ce);
+	return cs == ce ? cs : cs + ":" + ce;
+}
+
+function safe_decode_range(range) {
+	var o = {s:{c:0,r:0},e:{c:0,r:0}};
+	var idx = 0, i = 0, cc = 0;
+	var len = range.length;
+	for(idx = 0; i < len; ++i) {
+		if((cc=range.charCodeAt(i)-64) < 1 || cc > 26) break;
+		idx = 26*idx + cc;
+	}
+	o.s.c = --idx;
+
+	for(idx = 0; i < len; ++i) {
+		if((cc=range.charCodeAt(i)-48) < 0 || cc > 9) break;
+		idx = 10*idx + cc;
+	}
+	o.s.r = --idx;
+
+	if(i === len || range.charCodeAt(++i) === 58) { o.e.c=o.s.c; o.e.r=o.s.r; return o; }
+
+	for(idx = 0; i != len; ++i) {
+		if((cc=range.charCodeAt(i)-64) < 1 || cc > 26) break;
+		idx = 26*idx + cc;
+	}
+	o.e.c = --idx;
+
+	for(idx = 0; i != len; ++i) {
+		if((cc=range.charCodeAt(i)-48) < 0 || cc > 9) break;
+		idx = 10*idx + cc;
+	}
+	o.e.r = --idx;
+	return o;
+}
+
+function safe_format_cell(cell, v) {
+	if(cell.z !== undefined) try { return (cell.w = SSF.format(cell.z, v)); } catch(e) { }
+	if(!cell.XF) return v;
+	try { return (cell.w = SSF.format(cell.XF.ifmt||0, v)); } catch(e) { return ''+v; }
+}
+
+function format_cell(cell, v) {
+	if(cell == null || cell.t == null) return "";
+	if(cell.w !== undefined) return cell.w;
+	if(v === undefined) return safe_format_cell(cell, cell.v);
+	return safe_format_cell(cell, v);
+}
+
+function sheet_to_json(sheet, opts){
+	var val, row, range, header = 0, offset = 1, r, hdr = [], isempty, R, C, v;
+	var o = opts != null ? opts : {};
+	var raw = o.raw;
+	if(sheet == null || sheet["!ref"] == null) return [];
+	range = o.range !== undefined ? o.range : sheet["!ref"];
+	if(o.header === 1) header = 1;
+	else if(o.header === "A") header = 2;
+	else if(Array.isArray(o.header)) header = 3;
+	switch(typeof range) {
+		case 'string': r = safe_decode_range(range); break;
+		case 'number': r = safe_decode_range(sheet["!ref"]); r.s.r = range; break;
+		default: r = range;
+	}
+	if(header > 0) offset = 0;
+	var rr = encode_row(r.s.r);
+	var cols = new Array(r.e.c-r.s.c+1);
+	var out = new Array(r.e.r-r.s.r-offset+1);
+	var outi = 0;
+	for(C = r.s.c; C <= r.e.c; ++C) {
+		cols[C] = encode_col(C);
+		val = sheet[cols[C] + rr];
+		switch(header) {
+			case 1: hdr[C] = C; break;
+			case 2: hdr[C] = cols[C]; break;
+			case 3: hdr[C] = o.header[C - r.s.c]; break;
+			default:
+				if(val === undefined) continue;
+				hdr[C] = format_cell(val);
+		}
+	}
+
+	for (R = r.s.r + offset; R <= r.e.r; ++R) {
+		rr = encode_row(R);
+		isempty = true;
+		row = header === 1 ? [] : Object.create({ __rowNum__ : R });
+		for (C = r.s.c; C <= r.e.c; ++C) {
+			val = sheet[cols[C] + rr];
+			if(val === undefined || val.t === undefined) continue;
+			v = val.v;
+			switch(val.t){
+				case 'e': continue;
+				case 's': case 'str': break;
+				case 'b': case 'n': break;
+				default: throw 'unrecognized type ' + val.t;
+			}
+			if(v !== undefined) {
+				row[hdr[C]] = raw ? v : format_cell(val,v);
+				isempty = false;
+			}
+		}
+		if(isempty === false) out[outi++] = row;
+	}
+	out.length = outi;
+	return out;
+}
+
+function sheet_to_row_object_array(sheet, opts) { return sheet_to_json(sheet, opts != null ? opts : {}); }
+
+function sheet_to_csv(sheet, opts) {
+	var out = "", txt = "", qreg = /"/g;
+	var o = opts == null ? {} : opts;
+	if(sheet == null || sheet["!ref"] == null) return "";
+	var r = safe_decode_range(sheet["!ref"]);
+	var FS = o.FS !== undefined ? o.FS : ",", fs = FS.charCodeAt(0);
+	var RS = o.RS !== undefined ? o.RS : "\n", rs = RS.charCodeAt(0);
+	var row = "", rr = "", cols = [];
+	var i = 0, cc = 0, val;
+	var R = 0, C = 0;
+	for(C = r.s.c; C <= r.e.c; ++C) cols[C] = encode_col(C);
+	for(R = r.s.r; R <= r.e.r; ++R) {
+		row = "";
+		rr = encode_row(R);
+		for(C = r.s.c; C <= r.e.c; ++C) {
+			val = sheet[cols[C] + rr];
+			txt = val !== undefined ? ''+format_cell(val) : "";
+			for(i = 0, cc = 0; i !== txt.length; ++i) if((cc = txt.charCodeAt(i)) === fs || cc === rs || cc === 34) {
+				txt = "\"" + txt.replace(qreg, '""') + "\""; break; }
+			row += (C === r.s.c ? "" : FS) + txt;
+		}
+		out += row + RS;
+	}
+	return out;
+}
+var make_csv = sheet_to_csv;
+
+function sheet_to_formulae(sheet) {
+	var cmds, y = "", x, val="";
+	if(sheet == null || sheet["!ref"] == null) return "";
+	var r = safe_decode_range(sheet['!ref']), rr = "", cols = [], C;
+	cmds = new Array((r.e.r-r.s.r+1)*(r.e.c-r.s.c+1));
+	var i = 0;
+	for(C = r.s.c; C <= r.e.c; ++C) cols[C] = encode_col(C);
+	for(var R = r.s.r; R <= r.e.r; ++R) {
+		rr = encode_row(R);
+		for(C = r.s.c; C <= r.e.c; ++C) {
+			y = cols[C] + rr;
+			x = sheet[y];
+			val = "";
+			if(x === undefined) continue;
+			if(x.f != null) val = x.f;
+			else if(x.w !== undefined) val = "'" + x.w;
+			else if(x.v === undefined) continue;
+			else val = ""+x.v;
+			cmds[i++] = y + "=" + val;
+		}
+	}
+	cmds.length = i;
+	return cmds;
+}
+
+var utils = {
+	encode_col: encode_col,
+	encode_row: encode_row,
+	encode_cell: encode_cell,
+	encode_range: encode_range,
+	decode_col: decode_col,
+	decode_row: decode_row,
+	split_cell: split_cell,
+	decode_cell: decode_cell,
+	decode_range: decode_range,
+	format_cell: format_cell,
+	get_formulae: sheet_to_formulae,
+	make_csv: sheet_to_csv,
+	make_json: sheet_to_json,
+	make_formulae: sheet_to_formulae,
+	sheet_to_csv: sheet_to_csv,
+	sheet_to_json: sheet_to_json,
+	sheet_to_formulae: sheet_to_formulae,
+	sheet_to_row_object_array: sheet_to_row_object_array
+};
+XLSX.parseZip = parse_zip;
+XLSX.read = readSync;
+XLSX.readFile = readFileSync;
+XLSX.write = writeSync;
+XLSX.writeFile = writeFileSync;
+XLSX.utils = utils;
+XLSX.SSF = SSF;
+})(typeof exports !== 'undefined' ? exports : XLSX);
 //! moment.js
 //! version : 2.5.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
@@ -30436,17 +32032,28 @@ GeoTemConfig.getMousePosition = function(e) {
  * @param {String} url the url of the file to load
  * @return json object of given file
  */
-GeoTemConfig.getJson = function(url) {
+GeoTemConfig.getJson = function(url,asyncFunc) {
+	var async = false;
+	if( asyncFunc ){
+		async = true;
+	}
+	
 	var data;
 	$.ajax({
 		url : url,
-		async : false,
+		async : async,
 		dataType : 'json',
 		success : function(json) {
 			data = json;
+			if (async){
+				asyncFunc(data);
+			}
 		}
 	});
-	return data;
+	
+	if (async){
+		return data;
+	}
 }
 
 GeoTemConfig.mergeObjects = function(set1, set2) {
@@ -30684,6 +32291,26 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
 	if( !async ){
 		return json;
 	}
+};
+
+/**
+ * loads a binary file  
+ * @param {String} url of the file to load
+ * @return binary data
+ */
+GeoTemConfig.getBinary = function(url,asyncFunc) {
+	var async = true;
+
+	var req = new XMLHttpRequest();
+    req.open("GET",url,async);
+    req.responseType = "arraybuffer";
+    
+    var binaryData;
+	req.onload = function() {
+		var arrayBuffer = req.response;
+		asyncFunc(arrayBuffer);
+    };
+	req.send();
 };
 
 /**
@@ -37650,6 +39277,7 @@ Dataloader.prototype = {
 		this.addCSVLoader();
 		this.addLocalKMLLoader();
 		this.addLocalCSVLoader();
+		this.addLocalXLSXLoader();
 		
 		// trigger change event on the select so 
 		// that only the first loader div will be shown
@@ -37962,7 +39590,63 @@ Dataloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.localStorageLoaderTab);
-	}
+	},
+	
+	addLocalXLSXLoader : function() {
+		//taken from http://oss.sheetjs.com/js-xlsx/
+		var fixdata = function(data) {
+			var o = "", l = 0, w = 10240;
+			for(; l<data.byteLength/w; ++l) o+=String.fromCharCode.apply(null,new Uint8Array(data.slice(l*w,l*w+w)));
+			o+=String.fromCharCode.apply(null, new Uint8Array(data.slice(o.length)));
+			return o;
+		}
+		
+		$(this.parent.gui.loaderTypeSelect).append("<option value='LocalXLSXLoader'>local XLS/XLSX File</option>");
+		
+		this.LocalXLSXLoader = document.createElement("div");
+		$(this.LocalXLSXLoader).attr("id","LocalXLSXLoader");
+		
+		this.xlsxFile = document.createElement("input");
+		$(this.xlsxFile).attr("type","file");
+		$(this.LocalXLSXLoader).append(this.xlsxFile);
+		
+		this.loadLocalXLSXButton = document.createElement("button");
+		$(this.loadLocalXLSXButton).text("load XLS/XLSX");
+		$(this.LocalXLSXLoader).append(this.loadLocalXLSXButton);
+
+		$(this.loadLocalXLSXButton).click($.proxy(function(){
+			var filelist = $(this.xlsxFile).get(0).files;
+			if (filelist.length > 0){
+				var file = filelist[0];
+				var fileName = file.name;
+				var reader = new FileReader();
+				
+				reader.onloadend = ($.proxy(function(theFile) {
+			        return function(e) {
+			        	var workbook;
+			        	var json;
+			        	if (fileName.toLowerCase().indexOf("xlsx")!=-1){
+			        		workbook = XLSX.read(btoa(fixdata(reader.result)), {type: 'base64'});
+			        		var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+			        		var json = GeoTemConfig.convertCsv(csv);
+			        	} else {
+			        		workbook = XLS.read(btoa(fixdata(reader.result)), {type: 'base64'});
+			        		var csv = XLS.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+			        		var json = GeoTemConfig.convertCsv(csv);
+			        	}
+			        	
+						var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName);
+						if (dataSet != null)
+							this.distributeDataset(dataSet);			
+			        };
+			    }(file),this));
+
+				reader.readAsArrayBuffer(file);
+			}
+		},this));
+
+		$(this.parent.gui.loaders).append(this.LocalXLSXLoader);
+	},
 };
 /*
 * DataloaderConfig.js
@@ -38137,69 +39821,7 @@ DataloaderWidget.prototype = {
 	reset : function() {
 	},
 	
-	loadFromURL : function() {
-		var dataLoaderWidget = this;
-		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
-		var datasets = [];
-		$.each($.url().param(),function(paramName, paramValue){
-			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
-			var origURL = paramValue;
-			if (typeof GeoTemConfig.proxy != 'undefined')
-				paramValue = GeoTemConfig.proxy + paramValue;
-			if (paramName.toLowerCase().startsWith("kml")){
-				var kmlDoc = GeoTemConfig.getKml(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(3));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("csv")){
-				var json = GeoTemConfig.getCsv(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(3));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("json")){
-				var json = GeoTemConfig.getJson(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(4));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("local")){
-				var csv = $.remember({name:encodeURIComponent(origURL)});
-				//TODO: this is a bad idea and will be changed upon having a better
-				//usage model for local stored data
-				var fileName = origURL.substring("GeoBrowser_dataset_".length);
-				var json = GeoTemConfig.convertCsv(csv);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(5));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-		});
+	loadRenames : function(){
 		//load (optional!) attribute renames
 		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
 		//examples:
@@ -38288,6 +39910,9 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
+	},
+	
+	loadFilters : function(){
 		//load (optional!) filters
 		//those will create a new(!) dataset, that only contains the filtered IDs
 		$.each($.url().param(),function(paramName, paramValue){
@@ -38328,7 +39953,10 @@ DataloaderWidget.prototype = {
 				}
 
 			}
-		});
+		});		
+	},
+	
+	loadColors : function(){
 		//Load the (optional!) dataset colors
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
@@ -38369,21 +39997,144 @@ DataloaderWidget.prototype = {
 					}	
 				}
 			}	
+		});		
+	},
+	
+	loadFromURL : function() {
+		var dataLoaderWidget = this;
+		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
+		var datasets = [];
+		var parametersHash = $.url().param();
+		var parametersArray = [];
+		$.each(parametersHash,function(paramName, paramValue){
+			parametersArray.push({paramName:paramName, paramValue:paramValue});
 		});
-		//delete undefined entries in the array
-		//(can happen if the sequence given in the URL is not complete
-		// e.g. kml0=..,kml2=..)
-		//this also reorders the array,	 starting with 0
-		var tempDatasets = [];
-		for(var index in datasets){
-			if (datasets[index] instanceof Dataset){
-				tempDatasets.push(datasets[index]);
-			}
-		}
-		datasets = tempDatasets;
 		
-		if (datasets.length > 0)
-			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
+		var parseParam = function(paramNr){
+			
+			if (paramNr==parametersArray.length){
+				dataLoaderWidget.loadRenames();
+				dataLoaderWidget.loadFilters();
+				dataLoaderWidget.loadColors();
+
+				//delete undefined entries in the array
+				//(can happen if the sequence given in the URL is not complete
+				// e.g. kml0=..,kml2=..)
+				//this also reorders the array,	 starting with 0
+				var tempDatasets = [];
+				for(var index in datasets){
+					if (datasets[index] instanceof Dataset){
+						tempDatasets.push(datasets[index]);
+					}
+				}
+				datasets = tempDatasets;
+				
+				if (datasets.length > 0){
+					dataLoaderWidget.dataLoader.distributeDatasets(datasets);
+				}
+				return;
+			}
+			
+			var paramName = parametersArray[paramNr].paramName;
+			var paramValue = parametersArray[paramNr].paramValue;
+
+			var datasetID = parseInt(paramName.substr(3));
+			
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
+			var origURL = paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
+			if (paramName.toLowerCase().startsWith("kml")){
+				GeoTemConfig.getKml(paramValue, function(kmlDoc){
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("csv")){
+				GeoTemConfig.getCsv(paramValue,function(json){
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				GeoTemConfig.getJson(paramValue,function(json ){
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null){
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+				setTimeout(function(){parseParam(paramNr+1)},1);
+			} else if (paramName.toLowerCase().startsWith("xls")){
+				GeoTemConfig.getBinary(paramValue,function(binaryData){
+					var data = new Uint8Array(binaryData);
+					var arr = new Array();
+					for(var i = 0; i != data.length; ++i){
+						arr[i] = String.fromCharCode(data[i]);
+					}
+					
+					var workbook;
+		        	var json;
+		        	if (paramName.toLowerCase().startsWith("xlsx")){
+		        		workbook = XLSX.read(arr.join(""), {type:"binary"});
+		        		var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	} else {
+		        		workbook = XLS.read(arr.join(""), {type:"binary"});
+		        		var csv = XLS.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	}
+		        	
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+		};
+		
+		if (parametersArray.length>0){
+			parseParam(0)
+		}
 	}
 };
 /*
