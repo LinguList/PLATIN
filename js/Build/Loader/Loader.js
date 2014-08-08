@@ -102,13 +102,7 @@ GeoTemCoLoader = {
 	loadJSZip : function() {
 		if (typeof JSZip == 'undefined') {
 			var jsZipFiles = [{
-				url : GeoTemCoLoader.urlPrefix + 'lib/jszip/jszip.js'
-			}, {
-				url : GeoTemCoLoader.urlPrefix + 'lib/jszip/jszip-deflate.js',
-			}, {
-				url : GeoTemCoLoader.urlPrefix + 'lib/jszip/jszip-inflate.js'
-			}, {
-				url : GeoTemCoLoader.urlPrefix + 'lib/jszip/jszip-load.js',
+				url : GeoTemCoLoader.urlPrefix + 'lib/jszip/jszip.min.js',
 			}];
 			
 			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loaduCSV);
@@ -124,7 +118,22 @@ GeoTemCoLoader = {
 				url : GeoTemCoLoader.urlPrefix + 'lib/ucsv/ucsv-1.1.0-min.js',
 			}];
 			
-			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadJqueryUI);
+			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadSheetJS);
+		}
+		else {
+			GeoTemCoLoader.loadSheetJS();
+		}
+	},
+
+	loadSheetJS : function() {
+		if (typeof XLSX == 'undefined') {
+			var sheetJSFiles = [
+			                    {url : GeoTemCoLoader.urlPrefix + 'lib/sheetjs/shim.js'},
+								{url : GeoTemCoLoader.urlPrefix + 'lib/sheetjs/xls.min.js'},
+								{url : GeoTemCoLoader.urlPrefix + 'lib/sheetjs/xlsx.js'},
+			];
+			
+			(new DynaJsLoader()).loadScripts(sheetJSFiles, GeoTemCoLoader.loadJqueryUI);
 		}
 		else {
 			GeoTemCoLoader.loadJqueryUI();

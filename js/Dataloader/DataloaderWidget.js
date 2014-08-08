@@ -79,69 +79,7 @@ DataloaderWidget.prototype = {
 	reset : function() {
 	},
 	
-	loadFromURL : function() {
-		var dataLoaderWidget = this;
-		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
-		var datasets = [];
-		$.each($.url().param(),function(paramName, paramValue){
-			//startsWith and endsWith defined in SIMILE Ajax (string.js)
-			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
-			var origURL = paramValue;
-			if (typeof GeoTemConfig.proxy != 'undefined')
-				paramValue = GeoTemConfig.proxy + paramValue;
-			if (paramName.toLowerCase().startsWith("kml")){
-				var kmlDoc = GeoTemConfig.getKml(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(3));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("csv")){
-				var json = GeoTemConfig.getCsv(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(3));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("json")){
-				var json = GeoTemConfig.getJson(paramValue);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(4));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-			else if (paramName.toLowerCase().startsWith("local")){
-				var csv = $.remember({name:encodeURIComponent(origURL)});
-				//TODO: this is a bad idea and will be changed upon having a better
-				//usage model for local stored data
-				var fileName = origURL.substring("GeoBrowser_dataset_".length);
-				var json = GeoTemConfig.convertCsv(csv);
-				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
-				if (dataSet != null){
-					var datasetID = parseInt(paramName.substr(5));
-					if (!isNaN(datasetID)){
-						datasets[datasetID] = dataSet;
-					} else {
-						datasets.push(dataSet);							
-					}
-				}
-			}
-		});
+	loadRenames : function(){
 		//load (optional!) attribute renames
 		//each rename param is {latitude:..,longitude:..,place:..,date:..,timeSpanBegin:..,timeSpanEnd:..}
 		//examples:
@@ -230,6 +168,9 @@ DataloaderWidget.prototype = {
 				}
 			}
 		});
+	},
+	
+	loadFilters : function(){
 		//load (optional!) filters
 		//those will create a new(!) dataset, that only contains the filtered IDs
 		$.each($.url().param(),function(paramName, paramValue){
@@ -270,7 +211,10 @@ DataloaderWidget.prototype = {
 				}
 
 			}
-		});
+		});		
+	},
+	
+	loadColors : function(){
 		//Load the (optional!) dataset colors
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
@@ -311,20 +255,143 @@ DataloaderWidget.prototype = {
 					}	
 				}
 			}	
+		});		
+	},
+	
+	loadFromURL : function() {
+		var dataLoaderWidget = this;
+		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
+		var datasets = [];
+		var parametersHash = $.url().param();
+		var parametersArray = [];
+		$.each(parametersHash,function(paramName, paramValue){
+			parametersArray.push({paramName:paramName, paramValue:paramValue});
 		});
-		//delete undefined entries in the array
-		//(can happen if the sequence given in the URL is not complete
-		// e.g. kml0=..,kml2=..)
-		//this also reorders the array,	 starting with 0
-		var tempDatasets = [];
-		for(var index in datasets){
-			if (datasets[index] instanceof Dataset){
-				tempDatasets.push(datasets[index]);
-			}
-		}
-		datasets = tempDatasets;
 		
-		if (datasets.length > 0)
-			dataLoaderWidget.dataLoader.distributeDatasets(datasets);
+		var parseParam = function(paramNr){
+			
+			if (paramNr==parametersArray.length){
+				dataLoaderWidget.loadRenames();
+				dataLoaderWidget.loadFilters();
+				dataLoaderWidget.loadColors();
+
+				//delete undefined entries in the array
+				//(can happen if the sequence given in the URL is not complete
+				// e.g. kml0=..,kml2=..)
+				//this also reorders the array,	 starting with 0
+				var tempDatasets = [];
+				for(var index in datasets){
+					if (datasets[index] instanceof Dataset){
+						tempDatasets.push(datasets[index]);
+					}
+				}
+				datasets = tempDatasets;
+				
+				if (datasets.length > 0){
+					dataLoaderWidget.dataLoader.distributeDatasets(datasets);
+				}
+				return;
+			}
+			
+			var paramName = parametersArray[paramNr].paramName;
+			var paramValue = parametersArray[paramNr].paramValue;
+
+			var datasetID = parseInt(paramName.substr(3));
+			
+			//startsWith and endsWith defined in SIMILE Ajax (string.js)
+			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
+			var origURL = paramValue;
+			if (typeof GeoTemConfig.proxy != 'undefined')
+				paramValue = GeoTemConfig.proxy + paramValue;
+			if (paramName.toLowerCase().startsWith("kml")){
+				GeoTemConfig.getKml(paramValue, function(kmlDoc){
+					var dataSet = new Dataset(GeoTemConfig.loadKml(kmlDoc), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("csv")){
+				GeoTemConfig.getCsv(paramValue,function(json){
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("json")){
+				GeoTemConfig.getJson(paramValue,function(json ){
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+			else if (paramName.toLowerCase().startsWith("local")){
+				var csv = $.remember({name:encodeURIComponent(origURL)});
+				//TODO: this is a bad idea and will be changed upon having a better
+				//usage model for local stored data
+				var fileName = origURL.substring("GeoBrowser_dataset_".length);
+				var json = GeoTemConfig.convertCsv(csv);
+				var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL, "local");
+				if (dataSet != null){
+					if (!isNaN(datasetID)){
+						datasets[datasetID] = dataSet;
+					} else {
+						datasets.push(dataSet);							
+					}
+				}
+				setTimeout(function(){parseParam(paramNr+1)},1);
+			} else if (paramName.toLowerCase().startsWith("xls")){
+				GeoTemConfig.getBinary(paramValue,function(binaryData){
+					var data = new Uint8Array(binaryData);
+					var arr = new Array();
+					for(var i = 0; i != data.length; ++i){
+						arr[i] = String.fromCharCode(data[i]);
+					}
+					
+					var workbook;
+		        	var json;
+		        	if (paramName.toLowerCase().startsWith("xlsx")){
+		        		workbook = XLSX.read(arr.join(""), {type:"binary"});
+		        		var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	} else {
+		        		workbook = XLS.read(arr.join(""), {type:"binary"});
+		        		var csv = XLS.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	}
+		        	
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
+			}
+		};
+		
+		if (parametersArray.length>0){
+			parseParam(0)
+		}
 	}
 };

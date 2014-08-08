@@ -274,17 +274,28 @@ GeoTemConfig.getMousePosition = function(e) {
  * @param {String} url the url of the file to load
  * @return json object of given file
  */
-GeoTemConfig.getJson = function(url) {
+GeoTemConfig.getJson = function(url,asyncFunc) {
+	var async = false;
+	if( asyncFunc ){
+		async = true;
+	}
+	
 	var data;
 	$.ajax({
 		url : url,
-		async : false,
+		async : async,
 		dataType : 'json',
 		success : function(json) {
 			data = json;
+			if (async){
+				asyncFunc(data);
+			}
 		}
 	});
-	return data;
+	
+	if (async){
+		return data;
+	}
 }
 
 GeoTemConfig.mergeObjects = function(set1, set2) {
@@ -522,6 +533,26 @@ GeoTemConfig.getCsv = function(url,asyncFunc) {
 	if( !async ){
 		return json;
 	}
+};
+
+/**
+ * loads a binary file  
+ * @param {String} url of the file to load
+ * @return binary data
+ */
+GeoTemConfig.getBinary = function(url,asyncFunc) {
+	var async = true;
+
+	var req = new XMLHttpRequest();
+    req.open("GET",url,async);
+    req.responseType = "arraybuffer";
+    
+    var binaryData;
+	req.onload = function() {
+		var arrayBuffer = req.response;
+		asyncFunc(arrayBuffer);
+    };
+	req.send();
 };
 
 /**

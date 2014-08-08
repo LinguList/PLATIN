@@ -55,6 +55,7 @@ Dataloader.prototype = {
 		this.addCSVLoader();
 		this.addLocalKMLLoader();
 		this.addLocalCSVLoader();
+		this.addLocalXLSXLoader();
 		
 		// trigger change event on the select so 
 		// that only the first loader div will be shown
@@ -367,5 +368,61 @@ Dataloader.prototype = {
 		},this));
 
 		$(this.parent.gui.loaders).append(this.localStorageLoaderTab);
-	}
+	},
+	
+	addLocalXLSXLoader : function() {
+		//taken from http://oss.sheetjs.com/js-xlsx/
+		var fixdata = function(data) {
+			var o = "", l = 0, w = 10240;
+			for(; l<data.byteLength/w; ++l) o+=String.fromCharCode.apply(null,new Uint8Array(data.slice(l*w,l*w+w)));
+			o+=String.fromCharCode.apply(null, new Uint8Array(data.slice(o.length)));
+			return o;
+		}
+		
+		$(this.parent.gui.loaderTypeSelect).append("<option value='LocalXLSXLoader'>local XLS/XLSX File</option>");
+		
+		this.LocalXLSXLoader = document.createElement("div");
+		$(this.LocalXLSXLoader).attr("id","LocalXLSXLoader");
+		
+		this.xlsxFile = document.createElement("input");
+		$(this.xlsxFile).attr("type","file");
+		$(this.LocalXLSXLoader).append(this.xlsxFile);
+		
+		this.loadLocalXLSXButton = document.createElement("button");
+		$(this.loadLocalXLSXButton).text("load XLS/XLSX");
+		$(this.LocalXLSXLoader).append(this.loadLocalXLSXButton);
+
+		$(this.loadLocalXLSXButton).click($.proxy(function(){
+			var filelist = $(this.xlsxFile).get(0).files;
+			if (filelist.length > 0){
+				var file = filelist[0];
+				var fileName = file.name;
+				var reader = new FileReader();
+				
+				reader.onloadend = ($.proxy(function(theFile) {
+			        return function(e) {
+			        	var workbook;
+			        	var json;
+			        	if (fileName.toLowerCase().indexOf("xlsx")!=-1){
+			        		workbook = XLSX.read(btoa(fixdata(reader.result)), {type: 'base64'});
+			        		var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+			        		var json = GeoTemConfig.convertCsv(csv);
+			        	} else {
+			        		workbook = XLS.read(btoa(fixdata(reader.result)), {type: 'base64'});
+			        		var csv = XLS.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+			        		var json = GeoTemConfig.convertCsv(csv);
+			        	}
+			        	
+						var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName);
+						if (dataSet != null)
+							this.distributeDataset(dataSet);			
+			        };
+			    }(file),this));
+
+				reader.readAsArrayBuffer(file);
+			}
+		},this));
+
+		$(this.parent.gui.loaders).append(this.LocalXLSXLoader);
+	},
 };
