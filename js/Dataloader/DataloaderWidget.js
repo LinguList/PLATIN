@@ -357,6 +357,36 @@ DataloaderWidget.prototype = {
 					}
 				}
 				setTimeout(function(){parseParam(paramNr+1)},1);
+			} else if (paramName.toLowerCase().startsWith("xls")){
+				GeoTemConfig.getBinary(paramValue,function(binaryData){
+					var data = new Uint8Array(binaryData);
+					var arr = new Array();
+					for(var i = 0; i != data.length; ++i){
+						arr[i] = String.fromCharCode(data[i]);
+					}
+					
+					var workbook;
+		        	var json;
+		        	if (paramName.toLowerCase().startsWith("xlsx")){
+		        		workbook = XLSX.read(arr.join(""), {type:"binary"});
+		        		var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	} else {
+		        		workbook = XLS.read(arr.join(""), {type:"binary"});
+		        		var csv = XLS.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+		        		var json = GeoTemConfig.convertCsv(csv);
+		        	}
+		        	
+					var dataSet = new Dataset(GeoTemConfig.loadJson(json), fileName, origURL);
+					if (dataSet != null){
+						if (!isNaN(datasetID)){
+							datasets[datasetID] = dataSet;
+						} else {
+							datasets.push(dataSet);							
+						}
+					}
+					setTimeout(function(){parseParam(paramNr+1)},1);
+				});
 			}
 		};
 		
