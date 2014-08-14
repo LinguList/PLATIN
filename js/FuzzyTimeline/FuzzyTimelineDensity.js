@@ -51,6 +51,8 @@ function FuzzyTimelineDensity(parent,div) {
 	this.maxTickCount = this.options.maxDensityTicks;
 	
 	this.datasets;
+	this.possibleValues={};
+	this.possibleValuesCnt=0;	
 }
 
 FuzzyTimelineDensity.prototype = {
@@ -89,19 +91,75 @@ FuzzyTimelineDensity.prototype = {
 		var density = this;
 		var plots = [];
 		var objectHashes = [];
-		$(datasets).each(function(){
-			var chartDataCounter = new Object();
-			var objectHash = new Object();
-
-			for (var i = 0; i < density.tickCount; i++){
-				chartDataCounter[i]=0;
-			}
+		
+		var watchedColumn = "weight";
+		
+		var isNumeric=true;
+		$(GeoTemConfig.datasets).each(function(){
 			//check if we got "real" datasets, or just array of objects
 			var datasetObjects = this;
 			if (typeof this.objects !== "undefined")
 				datasetObjects = this.objects;
+			
+			$(datasetObjects).each(function(){
+				var data = density.parent.getElementData(this,watchedColumn);
+				if (isNaN(data)){
+					isNumeric=false;
+					return false;
+				}
+			});
+			
+			if (!isNumeric){
+				return false;
+			}
+		});
+		
+		density.possibleValues={};
+		density.possibleValuesCnt=0;
+		//if not numeric, build object of all possible values
+		if (!isNumeric){
+			$(GeoTemConfig.datasets).each(function(){
+				//check if we got "real" datasets, or just array of objects
+				var datasetObjects = this;
+				if (typeof this.objects !== "undefined")
+					datasetObjects = this.objects;
+				
+				$(datasetObjects).each(function(){
+					var data = density.parent.getElementData(this,watchedColumn);
+					if (typeof density.possibleValues[data] == "undefined"){
+						density.possibleValues[data]=1;
+						density.possibleValuesCnt++;
+					} else {
+						density.possibleValues[data]++;
+					}
+				});
+			});
+		} else {
+			density.possibleValues={"numeric":0};
+			density.possibleValuesCnt=1;
+		}
+		
+		$(datasets).each(function(){
+			//check if we got "real" datasets, or just array of objects
+			var datasetObjects = this;
+			if (typeof this.objects !== "undefined")
+				datasetObjects = this.objects;
+			
+			var objectHash = new Object();
+			
+			var chartDataCounters=[];
+			$.each(density.possibleValues,function(watchedValue,watchedValueCnt){
+				var chartDataCounter = new Object();
+
+				for (var i = 0; i < density.tickCount; i++){
+					chartDataCounter[i]=0;
+				}
+				chartDataCounters[watchedValue]=chartDataCounter;
+			});
+			
 			$(datasetObjects).each(function(){
 				var ticks = density.parent.getTicks(this, density.singleTickWidth);
+				var data = density.parent.getElementData(this,watchedColumn);
 				if (typeof ticks !== "undefined"){
 					var exactTickCount = 
 						ticks.firstTickPercentage+
@@ -128,8 +186,11 @@ FuzzyTimelineDensity.prototype = {
 							else
 								weight = this.weight;
 						}
-						
-						chartDataCounter[i] += weight;
+						if (!isNumeric){
+							chartDataCounters[data][i] += weight;							
+						} else {
+							chartDataCounters["numeric"][i] += weight;							
+						}
 						//add this object to the hash
 						if (typeof objectHash[i] === "undefined")
 							objectHash[i] = [];
@@ -138,12 +199,14 @@ FuzzyTimelineDensity.prototype = {
 				}
 			});
 			
-			//scale according to selected type
-			chartDataCounter = density.parent.scaleData(chartDataCounter);
-			
-			var udChartData = density.createPlot(chartDataCounter);
-			if (udChartData.length > 0)
-				plots.push(udChartData);
+			$.each(density.possibleValues,function(watchedValue,watchedValueCnt){
+				//scale according to selected type
+				chartDataCounters[watchedValue] = density.parent.scaleData(chartDataCounters[watchedValue]);
+				
+				var udChartData = density.createPlot(chartDataCounters[watchedValue]);
+				if (udChartData.length > 0)
+					plots.push(udChartData);					
+			});
 			
 			objectHashes.push(objectHash);			
 		});
@@ -280,14 +343,15 @@ FuzzyTimelineDensity.prototype = {
 		var i = 0;
 		$(highlight_select_plot).each(function(){
 			var color;
-			if (i < GeoTemConfig.datasets.length){
-				var datasetColors = GeoTemConfig.getColor(i);
-				if (highlight_select_plot.length>GeoTemConfig.datasets.length)
+			var datasetIndex=Math.floor(i/density.possibleValuesCnt);
+			if (i < density.datasetsPlot.length){
+				var datasetColors = GeoTemConfig.getColor(datasetIndex);
+				if (highlight_select_plot.length>density.datasetsPlot.length)
 					color = "rgb("+datasetColors.r0+","+datasetColors.g0+","+datasetColors.b0+")";
 				else 
 					color = "rgb("+datasetColors.r1+","+datasetColors.g1+","+datasetColors.b1+")";
 			} else {
-				var datasetColors = GeoTemConfig.getColor(i-GeoTemConfig.datasets.length);
+				var datasetColors = GeoTemConfig.getColor(datasetIndex-GeoTemConfig.datasets.length);
 				color = "rgb("+datasetColors.r1+","+datasetColors.g1+","+datasetColors.b1+")";
 			}			
 			
