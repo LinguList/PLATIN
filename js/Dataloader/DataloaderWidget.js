@@ -91,7 +91,7 @@ DataloaderWidget.prototype = {
 		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
-				var datasetID = parseInt(paramName.substr(6));
+				var datasetID = parseInt(paramName.replace(/\D/g,''));
 				var dataset;
 				if (isNaN(datasetID)){
 					var dataset;
@@ -182,7 +182,7 @@ DataloaderWidget.prototype = {
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			if (paramName.toLowerCase().startsWith("filter")){
-				var datasetID = parseInt(paramName.substr(6));
+				var datasetID = parseInt(paramName.replace(/\D/g,''));
 				var dataset;
 				if (isNaN(datasetID)){
 					var dataset;
@@ -227,7 +227,7 @@ DataloaderWidget.prototype = {
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
 				//color is 1-based, index is 0-based!
-				var datasetID = parseInt(paramName.substring("color".length))-1;
+				var datasetID = parseInt(paramName.replace(/\D/g,''));
 				if (datasets.length > datasetID){
 					if (typeof datasets[datasetID].color === "undefined"){
 						var color = new Object();
@@ -305,7 +305,7 @@ DataloaderWidget.prototype = {
 			var paramName = parametersArray[paramNr].paramName;
 			var paramValue = parametersArray[paramNr].paramValue;
 
-			var datasetID = parseInt(paramName.substr(3));
+			var datasetID = parseInt(paramName.replace(/\D/g,''));
 			
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			var fileName = dataLoaderWidget.dataLoader.getFileName(paramValue);
