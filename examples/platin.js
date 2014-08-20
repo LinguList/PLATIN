@@ -39779,6 +39779,8 @@ DataloaderWidget = function(core, div, options) {
 	this.gui = new DataloaderGui(this, div, this.options);
 	
 	this.dataLoader = new Dataloader(this);
+	
+	this.datasets = [];
 }
 
 DataloaderWidget.prototype = {
@@ -39827,6 +39829,8 @@ DataloaderWidget.prototype = {
 		//examples:
 		//	&rename1={"latitude":"lat1","longitude":"lon1"}
 		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		var dataLoaderWidget = this;
+		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
 				var datasetID = parseInt(paramName.substr(6));
@@ -39915,6 +39919,8 @@ DataloaderWidget.prototype = {
 	loadFilters : function(){
 		//load (optional!) filters
 		//those will create a new(!) dataset, that only contains the filtered IDs
+		var dataLoaderWidget = this;
+		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
 			if (paramName.toLowerCase().startsWith("filter")){
@@ -39958,6 +39964,8 @@ DataloaderWidget.prototype = {
 	
 	loadColors : function(){
 		//Load the (optional!) dataset colors
+		var dataLoaderWidget = this;
+		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
 				//color is 1-based, index is 0-based!
@@ -40002,8 +40010,9 @@ DataloaderWidget.prototype = {
 	
 	loadFromURL : function() {
 		var dataLoaderWidget = this;
+		dataLoaderWidget.datasets = [];
 		//using jQuery-URL-Parser (https://github.com/skruse/jQuery-URL-Parser)
-		var datasets = [];
+		var datasets = dataLoaderWidget.datasets;
 		var parametersHash = $.url().param();
 		var parametersArray = [];
 		$.each(parametersHash,function(paramName, paramValue){
@@ -40129,6 +40138,8 @@ DataloaderWidget.prototype = {
 					}
 					setTimeout(function(){parseParam(paramNr+1)},1);
 				});
+			} else {
+				setTimeout(function(){parseParam(paramNr+1)},1);
 			}
 		};
 		
