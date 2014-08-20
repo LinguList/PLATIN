@@ -87,6 +87,7 @@ DataloaderWidget.prototype = {
 		//examples:
 		//	&rename1={"latitude":"lat1","longitude":"lon1"}
 		//	&rename2=[{"latitude":"lat1","longitude":"lon1"},{"latitude":"lat2","longitude":"lon2"}]
+		var dataLoaderWidget = this;
 		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("rename")){
@@ -176,6 +177,7 @@ DataloaderWidget.prototype = {
 	loadFilters : function(){
 		//load (optional!) filters
 		//those will create a new(!) dataset, that only contains the filtered IDs
+		var dataLoaderWidget = this;
 		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			//startsWith and endsWith defined in SIMILE Ajax (string.js)
@@ -220,6 +222,7 @@ DataloaderWidget.prototype = {
 	
 	loadColors : function(){
 		//Load the (optional!) dataset colors
+		var dataLoaderWidget = this;
 		var datasets = dataLoaderWidget.datasets;
 		$.each($.url().param(),function(paramName, paramValue){
 			if (paramName.toLowerCase().startsWith("color")){
