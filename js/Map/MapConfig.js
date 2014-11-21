@@ -279,7 +279,8 @@ function MapConfig(options) {
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
 		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
-		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
+		placenameTagsStyle : 'value', // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
+		hideUnselected : false //hide unselected circles (features) on highlight/selection
 
 	};
 	if ( typeof options != 'undefined') {
