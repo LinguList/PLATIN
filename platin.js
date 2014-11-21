@@ -34307,7 +34307,8 @@ function MapConfig(options) {
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
 		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
-		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
+		placenameTagsStyle : 'value', // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
+		hideUnselected : false //hide unselected circles (features) on highlight/selection
 
 	};
 	if ( typeof options != 'undefined') {
@@ -35835,6 +35836,18 @@ MapWidget.prototype = {
 	 * updates the the object layer of the map after selections had been executed in timeplot or table or zoom level has changed
 	 */
 	highlightChanged : function(mapObjects) {
+		var hideEmptyCircles = false;
+
+		if (this.config.options.hideUnselected){
+			var overallCnt = 0;
+			for (var i in mapObjects){
+				overallCnt += mapObjects[i].length;
+			}
+			if (overallCnt > 0){
+				hideEmptyCircles = true;
+			}
+		}
+		
 		if( !GeoTemConfig.highlightEvents ){
 			return;
 		}
@@ -35848,10 +35861,19 @@ MapWidget.prototype = {
 		var polygon = this.openlayersMap.getExtent().toGeometry();
 		for (var i in points ) {
 			for (var j in points[i] ) {
+				var point = points[i][j];
+				
+				if (hideEmptyCircles){
+					point.feature.style.display = 'none';
+				} else {
+					point.feature.style.display = '';
+				} 
+					
 				this.updatePoint(points[i][j], polygon);
 			}
 		}
 		this.displayConnections();
+		this.objectLayer.redraw();
 	},
 
 	selectionChanged : function(selection) {
