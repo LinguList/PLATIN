@@ -40,6 +40,8 @@ Storytellingv2Widget = function(core, div, options) {
 	
 	this.datasetLink;
 	
+	this.initWidget();
+	
 	Publisher.Subscribe('mapChanged', this, function(mapName) {
 		this.client.currentStatus["mapChanged"] = mapName;
 		this.client.createLink();
@@ -64,130 +66,67 @@ Storytellingv2Widget.prototype = {
 		
 		$(gui.storytellingv2Container).empty();
 		
-//		var magneticLinkParam = "";
-//		var datasetIndex = 0;
-//		var linkCount = 1;
-//		$(storytellingv2Widget.datasets).each(function(){
-//			var dataset = this;
-//			
-//			if (magneticLinkParam.length > 0)
-//				magneticLinkParam += "&";
-//
-//			var paragraph = $("<p></p>");
-//			paragraph.append(dataset.label);
-//			if (typeof dataset.url !== "undefined"){
-//				//TODO: makes only sense for KML or CSV URLs, so "type" of
-//				//URL should be preserved (in dataset).
-//				//startsWith and endsWith defined in SIMILE Ajax (string.js) 
-//				var type="csv";
-//				if (typeof dataset.type !== "undefined")
-//					type = dataset.type;
-//				else {
-//					if (dataset.url.toLowerCase().endsWith("kml"))
-//						type = "kml";
-//				}
-//
-//				magneticLinkParam += type+linkCount+"=";
-//				linkCount++;
-//				magneticLinkParam += dataset.url;
-//				
-//				var tableLinkDiv = document.createElement('a');
-//				tableLinkDiv.title = dataset.url;
-//				tableLinkDiv.href = dataset.url;
-//				tableLinkDiv.target = '_';
-//				tableLinkDiv.setAttribute('class', 'externalLink');
-//				paragraph.append(tableLinkDiv);
-//			} else {
-//				if (storytellingWidget.options.dariahStorage){
-//					var uploadToDARIAH = document.createElement('a');
-//					$(uploadToDARIAH).append("Upload to DARIAH Storage");
-//					uploadToDARIAH.title = "";
-//					uploadToDARIAH.href = dataset.url;
-//					
-//					var localDatasetIndex = new Number(datasetIndex);
-//					$(uploadToDARIAH).click(function(){
-//						var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
-//						// taken from dariah.storage.js
-//						var storageURL = "http://ref.dariah.eu/storage/"
-//					    $.ajax({
-//							url: storageURL,
-//							type: 'POST',
-//							contentType: 'text/csv',
-//							data: csv,
-//							success: function(data, status, xhr) {
-//								var location = xhr.getResponseHeader('Location');
-//								// the dariah storage id
-//							    dsid = location.substring(location.lastIndexOf('/')+1);
-//							    
-//							    //add URL to dataset
-//							    storytellingWidget.datasets[localDatasetIndex].url = location;
-//							    storytellingWidget.datasets[localDatasetIndex].type = "csv";
-//							    //refresh list
-//							    storytellingWidget.initWidget(storytellingWidget.datasets);
-//							},
-//							error: function (data, text, error) {
-//								alert('error creating new file in dariah storage because ' + text);
-//								console.log(data);
-//								console.log(text);
-//								console.log(error);
-//							}
-//					    });					
-//						//discard link click-event
-//						return(false);
-//					});
-//					paragraph.append(uploadToDARIAH);
-//				}
-//				// TODO: if layout is more usable, both options could be used ("else" removed)
-//				else if (storytellingWidget.options.localStorage){
-//					var saveToLocalStorage = document.createElement('a');
-//					$(saveToLocalStorage).append("Save to Local Storage");
-//					saveToLocalStorage.title = "";
-//					saveToLocalStorage.href = dataset.url;
-//					
-//					var localDatasetIndex = new Number(datasetIndex);
-//					$(saveToLocalStorage).click(function(){
-//						var csv = GeoTemConfig.createCSVfromDataset(localDatasetIndex);
-//
-//						var storageName = "GeoBrowser_dataset_"+GeoTemConfig.datasets[localDatasetIndex].label;
-//						$.remember({
-//							name:storageName,
-//							value:csv
-//						});
-//
-//						//add URL to dataset
-//					    storytellingWidget.datasets[localDatasetIndex].url = storageName;
-//					    storytellingWidget.datasets[localDatasetIndex].type = "local";
-//					    //refresh list
-//					    storytellingWidget.initWidget(storytellingWidget.datasets);
-//						
-//						//discard link click-event
-//						return(false);
-//					});
-//					paragraph.append(saveToLocalStorage);
-//				}
-//			}
-//			
-//			$(gui.storytellingContainer).append(paragraph);
-//			datasetIndex++;
-//		});
-//		
-//		this.datasetLink = magneticLinkParam;
-//		this.createLink();
+		var tree = $('<div style="border: 2px solid; padding: 5px; float: left;" id="storytellingv2jstree"><ul><li>Checkpoint 1<ul><li>Checkpoint 1a</li><li>Checkpoint 1b</li><li>Checkpoint 1c</li></ul></li></ul></div>');		
+		tree.jstree();
+		
+		var menu = $('<div style="float: left;"></div>');
+		
+		var importexportsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
+		var importbutton = $('<input type="button" id="storytellingv2import" name="import" value="import" />');
+		var exportbutton = $('<input type="button" id="storytellingv2export" name="export" value="export" />');
+		var resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
+		$(importexportsubmenu).append(importbutton);
+		$(importexportsubmenu).append(exportbutton);
+		$(importexportsubmenu).append(resetbutton);
+		
+		var treemanipulationsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
+		var newbutton = $('<input type="button" id="storytellingv2new" name="new" value="new" />');
+		var loadbutton = $('<input type="button" id="storytellingv2load" name="load" value="load" />');
+		var deletebutton = $('<input type="button" id="storytellingv2delete" name="delete" value="delete" />');
+		var renamebutton = $('<input type="button" id="storytellingv2rename" name="rename" value="rename" />');
+		var forwardbutton = $('<input type="button" id="storytellingv2forward" name="forward" value=">>" />');
+		var backwardbutton = $('<input type="button" id="storytellingv2backward" name="backward" value="<<" />');
+		$(treemanipulationsubmenu).append(newbutton);
+		$(treemanipulationsubmenu).append(loadbutton);
+		$(treemanipulationsubmenu).append(deletebutton);
+		$(treemanipulationsubmenu).append(renamebutton);
+		$(treemanipulationsubmenu).append(backwardbutton);
+		$(treemanipulationsubmenu).append(forwardbutton);		
+		
+		var metadata = $('<div></div>');
+		var metadatafieldset = $('<fieldset style="border: 2px solid; margin: 2px; padding: 5px;"><legend>Metadata</legend></fieldset>');
+		var metadataname = $('<p>Name: Checkpoint 1</p>');
+		var metadatatimestamp = $('<p>Timestamp: 10/10/92 14:32</p>');
+		var metadatadescription = $('<p>Description: This is Checkpoint 1</p>');
+		$(metadatafieldset).append(metadataname);
+		$(metadatafieldset).append(metadatatimestamp);
+		$(metadatafieldset).append(metadatadescription);
+		$(metadata).append(metadatafieldset);
+			
+		$(gui.storytellingv2Container).append(tree);
+		$(menu).append(importexportsubmenu);
+		$(menu).append(treemanipulationsubmenu);
+		$(menu).append(metadata);
+		$(gui.storytellingv2Container).append(menu);
+		
+		newbutton.click($.proxy(function() {
+			var newform = $('<div></div>');
+			var nameinput = $('<p>Name: <input type="text" /></p>');
+			var descriptioninput = $('<p>Description: <textarea name="description"></textarea></p>');
+			var addbutton = $('<p><input type="button" name="add" value="add" /></p>');
+			addbutton.click($.proxy(function() {
+				$(tree).jstree().create_node("test");
+				$(newform).empty();
+			}));
+			$(newform).append(nameinput);
+			$(newform).append(descriptioninput);
+			$(newform).append(addbutton);
+			$(treemanipulationsubmenu).append(newform);
+		}));
+		
 	},
 	
 	createLink : function() {
-		$(this.gui.storytellingContainer).find('.magneticLink').remove();
-
-		var magneticLink = document.createElement('a');
-		magneticLink.setAttribute('class', 'magneticLink');
-		$(magneticLink).append("Magnetic Link");
-		magneticLink.title = "Use this link to reload currently loaded (online) data.";
-		magneticLink.href = "?"+this.datasetLink;
-		var currentStatusParam = $.param(this.currentStatus);
-		if (currentStatusParam.length > 0)
-			magneticLink.href += "&currentStatus="+currentStatusParam;
-		magneticLink.target = '_';
-		$(this.gui.storytellingContainer).prepend(magneticLink);
 	},
 	
 	highlightChanged : function(objects) {

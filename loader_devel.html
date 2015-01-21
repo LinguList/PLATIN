@@ -52,7 +52,7 @@
 					<legend>Load Data</legend>
 				</fieldset>
 			</td>
-			<td rowspan=2 width=50% valign=top>
+			<td rowspan=3 width=50% valign=top>
 				<fieldset id="storytellingContainerDiv" style="position:relative;">
 					<legend>Data History</legend>
 				</fieldset>			
@@ -65,6 +65,13 @@
 				</fieldset>
 			</td>
 		</tr>
+		<tr>
+			<td width=50%>
+				<fieldset id="storytelling2ContainerDiv" style="position:relative;">
+					<legend>Storytelling</legend>
+				</fieldset>
+			</td>
+		</tr>	
 		<tr>
 			<td width=50%>
 			    <div id="mapContainerDiv" style="position:relative;"></div>
@@ -110,7 +117,11 @@
         var storytellingDiv = document.getElementById("storytellingContainerDiv");
         var storytelling = new WidgetWrapper();
         var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
-
+        
+        var storytelling2Div = document.getElementById("storytelling2ContainerDiv");
+        var storytelling2 = new WidgetWrapper();
+        var storytellingv2Widget = new Storytellingv2Widget(storytelling2,storytelling2Div);
+        
         dataloaderWidget.loadFromURL();
     });
     </script>

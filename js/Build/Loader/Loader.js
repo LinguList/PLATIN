@@ -160,7 +160,7 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'lib/SimileRemnants.js'
 		}];
 		
-		(new DynaJsLoader()).loadScripts(jsFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(jsFiles, GeoTemCoLoader.loadJsTree);
 	},
 	
 	loadJsTree : function() {
@@ -171,7 +171,7 @@ GeoTemCoLoader = {
 		
 		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/jstree/themes/default/style.min.css') );
 		
-		(new DynaJsLoader()).loadScripts(jsTreeFiles, GeoTemCoLoader.loadJsTree);
+		(new DynaJsLoader()).loadScripts(jsTreeFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {
@@ -321,6 +321,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'StorytellingWidget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Storytelling/' + 'Storytelling.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2Config.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2Gui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2Widget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
