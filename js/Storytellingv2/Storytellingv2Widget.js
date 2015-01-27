@@ -40,20 +40,10 @@ Storytellingv2Widget = function(core, div, options) {
 	
 	this.datasetLink;
 	
+	this.selected;
+	
 	this.initWidget();
 	
-	Publisher.Subscribe('mapChanged', this, function(mapName) {
-		this.client.currentStatus["mapChanged"] = mapName;
-		this.client.createLink();
-	});
-	
-	var currentStatus = $.url().param("currentStatus");
-	if (typeof currentStatus !== "undefined"){
-		this.currentStatus = $.deparam(currentStatus);
-		$.each(this.currentStatus,function(action,data){
-			Publisher.Publish(action, data, this);
-		});
-	}
 }
 
 Storytellingv2Widget.prototype = {
@@ -64,11 +54,16 @@ Storytellingv2Widget.prototype = {
 		
 		storytellingv2Widget.datasets = data;
 		
+		
 		$(gui.storytellingv2Container).empty();
 		
-		var tree = $('<div style="border: 2px solid; padding: 5px; float: left;" id="storytellingv2jstree"><ul><li>Checkpoint 1<ul><li>Checkpoint 1a</li><li>Checkpoint 1b</li><li>Checkpoint 1c</li></ul></li></ul></div>');		
-		tree.jstree();
-		
+		var tree = $('<div style="border: 2px solid; padding: 5px; float: left;" id="storytellingv2jstree"><ul></ul></div>');		
+		tree.jstree({
+			'core' : {
+				'check_callback' : true,
+			},
+		});
+				
 		var menu = $('<div style="float: left;"></div>');
 		
 		var importexportsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
@@ -95,14 +90,34 @@ Storytellingv2Widget.prototype = {
 		
 		var metadata = $('<div></div>');
 		var metadatafieldset = $('<fieldset style="border: 2px solid; margin: 2px; padding: 5px;"><legend>Metadata</legend></fieldset>');
-		var metadataname = $('<p>Name: Checkpoint 1</p>');
-		var metadatatimestamp = $('<p>Timestamp: 10/10/92 14:32</p>');
-		var metadatadescription = $('<p>Description: This is Checkpoint 1</p>');
+		var metadataname = $('<p>Name:</p>');
+		var metadatatimestamp = $('<p>Timestamp:</p>');
+		var metadatadescription = $('<p>Description:</p>');
+		var metadataselected = $('<p></p>');
 		$(metadatafieldset).append(metadataname);
 		$(metadatafieldset).append(metadatatimestamp);
 		$(metadatafieldset).append(metadatadescription);
+		$(metadatafieldset).append(metadataselected);
 		$(metadata).append(metadatafieldset);
 			
+		tree.on('select_node.jstree', function(e, data) {
+			$(metadataname).empty().append($('<p>Name: '+data.node.text+'</p>'));
+			var tstamp = new Date(data.node.li_attr.timestamp);
+			$(metadatatimestamp).empty().append($('<p>Timestamp: '+tstamp.toUTCString()+'</p>'));
+			$(metadatadescription).empty().append($('<p>Description: '+data.node.li_attr.description+'</p>'));
+			var objectcount = 0;
+			var datasetcount = 0;
+			if ($.isArray(data.node.li_attr.selected)) {
+				datasetcount = data.node.li_attr.selected.length;
+				$(data.node.li_attr.selected).each(function() {
+					objectcount += this.length;
+				});
+			}
+			$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
+			
+			console.log(data);
+		});
+		
 		$(gui.storytellingv2Container).append(tree);
 		$(menu).append(importexportsubmenu);
 		$(menu).append(treemanipulationsubmenu);
@@ -115,7 +130,15 @@ Storytellingv2Widget.prototype = {
 			var descriptioninput = $('<p>Description: <textarea name="description"></textarea></p>');
 			var addbutton = $('<p><input type="button" name="add" value="add" /></p>');
 			addbutton.click($.proxy(function() {
-				$(tree).jstree().create_node("test");
+				var sel = tree.jstree().get_selected();
+				sel = tree.jstree().create_node(null, {
+					"text" : $(nameinput).find(':text').first().val(),
+					"li_attr" : {
+						"timestamp" : Date.now(),
+						"description" : $(descriptioninput).find('textarea').first().val(),
+						"selected" : storytellingv2Widget.selected,
+					}
+				});
 				$(newform).empty();
 			}));
 			$(newform).append(nameinput);
@@ -133,5 +156,9 @@ Storytellingv2Widget.prototype = {
 	},
 
 	selectionChanged : function(selection) {
+		if (!selection.valid()) {
+			selection.loadAllObjects();
+		}
+		this.selected = selection.objects;
 	},
 };
