@@ -648,5 +648,43 @@ FuzzyTimelineWidget.prototype = {
 			handle.x1 = handle.x1 * (zoomFactor/oldZoomFactor);
 			handle.x2 = handle.x2 * (zoomFactor/oldZoomFactor);
 		});
-	}
+	},
+	
+	getConfig : function(inquiringWidget){
+		var fuzzyTimeline = this;
+		var config = {};
+		
+		//create handle copy
+		var handleCopy = JSON.parse( JSON.stringify( fuzzyTimeline.handles ) );
+		config.handles = handleCopy;
+		
+		//send config to iquiring widget
+		if (typeof inquiringWidget.sendConfig !== "undefined"){
+			inquiringWidget.sendConfig("fuzzyTimeline", config);
+		}
+	},
+	
+	setConfig : function(configObj){
+		var fuzzyTimeline = this;
+		
+		if (configObj.widgetName === "fuzzyTimeline"){
+			var config = configObj.config;
+			
+			//clear handles
+			fuzzyTimeline.clearHandles();
+			
+			//create handle copy
+			var handleCopy = JSON.parse( JSON.stringify( config.handles ) );
+			fuzzyTimeline.handles = handleCopy;
+
+			// redraw handles
+			fuzzyTimeline.drawHandles();
+			
+			// select elements
+			$(fuzzyTimeline.handles).each(function(){
+				var handle = this;
+				fuzzyTimeline.selectByX(handle.x1, handle.x2)
+			});
+		}
+	},
 };
