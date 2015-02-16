@@ -161,4 +161,12 @@ Storytellingv2Widget.prototype = {
 		}
 		this.selected = selection.objects;
 	},
+	
+	sendConfig : function(widgetName, config){
+		configTMP={
+				widgetName : widgetName,
+				config : config
+		};
+	},
+
 };

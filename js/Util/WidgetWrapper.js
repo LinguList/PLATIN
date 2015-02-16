@@ -76,6 +76,29 @@ WidgetWrapper = function() {
 			wrapper.widget.gui.resize();
 		}
 	});
+	
+	Publisher.Subscribe('getConfig', this, function(inquiringWidget) {
+		if (inquiringWidget == undefined) {
+			return;
+		}
+		if ( typeof wrapper.widget != 'undefined') {
+			if ( typeof wrapper.widget.getConfig != 'undefined') {
+				wrapper.widget.getConfig(inquiringWidget);
+			}
+		}
+	});
+
+	Publisher.Subscribe('setConfig', this, function(config) {
+		if (config == undefined) {
+			return;
+		}
+		if ( typeof wrapper.widget != 'undefined') {
+			if ( typeof wrapper.widget.setConfig != 'undefined') {
+				wrapper.widget.setConfig(config);
+			}
+		}
+	});
+
 
 	this.triggerRefining = function(datasets) {
 		Publisher.Publish('filterData', datasets, null);
