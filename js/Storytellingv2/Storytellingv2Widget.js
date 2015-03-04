@@ -41,6 +41,7 @@ Storytellingv2Widget = function(core, div, options) {
 	this.datasetLink;
 	
 	this.selected;
+	this.configArray = [];
 	
 	this.initWidget();
 	
@@ -62,6 +63,23 @@ Storytellingv2Widget.prototype = {
 			'core' : {
 				'check_callback' : true,
 			},
+			'plugins' : [ 'dnd', 'types' ],
+			'types' : {
+				'#' : {
+					valid_children : ['session']
+				},
+				'session' : {
+					valid_children : ['dataset', 'filter']
+				},
+				'dataset' : {
+					'valid_children' : ['filter'],
+					'icon' : 'lib/jstree/themes/default/dataset.png'
+				},
+				'filter' : {
+					'valid_children' : ['filter'],
+					'icon' : 'lib/jstree/themes/default/filter.png'
+				}
+			}
 		});
 				
 		var menu = $('<div style="float: left;"></div>');
@@ -70,9 +88,56 @@ Storytellingv2Widget.prototype = {
 		var importbutton = $('<input type="button" id="storytellingv2import" name="import" value="import" />');
 		var exportbutton = $('<input type="button" id="storytellingv2export" name="export" value="export" />');
 		var resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
+		var importfile = $('<input type="file" id="storytellingv2importfile" accept="application/json" style="display: block; visibility:hidden; width: 0; height: 0" />');
 		$(importexportsubmenu).append(importbutton);
 		$(importexportsubmenu).append(exportbutton);
 		$(importexportsubmenu).append(resetbutton);
+		$(importexportsubmenu).append(importfile);
+		
+		exportbutton.click($.proxy(function() {
+			var tree_as_json = JSON.stringify($('#storytellingv2jstree').jstree(true).get_json('#', { 'flat': true }));
+			var exportdate = new Date().toUTCString();
+			
+			var pom = document.createElement('a');
+			pom.setAttribute('href','data:application/json;charset=UTF-8, ' + encodeURIComponent(tree_as_json));
+			pom.setAttribute('download','Storytelling State(' + exportdate + ').json');
+			pom.click();
+		}));
+		
+		var deleteAllNodes = function() {
+			var nodes = tree.jstree().get_children_dom('#');
+			nodes.each(function() {
+				tree.jstree().delete_node(this);
+			});
+		};
+		
+		
+		var handleFileSelect = function(evt) {
+			var file = evt.target.files[0];
+			
+			var reader = new FileReader();
+			
+			reader.onload = (function(f) {
+				return function(e) {
+					var treedata = JSON.parse(e.target.result);
+					deleteAllNodes();
+					for (var i = 0; i < treedata.length; i++) {
+						tree.jstree().create_node(treedata[i].parent,treedata[i]);
+					};
+				}
+			})(file);
+			reader.readAsText(file);
+		}
+		importfile.change(handleFileSelect);
+		
+		importbutton.click($.proxy(function() {
+			importfile.click();
+		}));
+		
+		resetbutton.click($.proxy(function() {
+			deleteAllNodes();
+			
+		}));
 		
 		var treemanipulationsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 		var newbutton = $('<input type="button" id="storytellingv2new" name="new" value="new" />');
@@ -91,10 +156,12 @@ Storytellingv2Widget.prototype = {
 		var metadata = $('<div></div>');
 		var metadatafieldset = $('<fieldset style="border: 2px solid; margin: 2px; padding: 5px;"><legend>Metadata</legend></fieldset>');
 		var metadataname = $('<p>Name:</p>');
+		var metadatatype = $('<p>Type:</p>');
 		var metadatatimestamp = $('<p>Timestamp:</p>');
 		var metadatadescription = $('<p>Description:</p>');
 		var metadataselected = $('<p></p>');
 		$(metadatafieldset).append(metadataname);
+		$(metadatafieldset).append(metadatatype);
 		$(metadatafieldset).append(metadatatimestamp);
 		$(metadatafieldset).append(metadatadescription);
 		$(metadatafieldset).append(metadataselected);
@@ -102,6 +169,7 @@ Storytellingv2Widget.prototype = {
 			
 		tree.on('select_node.jstree', function(e, data) {
 			$(metadataname).empty().append($('<p>Name: '+data.node.text+'</p>'));
+			$(metadatatype).empty().append($('<p>Type: '+data.node.type+'</p>'));
 			var tstamp = new Date(data.node.li_attr.timestamp);
 			$(metadatatimestamp).empty().append($('<p>Timestamp: '+tstamp.toUTCString()+'</p>'));
 			$(metadatadescription).empty().append($('<p>Description: '+data.node.li_attr.description+'</p>'));
@@ -113,9 +181,8 @@ Storytellingv2Widget.prototype = {
 					objectcount += this.length;
 				});
 			}
-			$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
-			
-			console.log(data);
+//			$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
+			console.log(data.node);
 		});
 		
 		$(gui.storytellingv2Container).append(tree);
@@ -127,25 +194,81 @@ Storytellingv2Widget.prototype = {
 		newbutton.click($.proxy(function() {
 			var newform = $('<div></div>');
 			var nameinput = $('<p>Name: <input type="text" /></p>');
+			var typeinput = $('<p>Type: <select name="type"><option value="session">Session</option><option value="dataset">Dataset</option><option value="filter">Filter</option></select></p>');
 			var descriptioninput = $('<p>Description: <textarea name="description"></textarea></p>');
 			var addbutton = $('<p><input type="button" name="add" value="add" /></p>');
 			addbutton.click($.proxy(function() {
-				var sel = tree.jstree().get_selected();
-				sel = tree.jstree().create_node(null, {
+				var sel = tree.jstree().get_selected()[0] || '#' ;
+				if ($(typeinput).find('option:selected').val() == 'session') {
+					sel = '#';
+				}
+				sel = tree.jstree().create_node(sel, {
 					"text" : $(nameinput).find(':text').first().val(),
+					"type" : $(typeinput).find('option:selected').val(),
 					"li_attr" : {
 						"timestamp" : Date.now(),
-						"description" : $(descriptioninput).find('textarea').first().val(),
-						"selected" : storytellingv2Widget.selected,
+						"description" : $(descriptioninput).find('textarea').first().val()
 					}
 				});
+				var newNode = tree.jstree().get_node(sel);
+				
+				if (newNode.type == 'filter') {
+					Publisher.Publish('getConfig',storytellingv2Widget);
+					newNode.li_attr.configs = storytellingv2Widget.configArray;
+				} else if (newNode.type == 'dataset') {
+					newNode.li_attr.selected = storytellingv2Widget.selected;
+					newNode.li_attr.datasets = storytellingv2Widget.datasets;
+				}
+//				tree.jstree().set_type(sel, 'session');
 				$(newform).empty();
 			}));
 			$(newform).append(nameinput);
+			$(newform).append(typeinput);
 			$(newform).append(descriptioninput);
 			$(newform).append(addbutton);
 			$(treemanipulationsubmenu).append(newform);
 		}));
+		
+		var loadDataset = function(node) {
+			var datasets = node.li_attr.datasets;
+			for (var i = 0; i < datasets.length; i++) {
+				GeoTemConfig.addDataset(datasets[i]);
+			}
+			
+		}
+		
+		var loadFilter = function(node) {
+			var configArray = node.li_attr.configs;
+			for (var i = 0; i < configArray.length; i++) {
+				console.log(configArray[i]);
+				Publisher.Publish('setConfig', configArray[i]);
+			}
+		}
+		
+		loadbutton.click($.proxy(function() {
+			var selectedNode = tree.jstree().get_node(tree.jstree().get_selected()[0]);
+			if (selectedNode == 'undefined' || selectedNode.type == 'session') {
+				return;
+			}
+			for (var i = selectedNode.parents.length - 1; i > 0; i--) {
+				var curNode = tree.jstree().get_node(selectedNode.parents[i]);
+				if (curNode.type == 'dataset') {
+					loadDataset(curNode);
+				} else if (curNode.type == 'filter') {
+					loadFilter(curNode);
+				}
+			}
+			if (selectedNode.type == 'dataset') {
+				loadDataset(selectedNode);
+			} else if (selectedNode.type == 'filter') {
+				loadFilter(selectedNode);
+			}
+		}));
+		
+		deletebutton.click($.proxy(function() {
+			var selectedNode = tree.jstree().get_node(tree.jstree().get_selected()[0]);
+			tree.jstree().delete_node(selectedNode);
+		}))
 		
 	},
 	
@@ -162,11 +285,8 @@ Storytellingv2Widget.prototype = {
 		this.selected = selection.objects;
 	},
 	
-	sendConfig : function(widgetName, config){
-		configTMP={
-				widgetName : widgetName,
-				config : config
-		};
+	sendConfig : function(widgetConfig){
+		this.configArray.push(widgetConfig);
 	},
 
 };

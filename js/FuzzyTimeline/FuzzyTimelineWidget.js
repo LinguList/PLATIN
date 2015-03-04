@@ -660,7 +660,7 @@ FuzzyTimelineWidget.prototype = {
 		
 		//send config to iquiring widget
 		if (typeof inquiringWidget.sendConfig !== "undefined"){
-			inquiringWidget.sendConfig("fuzzyTimeline", config);
+			inquiringWidget.sendConfig({widgetName: "fuzzyTimeline", 'config': config});
 		}
 	},
 	
