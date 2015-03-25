@@ -43,6 +43,8 @@ Storytellingv2Widget = function(core, div, options) {
 	this.selected;
 	this.configArray = [];
 	
+	this.simplemode = true;
+	
 	this.initWidget();
 	
 }
@@ -69,15 +71,18 @@ Storytellingv2Widget.prototype = {
 					valid_children : ['session']
 				},
 				'session' : {
-					valid_children : ['dataset', 'filter']
+					valid_children : ['dataset', 'config']
 				},
 				'dataset' : {
-					'valid_children' : ['filter'],
+					'valid_children' : ['config'],
 					'icon' : 'lib/jstree/themes/default/dataset.png'
 				},
-				'filter' : {
-					'valid_children' : ['filter'],
+				'config' : {
+					'valid_children' : ['config'],
 					'icon' : 'lib/jstree/themes/default/filter.png'
+				},
+				'snapshot' : {
+					'valid_children' : []
 				}
 			}
 		});
@@ -89,9 +94,14 @@ Storytellingv2Widget.prototype = {
 		var exportbutton = $('<input type="button" id="storytellingv2export" name="export" value="export" />');
 		var resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
 		var importfile = $('<input type="file" id="storytellingv2importfile" accept="application/json" style="display: block; visibility:hidden; width: 0; height: 0" />');
+		var expertbutton = $('<input type="button" id="storytellingv2expert" name="expert" value="expert" />');
+		var simplebutton = $('<input type="button" id="storytellingv2simple" name="simple" value="simple" />');
+		simplebutton.hide();
 		$(importexportsubmenu).append(importbutton);
 		$(importexportsubmenu).append(exportbutton);
 		$(importexportsubmenu).append(resetbutton);
+		$(importexportsubmenu).append(expertbutton);
+		$(importexportsubmenu).append(simplebutton);
 		$(importexportsubmenu).append(importfile);
 		
 		exportbutton.click($.proxy(function() {
@@ -109,6 +119,27 @@ Storytellingv2Widget.prototype = {
 			nodes.each(function() {
 				tree.jstree().delete_node(this);
 			});
+		};
+		
+		var findNodesByType = function(type, parent) {
+			if (parent != undefined) {
+				parent = tree.jstree().get_node(parent);
+			} else {
+				parent = tree.jstree().get_node('#');
+			}
+			var nodes = new Array();
+			
+			if (parent.type == type) {
+				nodes.push(parent);
+			}
+			for (var i = 0; i < parent.children_d.length; i++) {
+				var n = tree.jstree().get_node(parent.children_d[i]);
+				if (n.type == type) {
+					nodes.push(n);
+				}
+			}
+			
+			return nodes;
 		};
 		
 		
@@ -139,19 +170,66 @@ Storytellingv2Widget.prototype = {
 			
 		}));
 		
+		var makeSimple = function() {
+			var configs = findNodesByType('config');
+			var datasets = findNodesByType('dataset');
+			for (var i = 0; i < datasets.length; i++) {
+				tree.jstree().set_type(datasets[i], 'snapshot');
+				datasets[i].li_attr.dataset_text = datasets[i].text;
+				datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
+			}			
+			for (var i = 0; i < configs.length; i++) {
+				console.log(tree.jstree().get_node(configs[i], true));
+				var c = tree.jstree().get_node(configs[i], true);
+				$(c).hide();
+			}
+		};
+		
+		simplebutton.click($.proxy(function() {
+			simplebutton.hide();
+			expertbutton.show();
+			newbutton.hide();
+			snapshotbutton.show();
+			storytellingv2Widget.simplemode = true;
+			makeSimple();
+		}));
+		
+		expertbutton.click($.proxy(function() {
+			expertbutton.hide();
+			simplebutton.show();
+			snapshotbutton.hide();
+			newbutton.show();
+			storytellingv2Widget.simplemode = false;
+			var configs = findNodesByType('config');
+			for (var i = 0; i < configs.length; i++) {
+				tree.jstree().get_node(configs[i], true).show();
+			}
+			var snapshots = findNodesByType('snapshot');
+			for (var i = 0; i < snapshots.length; i++) {
+				tree.jstree().set_type(snapshots[i], 'dataset');
+				snapshots[i].li_attr.snapshot_text = snapshots[i].text;
+				snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
+			}
+			
+		}));
+		
 		var treemanipulationsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 		var newbutton = $('<input type="button" id="storytellingv2new" name="new" value="new" />');
+		var snapshotbutton = $('<input type="button" id="storytellingv2snapshot" name="snapshot" value="snapshot" />');
 		var loadbutton = $('<input type="button" id="storytellingv2load" name="load" value="load" />');
 		var deletebutton = $('<input type="button" id="storytellingv2delete" name="delete" value="delete" />');
 		var renamebutton = $('<input type="button" id="storytellingv2rename" name="rename" value="rename" />');
 		var forwardbutton = $('<input type="button" id="storytellingv2forward" name="forward" value=">>" />');
 		var backwardbutton = $('<input type="button" id="storytellingv2backward" name="backward" value="<<" />');
 		$(treemanipulationsubmenu).append(newbutton);
+		$(treemanipulationsubmenu).append(snapshotbutton);
 		$(treemanipulationsubmenu).append(loadbutton);
 		$(treemanipulationsubmenu).append(deletebutton);
 		$(treemanipulationsubmenu).append(renamebutton);
 		$(treemanipulationsubmenu).append(backwardbutton);
 		$(treemanipulationsubmenu).append(forwardbutton);		
+		
+		newbutton.hide();
 		
 		var metadata = $('<div></div>');
 		var metadatafieldset = $('<fieldset style="border: 2px solid; margin: 2px; padding: 5px;"><legend>Metadata</legend></fieldset>');
@@ -192,9 +270,10 @@ Storytellingv2Widget.prototype = {
 		$(gui.storytellingv2Container).append(menu);
 		
 		newbutton.click($.proxy(function() {
+			defaultSession();
 			var newform = $('<div></div>');
 			var nameinput = $('<p>Name: <input type="text" /></p>');
-			var typeinput = $('<p>Type: <select name="type"><option value="session">Session</option><option value="dataset">Dataset</option><option value="filter">Filter</option></select></p>');
+			var typeinput = $('<p>Type: <select name="type"><option value="session">Session</option><option value="dataset">Dataset</option><option value="config">Config</option></select></p>');
 			var descriptioninput = $('<p>Description: <textarea name="description"></textarea></p>');
 			var addbutton = $('<p><input type="button" name="add" value="add" /></p>');
 			addbutton.click($.proxy(function() {
@@ -212,7 +291,7 @@ Storytellingv2Widget.prototype = {
 				});
 				var newNode = tree.jstree().get_node(sel);
 				
-				if (newNode.type == 'filter') {
+				if (newNode.type == 'config') {
 					Publisher.Publish('getConfig',storytellingv2Widget);
 					newNode.li_attr.configs = storytellingv2Widget.configArray;
 				} else if (newNode.type == 'dataset') {
@@ -227,6 +306,48 @@ Storytellingv2Widget.prototype = {
 			$(newform).append(descriptioninput);
 			$(newform).append(addbutton);
 			$(treemanipulationsubmenu).append(newform);
+		}));
+	
+		var defaultSession = function() {
+			if (tree.jstree().is_leaf('#')) {
+				tree.jstree().create_node('#', {
+					'text' : 'Session #1',
+					'type' : 'session',
+					'li_attr' : {
+						'timestamp' : Date.now(),
+						'description' : 'Default Session'
+					}
+				})
+			};
+
+		};
+		
+		snapshotbutton.click($.proxy(function() {
+			defaultSession();
+			var root = tree.jstree().get_node('#');
+			var session = tree.jstree().get_node(root.children[0]);
+			var countSnapshots = session.children.length + 1;
+			var newDataset = tree.jstree().create_node(session, {
+				'text' : 'Snapshot #'+countSnapshots,
+				'type' : 'dataset',
+				'li_attr' : {
+					'timestamp' : Date.now(),
+					'description' : 'Snapshot #'+countSnapshots+' Dataset',
+					'datasets' : storytellingv2Widget.datasets,
+					'selected' : storytellingv2Widget.selected
+				}
+			});
+			var newConfig = tree.jstree().create_node(newDataset, {
+				'text' : 'Snapshot #'+countSnapshots,
+				'type' : 'config',
+				'li_attr' : {
+					'timestamp' : Date.now(),
+					'description' : 'Snapshot #'+countSnapshots+' Config',
+					'configs' : storytellingv2Widget.configArray
+				}
+			});
+			makeSimple();
+			
 		}));
 		
 		var loadDataset = function(node) {
@@ -254,7 +375,7 @@ Storytellingv2Widget.prototype = {
 				var curNode = tree.jstree().get_node(selectedNode.parents[i]);
 				if (curNode.type == 'dataset') {
 					loadDataset(curNode);
-				} else if (curNode.type == 'filter') {
+				} else if (curNode.type == 'config') {
 					loadFilter(curNode);
 				}
 			}

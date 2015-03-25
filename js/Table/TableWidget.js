@@ -426,5 +426,30 @@ TableWidget.prototype = {
 			this.tables[this.activeTable].reset();
 			this.tables[this.activeTable].update();
 		}
-	}
+	},
+	
+	
+	getConfig : function(inquiringWidget){
+		var tableWidget = this;
+		var config = {};
+		
+		//save widget specific configurations here into the config object
+		
+		//send config to iquiring widget
+		if (typeof inquiringWidget.sendConfig !== "undefined"){
+			inquiringWidget.sendConfig({widgetName: "table", 'config': config});
+		}
+	},
+	
+	setConfig : function(configObj){
+		var tableWidget = this;
+		
+		if (configObj.widgetName === "table"){
+			var config = configObj.config;
+			
+			//set widgets configuration provided by config
+			
+		}
+	},
+
 }

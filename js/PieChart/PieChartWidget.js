@@ -196,4 +196,28 @@ PieChartWidget.prototype = {
 		
 		return elements;
 	},
+	
+	getConfig : function(inquiringWidget){
+		var pieChartWidget = this;
+		var config = {};
+		
+		//save widget specific configurations here into the config object
+		
+		//send config to iquiring widget
+		if (typeof inquiringWidget.sendConfig !== "undefined"){
+			inquiringWidget.sendConfig({widgetName: "pieChart", 'config': config});
+		}
+	},
+	
+	setConfig : function(configObj){
+		var pieChartWidget = this;
+		
+		if (configObj.widgetName === "pieChart"){
+			var config = configObj.config;
+			
+			//set widgets configuration provided by config
+			
+		}
+	},
+
 };

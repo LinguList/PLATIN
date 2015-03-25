@@ -1548,5 +1548,30 @@ MapWidget.prototype = {
 		} else {
 			return 3;
 		}
-	}
+	},
+	
+	
+	getConfig : function(inquiringWidget){
+		var mapWidget = this;
+		var config = {};
+		
+		//save widget specific configurations here into the config object
+		
+		//send config to iquiring widget
+		if (typeof inquiringWidget.sendConfig !== "undefined"){
+			inquiringWidget.sendConfig({widgetName: "map", 'config': config});
+		}
+	},
+	
+	setConfig : function(configObj){
+		var mapWidget = this;
+		
+		if (configObj.widgetName === "map"){
+			var config = configObj.config;
+			
+			//set widgets configuration provided by config
+			
+		}
+	},
+
 }
