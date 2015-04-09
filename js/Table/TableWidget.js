@@ -77,6 +77,17 @@ TableWidget.prototype = {
 			}
 			var tableNameDiv = document.createElement('div');
 			$(tableNameDiv).append(name);
+			$(tableNameDiv).dblclick(function() {
+				var n = $(tableNameDiv).text();
+				$(tableNameDiv).empty();
+				var nameInput = $('<input type="text" name="nameinput" value="'+n+'" />');
+				$(tableNameDiv).append(nameInput);
+				$(nameInput).focusout(function() {
+					var newname = $(nameInput).val();
+					$(tableNameDiv).empty();
+					$(tableNameDiv).append(newname);
+				});
+			});
 			
 			if (typeof dataSet.url !== "undefined"){
 				var tableLinkDiv = document.createElement('a');
