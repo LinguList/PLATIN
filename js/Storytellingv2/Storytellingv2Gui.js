@@ -81,8 +81,9 @@ Storytellingv2Gui.prototype = {
 						'icon' : 'lib/jstree/themes/default/filter.png'
 					},
 					'snapshot' : {
-						'valid_children' : []
-					}
+						'valid_children' : [],
+						'icon' : 'lib/jstree/themes/default/snapshot.png'
+ 					}
 				}
 			});
 					
@@ -338,6 +339,9 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.restorebutton.click($.proxy(function() {
 				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
 				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
+					return;
+				}
+				if (selectedNode.type == 'snapshot') {
 					return;
 				}
 				for (var i = selectedNode.parents.length - 1; i > 0; i--) {
