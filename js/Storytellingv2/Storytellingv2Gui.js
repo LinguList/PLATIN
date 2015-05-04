@@ -86,7 +86,15 @@ Storytellingv2Gui.prototype = {
  					}
 				}
 			});
-					
+			
+			storytellingv2Gui.tree.on('open_node.jstree', function(e, data) {
+				var node = data.node;
+				if (node.type == 'snapshot') {
+					storytellingv2Gui.tree.jstree().close_node(node, false);
+				}
+				
+			});
+			
 			storytellingv2Gui.menu = $('<div style="float: left;"></div>');
 			storytellingv2Gui.importexportsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 
@@ -322,8 +330,10 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.restorebutton = $('<input type="button" id="storytellingv2restore" name="restore" value="restore" />');
 			var loadDataset = function(node) {
 				var datasets = node.li_attr.datasets;
-				for (var i = 0; i < datasets.length; i++) {
-					GeoTemConfig.addDataset(datasets[i]);
+				if (datasets != undefined) {
+					for (var i = 0; i < datasets.length; i++) {
+						GeoTemConfig.addDataset(datasets[i]);
+					}
 				}
 				
 			}
@@ -336,12 +346,24 @@ Storytellingv2Gui.prototype = {
 				}
 			}
 			
+			var loadSnapshot = function(node) {
+				loadDataset(node);
+				var childNode = node;
+				while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
+					childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
+					if (childNode.type == 'filter') {
+						loadFilter(childNode);
+					}
+				}
+			}
+			
 			storytellingv2Gui.restorebutton.click($.proxy(function() {
 				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
 				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
 					return;
 				}
 				if (selectedNode.type == 'snapshot') {
+					loadSnapshot(selectedNode);
 					return;
 				}
 				for (var i = selectedNode.parents.length - 1; i > 0; i--) {
@@ -382,6 +404,32 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.editbutton = $('<input type="button" id="storytellingv2edit" name="edit" value="edit" />');
+			storytellingv2Gui.editbutton.click($.proxy(function() {
+				var sel = storytellingv2Gui.tree.jstree().get_selected()[0];
+				if (sel != undefined ) {
+					sel = storytellingv2Gui.tree.jstree().get_node(sel);
+					var editform = $('<div></div>');
+					var nameinput = $('<p>Name: <input type="text" value="'+sel.text+'" /></p>');
+					var descriptioninput = $('<p>Description: <textarea name="description">'+sel.li_attr.description+'</textarea></p>');
+					var savebutton = $('<p><input type="button" name="save" value="save" /></p>');
+					savebutton.click($.proxy(function() {
+						console.log($(nameinput).find(':text').first().val());
+						storytellingv2Gui.tree.jstree().rename_node(sel, $(nameinput).find(':text').first().val());
+						sel.li_attr.description = $(descriptioninput).find('textarea').first().val();
+						storytellingv2Gui.tree.jstree().redraw();
+						$(editform).empty();
+					}));
+//					$(editform).focusout(function() {
+//						$(editform).empty();
+//					});
+					$(editform).append(nameinput);
+					$(editform).append(descriptioninput);
+					$(editform).append(savebutton);
+					storytellingv2Gui.treemanipulationsubmenu.append(editform);
+				}
+				
+				
+			}));
 			
 		},
 		
@@ -392,6 +440,14 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.forwardbutton = $('<input type="button" id="storytellingv2forward" name="forward" value=">>" />');
+			storytellingv2Gui.forwardbutton.click($.proxy(function() {
+				var sel = storytellingv2Gui.tree.jstree().get_selected()[0];
+				if (storytellingv2Gui.tree.jstree().get_next_dom(sel, true)) {
+					storytellingv2Gui.tree.jstree().deselect_node(sel);
+					storytellingv2Gui.tree.jstree().select_node(storytellingv2Gui.tree.jstree().get_next_dom(sel, true));
+				}
+				
+			}));
 			
 		},
 		
@@ -402,6 +458,15 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.backwardbutton = $('<input type="button" id="storytellingv2backward" name="backward" value="<<" />');
+			storytellingv2Gui.backwardbutton.click($.proxy(function() {
+				var sel = storytellingv2Gui.tree.jstree().get_selected()[0];
+				if (storytellingv2Gui.tree.jstree().get_prev_dom(sel, true)) {
+					storytellingv2Gui.tree.jstree().deselect_node(sel);
+					storytellingv2Gui.tree.jstree().select_node(storytellingv2Gui.tree.jstree().get_prev_dom(sel, true));
+				}
+				
+			}));
+
 			
 		},
 		
@@ -424,7 +489,7 @@ Storytellingv2Gui.prototype = {
 			$(metadatafieldset).append(metadatadescription);
 			$(metadatafieldset).append(metadataselected);
 			$(storytellingv2Gui.metadata).append(metadatafieldset);
-			storytellingv2Gui.tree.on('select_node.jstree', function(e, data) {
+			storytellingv2Gui.tree.on('changed.jstree rename_node.jstree', function(e, data) {
 				$(metadataname).empty().append($('<p>Name: '+data.node.text+'</p>'));
 				$(metadatatype).empty().append($('<p>Type: '+data.node.type+'</p>'));
 				var tstamp = new Date(data.node.li_attr.timestamp);

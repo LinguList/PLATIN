@@ -82,10 +82,20 @@ TableWidget.prototype = {
 				$(tableNameDiv).empty();
 				var nameInput = $('<input type="text" name="nameinput" value="'+n+'" />');
 				$(tableNameDiv).append(nameInput);
+				$(nameInput).focus();
 				$(nameInput).focusout(function() {
 					var newname = $(nameInput).val();
 					$(tableNameDiv).empty();
 					$(tableNameDiv).append(newname);
+					dataSet.label = newname;
+				});
+				$(nameInput).keypress(function(event) {
+					if (event.which == 13) {
+						var newname = $(nameInput).val();
+						$(tableNameDiv).empty();
+						$(tableNameDiv).append(newname);
+						dataSet.label = newname;
+					}
 				});
 			});
 			
