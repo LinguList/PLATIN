@@ -281,7 +281,10 @@ Storytellingv2Gui.prototype = {
 						var datasets = [];
 						if (storytellingv2Widget.datasets != undefined) {
 							for (var i = 0; i < storytellingv2Widget.datasets.length; i++) {
-								datasets.push(GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i)));
+								var ds = {};
+								ds.label = storytellingv2Widget.datasets[i].label;
+								ds.objects = GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i));
+								datasets.push(ds);
 							}
 						}
 						newNode.li_attr.selected = storytellingv2Widget.selected;
@@ -313,9 +316,13 @@ Storytellingv2Gui.prototype = {
 				var session = storytellingv2Gui.tree.jstree().get_node(root.children[0]);
 				var countSnapshots = session.children.length + 1;
 				var datasets = [];
+				
 				if (storytellingv2Widget.datasets != undefined) {
 					for (var i = 0; i < storytellingv2Widget.datasets.length; i++) {
-						datasets.push(GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i)));
+						var ds = {};
+						ds.label = storytellingv2Widget.datasets[i].label;
+						ds.objects = GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i));
+						datasets.push(ds);
 					}
 				}
 				var newDataset = storytellingv2Gui.tree.jstree().create_node(session, {
@@ -353,8 +360,10 @@ Storytellingv2Gui.prototype = {
 			var loadDataset = function(node) {
 				var datasets = node.li_attr.datasets;
 				if (datasets != undefined) {
+					GeoTemConfig.removeAllDatasets();
 					for (var i = 0; i < datasets.length; i++) {
-						GeoTemConfig.addDataset(datasets[i]);
+						var dataset = new Dataset(GeoTemConfig.loadJson(datasets[i].objects), datasets[i].label);
+						GeoTemConfig.addDataset(dataset);
 					}
 				}
 				
@@ -392,7 +401,7 @@ Storytellingv2Gui.prototype = {
 					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
 					if (curNode.type == 'dataset') {
 						loadDataset(curNode);
-					} else if (curNode.type == 'config') {
+					} else if (curNode.type == 'filter') {
 						loadFilter(curNode);
 					}
 				}

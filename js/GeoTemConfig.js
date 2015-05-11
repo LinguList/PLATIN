@@ -340,6 +340,13 @@ GeoTemConfig.removeDataset = function(index){
 	Publisher.Publish('filterData', GeoTemConfig.datasets, null);
 };
 
+GeoTemConfig.removeAllDatasets = function() {
+	if (GeoTemConfig.datasets.length > 0) {
+		GeoTemConfig.datasets.splice(0, GeoTemConfig.datasets.length);
+		Publisher.Publish('filterData', GeoTemConfig.datasets, null);
+	}
+};
+
 /**
  * converts the csv-file into json-format
  * 
