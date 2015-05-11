@@ -250,6 +250,15 @@ Storytellingv2Gui.prototype = {
 				var typeinput = $('<p>Type: <select name="type"><option value="session">Session</option><option value="dataset">Dataset</option><option value="config">Config</option></select></p>');
 				var descriptioninput = $('<p>Description: <textarea name="description"></textarea></p>');
 				var addbutton = $('<p><input type="button" name="add" value="add" /></p>');
+				newform.focusout(function() {
+					var elem = $(this);
+					setTimeout(function() {
+						var hasFocus = !!(elem.find(':focus').length > 0);
+						if (! hasFocus) {
+							newform.empty();
+						}
+					}, 10);
+				});
 				addbutton.click($.proxy(function() {
 					var sel = storytellingv2Gui.tree.jstree().get_selected()[0] || '#' ;
 					if ($(typeinput).find('option:selected').val() == 'session') {
@@ -269,8 +278,14 @@ Storytellingv2Gui.prototype = {
 						Publisher.Publish('getConfig',storytellingv2Widget);
 						newNode.li_attr.configs = storytellingv2Widget.configArray;
 					} else if (newNode.type == 'dataset') {
+						var datasets = [];
+						if (storytellingv2Widget.datasets != undefined) {
+							for (var i = 0; i < storytellingv2Widget.datasets.length; i++) {
+								datasets.push(GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i)));
+							}
+						}
 						newNode.li_attr.selected = storytellingv2Widget.selected;
-						newNode.li_attr.datasets = storytellingv2Widget.datasets;
+						newNode.li_attr.datasets = datasets;
 					}
 //					tree.jstree().set_type(sel, 'session');
 					$(newform).empty();
@@ -280,6 +295,7 @@ Storytellingv2Gui.prototype = {
 				$(newform).append(descriptioninput);
 				$(newform).append(addbutton);
 				$(storytellingv2Gui.treemanipulationsubmenu).append(newform);
+				$(nameinput).find(':input').focus();
 			}));
 		
 		},
@@ -296,13 +312,19 @@ Storytellingv2Gui.prototype = {
 				var root = storytellingv2Gui.tree.jstree().get_node('#');
 				var session = storytellingv2Gui.tree.jstree().get_node(root.children[0]);
 				var countSnapshots = session.children.length + 1;
+				var datasets = [];
+				if (storytellingv2Widget.datasets != undefined) {
+					for (var i = 0; i < storytellingv2Widget.datasets.length; i++) {
+						datasets.push(GeoTemConfig.convertCsv(GeoTemConfig.createCSVfromDataset(i)));
+					}
+				}
 				var newDataset = storytellingv2Gui.tree.jstree().create_node(session, {
 					'text' : 'Snapshot #'+countSnapshots,
 					'type' : 'dataset',
 					'li_attr' : {
 						'timestamp' : Date.now(),
 						'description' : 'Snapshot #'+countSnapshots+' Dataset',
-						'datasets' : storytellingv2Widget.datasets,
+						'datasets' : datasets,
 						'selected' : storytellingv2Widget.selected
 					}
 				});
@@ -412,6 +434,15 @@ Storytellingv2Gui.prototype = {
 					var nameinput = $('<p>Name: <input type="text" value="'+sel.text+'" /></p>');
 					var descriptioninput = $('<p>Description: <textarea name="description">'+sel.li_attr.description+'</textarea></p>');
 					var savebutton = $('<p><input type="button" name="save" value="save" /></p>');
+					editform.focusout(function() {
+						var elem = $(this);
+						setTimeout(function() {
+							var hasFocus = !!(elem.find(':focus').length > 0);
+							if (! hasFocus) {
+								editform.empty();
+							}
+						}, 10);
+					});
 					savebutton.click($.proxy(function() {
 						console.log($(nameinput).find(':text').first().val());
 						storytellingv2Gui.tree.jstree().rename_node(sel, $(nameinput).find(':text').first().val());
@@ -426,6 +457,7 @@ Storytellingv2Gui.prototype = {
 					$(editform).append(descriptioninput);
 					$(editform).append(savebutton);
 					storytellingv2Gui.treemanipulationsubmenu.append(editform);
+					nameinput.find(':input').focus();
 				}
 				
 				
