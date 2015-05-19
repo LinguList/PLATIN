@@ -206,6 +206,10 @@ PieChartWidget.prototype = {
 		for (var i=0; i < pieChartWidget.pieCharts.length; i++){
 			pieChart = pieChartWidget.pieCharts[i];
 			
+			if (!pieChart){
+				continue;
+			}
+			
 			if (pieChart.selectionFunction.categories){
 				pieCharts.push({
 					watchColumn:pieChart.watchColumn,
