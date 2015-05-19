@@ -202,7 +202,27 @@ PieChartWidget.prototype = {
 		var config = {};
 		
 		//save widget specific configurations here into the config object
+		var pieCharts = [];
+		for (var i=0; i < pieChartWidget.pieCharts.length; i++){
+			pieChart = pieChartWidget.pieCharts[i];
+			
+			if (pieChart.selectionFunction.categories){
+				pieCharts.push({
+					watchColumn:pieChart.watchColumn,
+					watchedDataset:pieChart.watchedDataset,
+					type:pieChart.selectionFunction.type,
+					categories:pieChart.selectionFunction.categories
+				});
+			} else {
+				pieCharts.push({
+					watchColumn:pieChart.watchColumn,
+					watchedDataset:pieChart.watchedDataset
+				});
+			}
+		}
 		
+		config.pieCharts = pieCharts;
+
 		//send config to iquiring widget
 		if (typeof inquiringWidget.sendConfig !== "undefined"){
 			inquiringWidget.sendConfig({widgetName: "pieChart", 'config': config});
@@ -215,8 +235,26 @@ PieChartWidget.prototype = {
 		if (configObj.widgetName === "pieChart"){
 			var config = configObj.config;
 			
+			//remove old piecharts
+			pieChartWidget.pieCharts = [];
 			//set widgets configuration provided by config
-			
+			for (var i=0; i < config.pieCharts.length; i++){
+				pieChart = config.pieCharts[i];
+				
+				if (pieChart.type){
+					pieChartWidget.addCategorizedPieChart(
+							pieChart.watchedDataset,
+							pieChart.watchColumn,
+							pieChart.type,
+							pieChart.categories
+					);
+				} else {
+					pieChartWidget.addPieChart(
+							pieChart.watchedDataset,
+							pieChart.watchColumn
+					);
+				}
+			}
 		}
 	},
 
