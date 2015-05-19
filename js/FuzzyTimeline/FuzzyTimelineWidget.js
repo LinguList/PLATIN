@@ -658,6 +658,11 @@ FuzzyTimelineWidget.prototype = {
 		var handleCopy = JSON.parse( JSON.stringify( fuzzyTimeline.handles ) );
 		config.handles = handleCopy;
 		
+		config.viewMode = fuzzyTimeline.viewMode;
+
+		config.rangeDropdownVal = $(fuzzyTimeline.rangeSlider.rangeDropdown).val();
+		config.rangeStartVal = $(fuzzyTimeline.rangeSlider.rangeStart).val();
+		
 		//send config to iquiring widget
 		if (typeof inquiringWidget.sendConfig !== "undefined"){
 			inquiringWidget.sendConfig({widgetName: "fuzzyTimeline", 'config': config});
@@ -670,6 +675,13 @@ FuzzyTimelineWidget.prototype = {
 		if (configObj.widgetName === "fuzzyTimeline"){
 			var config = configObj.config;
 			
+			$(fuzzyTimeline.rangeSlider.rangeDropdown).val(config.rangeDropdownVal);
+			$(fuzzyTimeline.rangeSlider.rangeDropdown).change();
+			fuzzyTimeline.switchViewMode(config.viewMode);
+			
+			$(fuzzyTimeline.rangeSlider.rangeStart).val(config.rangeStartVal);
+			$(fuzzyTimeline.rangeSlider.rangeStart).change();
+
 			//clear handles
 			fuzzyTimeline.clearHandles();
 			
