@@ -335,6 +335,7 @@ Storytellingv2Gui.prototype = {
 						'selected' : storytellingv2Widget.selected
 					}
 				});
+				Publisher.Publish('getConfig',storytellingv2Widget);
 				var newConfig = storytellingv2Gui.tree.jstree().create_node(newDataset, {
 					'text' : 'Snapshot #'+countSnapshots,
 					'type' : 'config',
@@ -382,7 +383,7 @@ Storytellingv2Gui.prototype = {
 				var childNode = node;
 				while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
 					childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
-					if (childNode.type == 'filter') {
+					if (childNode.type == 'config') {
 						loadFilter(childNode);
 					}
 				}
@@ -401,13 +402,13 @@ Storytellingv2Gui.prototype = {
 					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
 					if (curNode.type == 'dataset') {
 						loadDataset(curNode);
-					} else if (curNode.type == 'filter') {
+					} else if (curNode.type == 'config') {
 						loadFilter(curNode);
 					}
 				}
 				if (selectedNode.type == 'dataset') {
 					loadDataset(selectedNode);
-				} else if (selectedNode.type == 'filter') {
+				} else if (selectedNode.type == 'config') {
 					loadFilter(selectedNode);
 				}
 			}));
