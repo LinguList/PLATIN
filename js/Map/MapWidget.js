@@ -1557,7 +1557,8 @@ MapWidget.prototype = {
 		
 		//save widget specific configurations here into the config object
 		config.mapIndex = this.baselayerIndex;
-		config.mapExtends = this.openlayersMap.getExtent();
+		config.mapCenter = this.openlayersMap.center;
+		config.mapZoom = this.openlayersMap.zoom;
 		//send config to iquiring widget
 		if (typeof inquiringWidget.sendConfig !== "undefined"){
 			inquiringWidget.sendConfig({widgetName: "map", 'config': config});
@@ -1574,7 +1575,8 @@ MapWidget.prototype = {
 			this.setMap(config.mapIndex);
 			this.gui.mapTypeDropdown.setEntry(config.mapIndex);
 			
-			this.openlayersMap.zoomToExtent(config.mapExtends);
+			this.openlayersMap.setCenter(config.mapCenter);
+			this.openlayersMap.zoomTo(config.mapZoom);
 		}
 	},
 
