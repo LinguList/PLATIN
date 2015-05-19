@@ -76,14 +76,14 @@ Storytellingv2Gui.prototype = {
 						'valid_children' : ['config'],
 						'icon' : 'lib/jstree/themes/default/dataset.png'
 					},
+					'snapshot' : {
+						'valid_children' : ['config'],
+						'icon' : 'lib/jstree/themes/default/snapshot.png'
+ 					},
 					'config' : {
 						'valid_children' : ['config'],
 						'icon' : 'lib/jstree/themes/default/filter.png'
-					},
-					'snapshot' : {
-						'valid_children' : [],
-						'icon' : 'lib/jstree/themes/default/snapshot.png'
- 					}
+					}
 				}
 			});
 			
@@ -276,7 +276,7 @@ Storytellingv2Gui.prototype = {
 					
 					if (newNode.type == 'config') {
 						Publisher.Publish('getConfig',storytellingv2Widget);
-						newNode.li_attr.configs = storytellingv2Widget.configArray;
+						newNode.li_attr.configs = storytellingv2Widget.configArray.slice();
 					} else if (newNode.type == 'dataset') {
 						var datasets = [];
 						if (storytellingv2Widget.datasets != undefined) {
@@ -342,7 +342,7 @@ Storytellingv2Gui.prototype = {
 					'li_attr' : {
 						'timestamp' : Date.now(),
 						'description' : 'Snapshot #'+countSnapshots+' Config',
-						'configs' : storytellingv2Widget.configArray
+						'configs' : storytellingv2Widget.configArray.slice()
 					}
 				});
 				storytellingv2.makeSimple(storytellingv2Gui.tree);
@@ -398,8 +398,9 @@ Storytellingv2Gui.prototype = {
 					loadSnapshot(selectedNode);
 					return;
 				}
-				for (var i = selectedNode.parents.length - 1; i > 0; i--) {
+				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
 					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
+					console.log(curNode);
 					if (curNode.type == 'dataset') {
 						loadDataset(curNode);
 					} else if (curNode.type == 'config') {

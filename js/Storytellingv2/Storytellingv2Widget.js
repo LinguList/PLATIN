@@ -78,6 +78,11 @@ Storytellingv2Widget.prototype = {
 	},
 	
 	sendConfig : function(widgetConfig){
+		for (var i = 0; i < this.configArray.length; i++) {
+			if (this.configArray[i].widgetName == widgetConfig.widgetName) {
+				this.configArray.splice(i,1);
+			}
+		}
 		this.configArray.push(widgetConfig);
 	},
 

@@ -84,14 +84,30 @@ Storytellingv2.prototype = {
 					tree.jstree().delete_node(this);
 				});
 			}
-			
+						
 			reader.onload = (function(f) {
 				return function(e) {
+										
 					var treedata = JSON.parse(e.target.result);
+					console.log(treedata);
 					deleteAllNodes(tree);
 					for (var i = 0; i < treedata.length; i++) {
-						tree.jstree().create_node(treedata[i].parent,treedata[i]);
+						if (treedata[i].type == 'dataset') {
+							$('#storytellingv2expert').hide();
+							$('#storytellingv2simple').show();
+						}
+						if (treedata[i].type == 'snapshot') {
+							treedata[i].type = 'dataset';
+							tree.jstree().create_node(treedata[i].parent,treedata[i]);
+							var n = tree.jstree().get_node(treedata[i].id);
+							tree.jstree().set_type(n, 'snapshot');
+							$('#storytellingv2expert').show();
+							$('#storytellingv2simple').hide();
+						} else {
+							tree.jstree().create_node(treedata[i].parent,treedata[i]);
+						}
 					};
+					
 				}
 			})(file);
 			reader.readAsText(file);
@@ -107,7 +123,6 @@ Storytellingv2.prototype = {
 				datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
 			}			
 			for (var i = 0; i < configs.length; i++) {
-				console.log(tree.jstree().get_node(configs[i], true));
 				var c = tree.jstree().get_node(configs[i], true);
 				$(c).hide();
 			}
