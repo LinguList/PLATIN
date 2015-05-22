@@ -138,7 +138,7 @@ Storytellingv2.prototype = {
 		defaultSession : function(tree) {
 			if (tree.jstree().is_leaf('#')) {
 				tree.jstree().create_node('#', {
-					'text' : 'Session #1',
+					'text' : 'Default Session',
 					'type' : 'session',
 					'li_attr' : {
 						'timestamp' : Date.now(),

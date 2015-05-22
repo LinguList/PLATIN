@@ -138,6 +138,43 @@ Storytellingv2Gui.prototype = {
 			$(storytellingv2Gui.menu).append(storytellingv2Gui.treemanipulationsubmenu);
 			$(storytellingv2Gui.menu).append(storytellingv2Gui.metadata);
 			$(storytellingv2Gui.storytellingv2Container).append(storytellingv2Gui.menu);
+			
+			storytellingv2Gui.tree.hide();
+			storytellingv2Gui.metadata.hide();
+			
+			storytellingv2Gui.tree.on('create_node.jstree delete_node.jstree', function(e, data) {
+				var root = storytellingv2Gui.tree.jstree().get_node('#');
+				console.log(data.node);
+				if (root.children.length > 0) {
+					storytellingv2Gui.tree.show();
+					storytellingv2Gui.metadata.show();
+					if (e.type == "create_node") {
+						storytellingv2Gui.tree.jstree().deselect_all();
+						storytellingv2Gui.tree.jstree().select_node(data.node);
+					} if (e.type == "delete_node") {
+						storytellingv2Gui.tree.jstree().deselect_all();
+						var prev_node = storytellingv2Gui.tree.jstree().get_prev_dom(data.node);
+						storytellingv2Gui.tree.jstree().select_node(prev_node);
+					}
+				} else {
+					storytellingv2Gui.tree.hide();
+					storytellingv2Gui.metadata.hide();
+				}
+				
+			});
+			
+//			if (localStorage.getItem('PLATIN.storytellingv2.last_snapshot')) {
+//				console.log(localStorage);
+//				var lastSession = storytellingv2Gui.tree.jstree().create_node('#', {
+//					'text' : 'Last Session',
+//					'type' : 'session',
+//					'li_attr' : {
+//						'timestamp' : Date.now(),
+//						'description' : 'Default Session'
+//					}
+//				});
+//				storytellingv2Gui.tree.jstree().create_node(lastSession, JSON.parse(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
+//			}
 
 		},
 		
@@ -183,10 +220,25 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
+			var dialog = $('<div id="tree-reset-dialog-confirm" title="Erase all tree content?"><p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>Tree items will be permanently deleted and cannot be recovered. Are you sure?</p></div>').dialog({
+				resizeable: false,
+				autoOpen: false,
+				height: 140,
+				modal: true,
+				buttons: {
+					'Yes': function() {
+						storytellingv2.deleteAllNodes(storytellingv2Gui.tree);			
+						$(this).dialog("close");
+					},
+					Cancel: function() {
+						$(this).dialog("close");
+					}
+				}
+			});
 			
+			storytellingv2Gui.resetbutton.append(dialog)
 			storytellingv2Gui.resetbutton.click($.proxy(function() {
-				storytellingv2.deleteAllNodes(storytellingv2Gui.tree);
-				
+				dialog.dialog('open');
 			}));
 		},
 		
@@ -346,6 +398,8 @@ Storytellingv2Gui.prototype = {
 					}
 				});
 				storytellingv2.makeSimple(storytellingv2Gui.tree);
+				snapshot_as_json = storytellingv2Gui.tree.jstree(true).get_json(newDataset, {flat: 'true'});
+				localStorage.setItem("PLATIN.storytellingv2.last_snapshot",snapshot_as_json);
 				
 			}));
 			
@@ -455,7 +509,6 @@ Storytellingv2Gui.prototype = {
 						}, 10);
 					});
 					savebutton.click($.proxy(function() {
-						console.log($(nameinput).find(':text').first().val());
 						storytellingv2Gui.tree.jstree().rename_node(sel, $(nameinput).find(':text').first().val());
 						sel.li_attr.description = $(descriptioninput).find('textarea').first().val();
 						storytellingv2Gui.tree.jstree().redraw();
@@ -533,6 +586,9 @@ Storytellingv2Gui.prototype = {
 			$(metadatafieldset).append(metadataselected);
 			$(storytellingv2Gui.metadata).append(metadatafieldset);
 			storytellingv2Gui.tree.on('changed.jstree rename_node.jstree', function(e, data) {
+				if (data.node == undefined) {
+					return;
+				}
 				$(metadataname).empty().append($('<p>Name: '+data.node.text+'</p>'));
 				$(metadatatype).empty().append($('<p>Type: '+data.node.type+'</p>'));
 				var tstamp = new Date(data.node.li_attr.timestamp);
