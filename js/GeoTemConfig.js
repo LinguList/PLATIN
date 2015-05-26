@@ -341,6 +341,7 @@ GeoTemConfig.removeDataset = function(index){
 };
 
 GeoTemConfig.removeAllDatasets = function() {
+
 	if (GeoTemConfig.datasets.length > 0) {
 		GeoTemConfig.datasets.splice(0, GeoTemConfig.datasets.length);
 		Publisher.Publish('filterData', GeoTemConfig.datasets, null);
