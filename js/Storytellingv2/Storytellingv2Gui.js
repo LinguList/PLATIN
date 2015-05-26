@@ -144,7 +144,6 @@ Storytellingv2Gui.prototype = {
 			
 			storytellingv2Gui.tree.on('create_node.jstree delete_node.jstree', function(e, data) {
 				var root = storytellingv2Gui.tree.jstree().get_node('#');
-				console.log(data.node);
 				if (root.children.length > 0) {
 					storytellingv2Gui.tree.show();
 					storytellingv2Gui.metadata.show();
@@ -163,18 +162,22 @@ Storytellingv2Gui.prototype = {
 				
 			});
 			
-//			if (localStorage.getItem('PLATIN.storytellingv2.last_snapshot')) {
-//				console.log(localStorage);
-//				var lastSession = storytellingv2Gui.tree.jstree().create_node('#', {
-//					'text' : 'Last Session',
-//					'type' : 'session',
-//					'li_attr' : {
-//						'timestamp' : Date.now(),
-//						'description' : 'Default Session'
-//					}
-//				});
-//				storytellingv2Gui.tree.jstree().create_node(lastSession, JSON.parse(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
-//			}
+			if (localStorage.getItem('PLATIN.storytellingv2.last_snapshot')) {
+				var lastSession = storytellingv2Gui.tree.jstree().create_node('#', {
+					'text' : 'Last Session',
+					'type' : 'session',
+					'li_attr' : {
+						'timestamp' : Date.now(),
+						'description' : 'Default Session'
+					}
+				});
+				var nodes = JSON.parse(localStorage.getItem('PLATIN.storytellingv2.last_snapshot'));
+				console.log(nodes);
+				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
+				storytellingv2.makeSimple(storytellingv2Gui.tree);
+				
+				console.log(last);
+			}
 
 		},
 		
@@ -397,9 +400,9 @@ Storytellingv2Gui.prototype = {
 						'configs' : storytellingv2Widget.configArray.slice()
 					}
 				});
-				storytellingv2.makeSimple(storytellingv2Gui.tree);
-				snapshot_as_json = storytellingv2Gui.tree.jstree(true).get_json(newDataset, {flat: 'true'});
+				snapshot_as_json = JSON.stringify(storytellingv2Gui.tree.jstree(true).get_json(newDataset));
 				localStorage.setItem("PLATIN.storytellingv2.last_snapshot",snapshot_as_json);
+				storytellingv2.makeSimple(storytellingv2Gui.tree);
 				
 			}));
 			
@@ -427,7 +430,6 @@ Storytellingv2Gui.prototype = {
 			var loadFilter = function(node) {
 				var configArray = node.li_attr.configs;
 				for (var i = 0; i < configArray.length; i++) {
-					console.log(configArray[i]);
 					Publisher.Publish('setConfig', configArray[i]);
 				}
 			}
@@ -454,7 +456,6 @@ Storytellingv2Gui.prototype = {
 				}
 				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
 					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
-					console.log(curNode);
 					if (curNode.type == 'dataset') {
 						loadDataset(curNode);
 					} else if (curNode.type == 'config') {
@@ -603,7 +604,6 @@ Storytellingv2Gui.prototype = {
 					});
 				}
 //				$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
-				console.log(data.node);
 			});
 			
 		}
