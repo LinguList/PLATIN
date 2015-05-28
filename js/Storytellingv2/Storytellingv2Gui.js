@@ -172,11 +172,9 @@ Storytellingv2Gui.prototype = {
 					}
 				});
 				var nodes = JSON.parse(localStorage.getItem('PLATIN.storytellingv2.last_snapshot'));
-				console.log(nodes);
 				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
 				storytellingv2.makeSimple(storytellingv2Gui.tree);
 				
-				console.log(last);
 			}
 
 		},

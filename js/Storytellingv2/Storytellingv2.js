@@ -89,14 +89,15 @@ Storytellingv2.prototype = {
 				return function(e) {
 										
 					var treedata = JSON.parse(e.target.result);
-					console.log(treedata);
 					deleteAllNodes(tree);
 					for (var i = 0; i < treedata.length; i++) {
 						if (treedata[i].type == 'dataset') {
-							$('#storytellingv2expert').hide();
-							$('#storytellingv2simple').show();
-						}
-						if (treedata[i].type == 'snapshot') {
+							tree.jstree().create_node(treedata[i].parent,treedata[i]);
+							var n = tree.jstree().get_node(treedata[i].id);
+							tree.jstree().set_type(n, 'snapshot');
+							$('#storytellingv2expert').show();
+							$('#storytellingv2simple').hide();
+						} else if (treedata[i].type == 'snapshot') {
 							treedata[i].type = 'dataset';
 							tree.jstree().create_node(treedata[i].parent,treedata[i]);
 							var n = tree.jstree().get_node(treedata[i].id);
