@@ -171,7 +171,16 @@ GeoTemCoLoader = {
 		
 		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/jstree/themes/default/style.min.css') );
 		
-		(new DynaJsLoader()).loadScripts(jsTreeFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(jsTreeFiles, GeoTemCoLoader.loadFileSaver);
+	},
+
+	loadFileSaver : function() {
+
+		var fileSaverFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/filesaver/FileSaver.min.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(fileSaverFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {

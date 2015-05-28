@@ -207,11 +207,16 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.exportbutton.click($.proxy(function() {
 				var tree_as_json = JSON.stringify($('#storytellingv2jstree').jstree(true).get_json('#', { 'flat': true }));
 				var exportdate = new Date().toUTCString();
-				
+
+				var blob = new Blob([tree_as_json], {type: "text/plain;charset=utf-8"});
+				saveAs(blob, "Storytelling State(" + exportdate + ").json");
+
+				/*
 				var pom = document.createElement('a');
 				pom.setAttribute('href','data:application/json;charset=UTF-8, ' + encodeURIComponent(tree_as_json));
 				pom.setAttribute('download','Storytelling State(' + exportdate + ').json');
 				pom.click();
+				*/
 			}));
 		
 		},
