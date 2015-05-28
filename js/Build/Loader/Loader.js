@@ -115,7 +115,7 @@ GeoTemCoLoader = {
 	loaduCSV : function() {
 		if (typeof CSV == 'undefined') {
 			var jsZipFiles = [{
-				url : GeoTemCoLoader.urlPrefix + 'lib/ucsv/ucsv-1.1.0-min.js',
+				url : GeoTemCoLoader.urlPrefix + 'lib/ucsv/csvToArray.js',
 			}];
 			
 			(new DynaJsLoader()).loadScripts(jsZipFiles, GeoTemCoLoader.loadSheetJS);
