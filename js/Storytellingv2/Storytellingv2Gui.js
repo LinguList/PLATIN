@@ -202,12 +202,40 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.exportbutton = $('<input type="button" id="storytellingv2export" name="export" value="export" />');
+			var dialog = $('<div id="tree-export-filename" title="Save File As?"><p><input type="text" size="25" /></p></div>');
+			storytellingv2Gui.exportbutton.append(dialog);
+			dialog.dialog({
+				resizable: false,
+				autoOpen: false,
+				height: 220,
+				modal: true,
+				buttons: {
+					'Ok': function() {
+						$(this).dialog("close");
+					},
+					Cancel: function() {
+						$(this).dialog("close");
+					}
+				}
+			});
 			storytellingv2Gui.exportbutton.click($.proxy(function() {
 				var tree_as_json = JSON.stringify($('#storytellingv2jstree').jstree(true).get_json('#', { 'flat': true }));
 				var exportdate = new Date().toUTCString();
 
-				var blob = new Blob([tree_as_json], {type: "text/plain;charset=utf-8"});
-				saveAs(blob, "Storytelling State(" + exportdate + ").json");
+				dialog.dialog('open');
+				$(dialog).find(':input').val("Storytelling State(" + exportdate + ").json");
+				dialog.dialog('option', 'buttons', {
+					'Ok': function() {
+						var blob = new Blob([tree_as_json], {type: "text/plain;charset=utf-8"});
+						saveAs(blob, dialog.find(':input').val());
+						$(this).dialog("close");
+					},
+					Cancel: function() {
+						$(this).dialog("close");
+					}
+				})
+//				var blob = new Blob([tree_as_json], {type: "text/plain;charset=utf-8"});
+//				saveAs(blob, "Storytelling State(" + exportdate + ").json");
 
 				/*
 				var pom = document.createElement('a');
@@ -226,10 +254,12 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
-			var dialog = $('<div id="tree-reset-dialog-confirm" title="Erase all tree content?"><p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>Tree items will be permanently deleted and cannot be recovered. Are you sure?</p></div>').dialog({
-				resizeable: false,
+			var dialog = $('<div id="tree-reset-dialog-confirm" title="Erase all tree content?"><p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>Tree items will be permanently deleted and cannot be recovered. Are you sure?</p></div>');
+			storytellingv2Gui.resetbutton.append(dialog)
+			dialog.dialog({
+				resizable: false,
 				autoOpen: false,
-				height: 140,
+				height: 260,
 				modal: true,
 				buttons: {
 					'Yes': function() {
@@ -242,7 +272,6 @@ Storytellingv2Gui.prototype = {
 				}
 			});
 			
-			storytellingv2Gui.resetbutton.append(dialog)
 			storytellingv2Gui.resetbutton.click($.proxy(function() {
 				dialog.dialog('open');
 			}));
