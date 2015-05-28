@@ -25,7 +25,7 @@ lib/sheetjs/shim.js
 lib/sheetjs/xls.min.js
 lib/sheetjs/xlsx.js
 lib/momentjs/moment.js
-lib/ucsv/ucsv-1.1.0-min.js
+lib/ucsv/csvToArray.js
 lib/flot/jquery.flot.js
 lib/flot/jquery.flot.pie.js
 lib/flot/jquery.flot.resize.js
