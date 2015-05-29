@@ -171,7 +171,7 @@ Storytellingv2Gui.prototype = {
 						'description' : 'Default Session'
 					}
 				});
-				var nodes = JSON.parse(localStorage.getItem('PLATIN.storytellingv2.last_snapshot'));
+				var nodes = JSON.parse(LZString.decompressFromUTF16(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
 				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
 				storytellingv2.makeSimple(storytellingv2Gui.tree);
 				
@@ -432,8 +432,15 @@ Storytellingv2Gui.prototype = {
 						'configs' : storytellingv2Widget.configArray.slice()
 					}
 				});
-				snapshot_as_json = JSON.stringify(storytellingv2Gui.tree.jstree(true).get_json(newDataset));
-				localStorage.setItem("PLATIN.storytellingv2.last_snapshot",snapshot_as_json);
+				try {
+					snapshot_as_json = JSON.stringify(storytellingv2Gui.tree.jstree(true).get_json(newDataset));
+					console.log("Uncompressed: "+snapshot_as_json.length);
+					var compressed = LZString.compressToUTF16(snapshot_as_json);
+					console.log("Compressed: "+compressed.length);
+					localStorage.setItem("PLATIN.storytellingv2.last_snapshot",compressed);
+				} catch (err) {
+					console.log("LocalStorage Quota exceeded!");
+				}
 				storytellingv2.makeSimple(storytellingv2Gui.tree);
 				
 			}));

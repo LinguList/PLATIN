@@ -180,7 +180,15 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'lib/filesaver/FileSaver.min.js'
 		}];
 		
-		(new DynaJsLoader()).loadScripts(fileSaverFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(fileSaverFiles, GeoTemCoLoader.loadLzString);
+	},
+	
+	loadLzString : function() {
+		var lzStringFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/lz-string/lz-string.min.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(lzStringFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {
