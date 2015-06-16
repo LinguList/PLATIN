@@ -33,6 +33,66 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 	this.parent = storytellingv2;
 	var storytellingv2Gui = this;
 	
+	storytellingv2Gui.mode_option_view = {
+			mode_name : 'view',
+			buttons : {
+				openbutton : true,
+				savebutton : true,
+				newbutton : true,
+				expertmodebutton : true,
+				simplemodebutton : false,
+				viewmodebutton : false,
+				editmodebutton : true,
+				newnodebutton : false,
+				snapshotbutton : true,
+				activatebutton : true,
+				deletebutton : true,
+				editbutton : true,
+				backwardbutton : true,
+				forwardbutton : true
+			}
+	};
+	
+	storytellingv2Gui.mode_option_simple = {
+			mode_name : 'simple',
+			buttons : {
+				openbutton : true,
+				savebutton : true,
+				newbutton : true,
+				expertmodebutton : true,
+				simplemodebutton : false,
+				viewmodebutton : false,
+				editmodebutton : true,
+				newnodebutton : false,
+				snapshotbutton : true,
+				activatebutton : true,
+				deletebutton : true,
+				editbutton : true,
+				backwardbutton : true,
+				forwardbutton : true
+			}
+	};
+	
+	storytellingv2Gui.mode_option_expert = {
+			mode_name : 'expert',
+			buttons : {
+				openbutton : true,
+				savebutton : true,
+				newbutton : true,
+				expertmodebutton : true,
+				simplemodebutton : false,
+				viewmodebutton : false,
+				editmodebutton : true,
+				newnodebutton : false,
+				snapshotbutton : true,
+				activatebutton : true,
+				deletebutton : true,
+				editbutton : true,
+				backwardbutton : true,
+				forwardbutton : true
+			}
+	};
+	
 	storytellingv2Gui.storytellingv2Container = document.createElement('div');
 	$(div).append(storytellingv2Gui.storytellingv2Container);
 	storytellingv2Gui.storytellingv2Container.style.position = 'relative';
@@ -47,6 +107,7 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 			
 			if (storytellingv2Gui.tree == undefined) {
+				storytellingv2Gui.hiddenNodeTypes = [];
 				storytellingv2Gui.initTree();
 			}
 		},
@@ -90,7 +151,7 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.tree.on('open_node.jstree', function(e, data) {
 				var node = data.node;
 				if (node.type == 'snapshot') {
-					storytellingv2Gui.tree.jstree().close_node(node, false);
+//					storytellingv2Gui.tree.jstree().close_node(node, false);
 				}
 				
 			});
@@ -98,33 +159,37 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.menu = $('<div style="float: left;"></div>');
 			storytellingv2Gui.importexportsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 
-			storytellingv2Gui.addImportButton();
-			storytellingv2Gui.addExportButton();
-			storytellingv2Gui.addResetButton();
-			storytellingv2Gui.addExpertButton();
-			storytellingv2Gui.addSimpleButton();
+			storytellingv2Gui.addOpenButton();
+			storytellingv2Gui.addSaveButton();
+			storytellingv2Gui.addNewButton();
+			storytellingv2Gui.addExpertModeButton();
+			storytellingv2Gui.addSimpleModeButton();
+			storytellingv2Gui.addViewModeButton();
+			storytellingv2Gui.addEditModeButton();
 			
-			storytellingv2Gui.simplebutton.hide();
-			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.importbutton);
-			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.exportbutton);
-			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.resetbutton);
-			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.expertbutton);
-			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.simplebutton);
+			storytellingv2Gui.simplemodebutton.hide();
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.openbutton);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.savebutton);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.newbutton);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.expertmodebutton);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.simplemodebutton);
 			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.importfile);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.viewmodebutton);
+			$(storytellingv2Gui.importexportsubmenu).append(storytellingv2Gui.editmodebutton);
 			
 			storytellingv2Gui.treemanipulationsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 			
-			storytellingv2Gui.addNewButton();
+			storytellingv2Gui.addNewNodeButton();
 			storytellingv2Gui.addSnapshotButton();
-			storytellingv2Gui.addRestoreButton();
+			storytellingv2Gui.addActivateButton();
 			storytellingv2Gui.addDeleteButton();
 			storytellingv2Gui.addEditButton();
 			storytellingv2Gui.addBackwardButton();
 			storytellingv2Gui.addForwardButton();
 			
-			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.newbutton);
+			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.newnodebutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.snapshotbutton);
-			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.restorebutton);
+			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.activatebutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.deletebutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.editbutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.backwardbutton);
@@ -132,7 +197,7 @@ Storytellingv2Gui.prototype = {
 			
 			storytellingv2Gui.addMetadata();
 			
-			storytellingv2Gui.newbutton.hide();
+			storytellingv2Gui.newnodebutton.hide();
 			$(storytellingv2Gui.storytellingv2Container).append(storytellingv2Gui.tree);
 			$(storytellingv2Gui.menu).append(storytellingv2Gui.importexportsubmenu);
 			$(storytellingv2Gui.menu).append(storytellingv2Gui.treemanipulationsubmenu);
@@ -149,7 +214,13 @@ Storytellingv2Gui.prototype = {
 					storytellingv2Gui.metadata.show();
 					if (e.type == "create_node") {
 						storytellingv2Gui.tree.jstree().deselect_all();
-						storytellingv2Gui.tree.jstree().select_node(data.node);
+						var t = data.node.type;
+						if (storytellingv2Gui.hiddenNodeTypes.indexOf(t) > -1) {
+							var parent = storytellingv2Gui.tree.jstree().get_node(data.node.parent);
+							storytellingv2Gui.tree.jstree().select_node(parent);
+						} else {
+							storytellingv2Gui.tree.jstree().select_node(data.node);							
+						}
 					} if (e.type == "delete_node") {
 						storytellingv2Gui.tree.jstree().deselect_all();
 						var prev_node = storytellingv2Gui.tree.jstree().get_prev_dom(data.node);
@@ -160,6 +231,15 @@ Storytellingv2Gui.prototype = {
 					storytellingv2Gui.metadata.hide();
 				}
 				
+			});
+			storytellingv2Gui.tree.on('open_node.jstree close_node.jstree create_node.jstree delete_node.jstree dnd_start.vakata dnd_stop.vakata dnd_move.vakata', function(e, data) {
+				for (var i = 0; i < storytellingv2Gui.hiddenNodeTypes.length; i++) {
+					var nodesToHide = storytellingv2.findNodesByType(storytellingv2Gui.tree, storytellingv2Gui.hiddenNodeTypes[i], '#');
+					for (var j = 0; j < nodesToHide.length; j++) {
+						var node = storytellingv2Gui.tree.jstree().get_node(nodesToHide[j], true);
+						$(node).hide();
+					}
+				}				
 			});
 			
 			if (localStorage.getItem('PLATIN.storytellingv2.last_snapshot')) {
@@ -173,37 +253,38 @@ Storytellingv2Gui.prototype = {
 				});
 				var nodes = JSON.parse(LZString.decompressFromUTF16(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
 				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
-				storytellingv2.makeSimple(storytellingv2Gui.tree);
+				storytellingv2.makeSimple();
 				
 			}
+			storytellingv2.changeMode(storytellingv2Gui.mode_option_view);
 
 		},
 		
-		addImportButton : function() {
+		addOpenButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.importbutton = $('<input type="button" id="storytellingv2import" name="import" value="import" />');
+			storytellingv2Gui.openbutton = $('<input type="button" id="storytellingv2open" name="open" value="open" />');
 			storytellingv2Gui.importfile = $('<input type="file" id="storytellingv2importfile" accept="application/json" style="display: block; visibility:hidden; width: 0; height: 0" />');
 			storytellingv2Gui.importfile.change(storytellingv2.handleFileSelect);
 			
-			storytellingv2Gui.importbutton.click($.proxy(function() {
+			storytellingv2Gui.openbutton.click($.proxy(function() {
 				storytellingv2Gui.importfile.click();
 			}));
 			
 		},
 		
-		addExportButton : function() {
+		addSaveButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.exportbutton = $('<input type="button" id="storytellingv2export" name="export" value="export" />');
+			storytellingv2Gui.savebutton = $('<input type="button" id="storytellingv2save" name="save" value="save" />');
 			var dialog = $('<div id="tree-export-filename" title="Save File As?"><p><input type="text" size="25" /></p></div>');
-			storytellingv2Gui.exportbutton.append(dialog);
+			storytellingv2Gui.savebutton.append(dialog);
 			dialog.dialog({
 				resizable: false,
 				autoOpen: false,
@@ -218,7 +299,7 @@ Storytellingv2Gui.prototype = {
 					}
 				}
 			});
-			storytellingv2Gui.exportbutton.click($.proxy(function() {
+			storytellingv2Gui.savebutton.click($.proxy(function() {
 				var tree_as_json = JSON.stringify($('#storytellingv2jstree').jstree(true).get_json('#', { 'flat': true }));
 				var exportdate = new Date().toUTCString();
 
@@ -247,15 +328,15 @@ Storytellingv2Gui.prototype = {
 		
 		},
 		
-		addResetButton : function() {
+		addNewButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.resetbutton = $('<input type="button" id="storytellingv2reset" name="reset" value="reset" />');
+			storytellingv2Gui.newbutton = $('<input type="button" id="storytellingv2new" name="new" value="new" />');
 			var dialog = $('<div id="tree-reset-dialog-confirm" title="Erase all tree content?"><p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>Tree items will be permanently deleted and cannot be recovered. Are you sure?</p></div>');
-			storytellingv2Gui.resetbutton.append(dialog)
+			storytellingv2Gui.newbutton.append(dialog)
 			dialog.dialog({
 				resizable: false,
 				autoOpen: false,
@@ -272,23 +353,23 @@ Storytellingv2Gui.prototype = {
 				}
 			});
 			
-			storytellingv2Gui.resetbutton.click($.proxy(function() {
+			storytellingv2Gui.newbutton.click($.proxy(function() {
 				dialog.dialog('open');
 			}));
 		},
 		
-		addExpertButton : function() {
+		addExpertModeButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.expertbutton = $('<input type="button" id="storytellingv2expert" name="expert" value="expert" />');
-			storytellingv2Gui.expertbutton.click($.proxy(function() {
-				storytellingv2Gui.expertbutton.hide();
-				storytellingv2Gui.simplebutton.show();
+			storytellingv2Gui.expertmodebutton = $('<input type="button" id="storytellingv2expertmode" name="expertmode" value="expert mode" />');
+			storytellingv2Gui.expertmodebutton.click($.proxy(function() {
+				storytellingv2Gui.expertmodebutton.hide();
+				storytellingv2Gui.simplemodebutton.show();
 				storytellingv2Gui.snapshotbutton.hide();
-				storytellingv2Gui.newbutton.show();
+				storytellingv2Gui.newnodebutton.show();
 				storytellingv2Gui.parent.simplemode = false;
 				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
 				for (var i = 0; i < configs.length; i++) {
@@ -301,37 +382,68 @@ Storytellingv2Gui.prototype = {
 					snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
 				}
 				
+				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
+				if (ind > -1) {
+					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
+				}
+				
 			}));
 			
 		},
 		
-		addSimpleButton : function() {
+		addSimpleModeButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.simplebutton = $('<input type="button" id="storytellingv2simple" name="simple" value="simple" />');
-			storytellingv2Gui.simplebutton.click($.proxy(function() {
-				storytellingv2Gui.simplebutton.hide();
-				storytellingv2Gui.expertbutton.show();
-				storytellingv2Gui.newbutton.hide();
+			storytellingv2Gui.simplemodebutton = $('<input type="button" id="storytellingv2simplemode" name="simplemode" value="simple mode" />');
+			storytellingv2Gui.simplemodebutton.click($.proxy(function() {
+				storytellingv2Gui.simplemodebutton.hide();
+				storytellingv2Gui.expertmodebutton.show();
+				storytellingv2Gui.newnodebutton.hide();
 				storytellingv2Gui.snapshotbutton.show();
 				storytellingv2Gui.parent.simplemode = true;
-				storytellingv2.makeSimple(storytellingv2Gui.tree);
+				storytellingv2.makeSimple();
 			}));
 			
 		},
 		
-		addNewButton : function() {
+		addViewModeButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.newbutton = $('<input type="button" id="storytellingv2new" name="new" value="new" />');
-			storytellingv2Gui.newbutton.click($.proxy(function() {
-				storytellingv2.defaultSession(storytellingv2Gui.tree);
+			storytellingv2Gui.viewmodebutton = $('<input type="button" id="storytellingv2viewmode" name="viewmode" value="view mode" />');
+			storytellingv2Gui.viewmodebutton.click($.proxy(function() {
+
+			}));
+			
+		},
+		
+		addEditModeButton : function() {
+
+			var storytellingv2Gui = this;
+			var storytellingv2Widget = storytellingv2Gui.parent;
+			var storytellingv2 = storytellingv2Widget.storytellingv2;
+
+			storytellingv2Gui.editmodebutton = $('<input type="button" id="storytellingv2editmode" name="editmode" value="edit mode" />');
+			storytellingv2Gui.editmodebutton.click($.proxy(function() {
+
+			}));
+			
+		},
+		
+		addNewNodeButton : function() {
+
+			var storytellingv2Gui = this;
+			var storytellingv2Widget = storytellingv2Gui.parent;
+			var storytellingv2 = storytellingv2Widget.storytellingv2;
+
+			storytellingv2Gui.newnodebutton = $('<input type="button" id="storytellingv2newnode" name="newnode" value="new node" />');
+			storytellingv2Gui.newnodebutton.click($.proxy(function() {
+				storytellingv2.defaultSession();
 				var newform = $('<div></div>');
 				var nameinput = $('<p>Name: <input type="text" /></p>');
 				var typeinput = $('<p>Type: <select name="type"><option value="session">Session</option><option value="dataset">Dataset</option><option value="config">Config</option></select></p>');
@@ -398,7 +510,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.snapshotbutton = $('<input type="button" id="storytellingv2snapshot" name="snapshot" value="snapshot" />');
 			storytellingv2Gui.snapshotbutton.click($.proxy(function() {
-				storytellingv2.defaultSession(storytellingv2Gui.tree);
+				storytellingv2.defaultSession();
 				var root = storytellingv2Gui.tree.jstree().get_node('#');
 				var session = storytellingv2Gui.tree.jstree().get_node(root.children[0]);
 				var countSnapshots = session.children.length + 1;
@@ -441,19 +553,19 @@ Storytellingv2Gui.prototype = {
 				} catch (err) {
 					console.log("LocalStorage Quota exceeded!");
 				}
-				storytellingv2.makeSimple(storytellingv2Gui.tree);
+				storytellingv2.makeSimple();
 				
 			}));
 			
 		},
 		
-		addRestoreButton : function() {
+		addActivateButton : function() {
 
 			var storytellingv2Gui = this;
 			var storytellingv2Widget = storytellingv2Gui.parent;
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
-			storytellingv2Gui.restorebutton = $('<input type="button" id="storytellingv2restore" name="restore" value="restore" />');
+			storytellingv2Gui.activatebutton = $('<input type="button" id="storytellingv2activate" name="activate" value="activate" />');
 			var loadDataset = function(node) {
 				var datasets = node.li_attr.datasets;
 				if (datasets != undefined) {
@@ -484,7 +596,7 @@ Storytellingv2Gui.prototype = {
 				}
 			}
 			
-			storytellingv2Gui.restorebutton.click($.proxy(function() {
+			storytellingv2Gui.activatebutton.click($.proxy(function() {
 				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
 				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
 					return;

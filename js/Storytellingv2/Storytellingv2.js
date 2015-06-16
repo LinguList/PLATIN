@@ -87,7 +87,6 @@ Storytellingv2.prototype = {
 						
 			reader.onload = (function(f) {
 				return function(e) {
-										
 					var treedata = JSON.parse(e.target.result);
 					deleteAllNodes(tree);
 					for (var i = 0; i < treedata.length; i++) {
@@ -115,30 +114,29 @@ Storytellingv2.prototype = {
 		},
 		
 		
-		makeSimple : function(tree) {
-			var configs = this.findNodesByType(tree,'config');
-			var datasets = this.findNodesByType(tree,'dataset');
+		makeSimple : function() {
+			storytellingv2Gui = this.parent.gui;
+			
+			var configs = this.findNodesByType(storytellingv2Gui.tree,'config');
+			var datasets = this.findNodesByType(storytellingv2Gui.tree,'dataset');
 			for (var i = 0; i < datasets.length; i++) {
-				tree.jstree().set_type(datasets[i], 'snapshot');
+				storytellingv2Gui.tree.jstree().set_type(datasets[i], 'snapshot');
 				datasets[i].li_attr.dataset_text = datasets[i].text;
 				datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
 			}			
 			for (var i = 0; i < configs.length; i++) {
-				var c = tree.jstree().get_node(configs[i], true);
+				var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
 				$(c).hide();
 			}
+			storytellingv2Gui.hiddenNodeTypes.push('config');
 		},
 		
-		
-		
-		
-			
-		
-		
 	
-		defaultSession : function(tree) {
-			if (tree.jstree().is_leaf('#')) {
-				tree.jstree().create_node('#', {
+		defaultSession : function() {
+			storytellingv2Gui = this.parent.gui;
+
+			if (storytellingv2Gui.tree.jstree().is_leaf('#')) {
+				storytellingv2Gui.tree.jstree().create_node('#', {
 					'text' : 'Default Session',
 					'type' : 'session',
 					'li_attr' : {
@@ -148,6 +146,24 @@ Storytellingv2.prototype = {
 				})
 			};
 
+		},
+		
+		changeMode : function(option) {
+			storytellingv2Gui = this.parent.gui;
+
+			storytellingv2Gui.mode = option.mode_name;
+			
+			for (var button in option.buttons) {
+				if (option.buttons.hasOwnProperty(button)) {
+					if (storytellingv2Gui[button] != undefined) {
+						if (option.buttons[button]) {
+							storytellingv2Gui[button].show();
+						} else {
+							storytellingv2Gui[button].hide();
+						}
+					}
+				}
+			}
 		},
 
 	remove : function() {
