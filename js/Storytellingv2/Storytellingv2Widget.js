@@ -36,8 +36,8 @@ Storytellingv2Widget = function(core, div, options) {
 	this.currentStatus = new Object();
 
 	this.options = (new Storytellingv2Config(options)).options;
-	this.gui = new Storytellingv2Gui(this, div, this.options);
 	this.storytellingv2 = new Storytellingv2(this);
+	this.gui = new Storytellingv2Gui(this, div, this.options);
 	
 	this.datasetLink;
 	

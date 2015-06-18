@@ -164,6 +164,10 @@ Storytellingv2.prototype = {
 					}
 				}
 			}
+			
+			if (option.execute != undefined) {
+				option.execute();
+			}
 		},
 
 	remove : function() {

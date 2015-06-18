@@ -36,20 +36,38 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 	storytellingv2Gui.mode_option_view = {
 			mode_name : 'view',
 			buttons : {
-				openbutton : true,
-				savebutton : true,
-				newbutton : true,
-				expertmodebutton : true,
+				openbutton : false,
+				savebutton : false,
+				newbutton : false,
+				expertmodebutton : false,
 				simplemodebutton : false,
 				viewmodebutton : false,
 				editmodebutton : true,
 				newnodebutton : false,
-				snapshotbutton : true,
-				activatebutton : true,
-				deletebutton : true,
-				editbutton : true,
+				snapshotbutton : false,
+				activatebutton : false,
+				deletebutton : false,
+				editbutton : false,
 				backwardbutton : true,
 				forwardbutton : true
+			},
+			execute : function() {
+				storytellingv2Widget = storytellingv2Gui.parent;
+				storytellingv2 = storytellingv2Widget.storytellingv2;
+				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
+				var datasets = storytellingv2.findNodesByType(storytellingv2Gui.tree,'dataset');
+				for (var i = 0; i < datasets.length; i++) {
+					storytellingv2Gui.tree.jstree().set_type(datasets[i], 'snapshot');
+					datasets[i].li_attr.dataset_text = datasets[i].text;
+					datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
+				}			
+				for (var i = 0; i < configs.length; i++) {
+					var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
+					$(c).hide();
+				}
+				storytellingv2Gui.hiddenNodeTypes.push('config');
+				
+				
 			}
 	};
 	
@@ -61,15 +79,32 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 				newbutton : true,
 				expertmodebutton : true,
 				simplemodebutton : false,
-				viewmodebutton : false,
-				editmodebutton : true,
+				viewmodebutton : true,
+				editmodebutton : false,
 				newnodebutton : false,
 				snapshotbutton : true,
 				activatebutton : true,
 				deletebutton : true,
 				editbutton : true,
-				backwardbutton : true,
-				forwardbutton : true
+				backwardbutton : false,
+				forwardbutton : false
+			},
+			execute : function() {
+				storytellingv2Widget = storytellingv2Gui.parent;
+				storytellingv2 = storytellingv2Widget.storytellingv2;
+				
+				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
+				var datasets = storytellingv2.findNodesByType(storytellingv2Gui.tree,'dataset');
+				for (var i = 0; i < datasets.length; i++) {
+					storytellingv2Gui.tree.jstree().set_type(datasets[i], 'snapshot');
+					datasets[i].li_attr.dataset_text = datasets[i].text;
+					datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
+				}			
+				for (var i = 0; i < configs.length; i++) {
+					var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
+					$(c).hide();
+				}
+				storytellingv2Gui.hiddenNodeTypes.push('config');
 			}
 	};
 	
@@ -79,17 +114,38 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 				openbutton : true,
 				savebutton : true,
 				newbutton : true,
-				expertmodebutton : true,
-				simplemodebutton : false,
-				viewmodebutton : false,
-				editmodebutton : true,
-				newnodebutton : false,
-				snapshotbutton : true,
+				expertmodebutton : false,
+				simplemodebutton : true,
+				viewmodebutton : true,
+				editmodebutton : false,
+				newnodebutton : true,
+				snapshotbutton : false,
 				activatebutton : true,
 				deletebutton : true,
 				editbutton : true,
-				backwardbutton : true,
-				forwardbutton : true
+				backwardbutton : false,
+				forwardbutton : false
+			},
+			execute : function() {
+				storytellingv2Widget = storytellingv2Gui.parent;
+				storytellingv2 = storytellingv2Widget.storytellingv2;
+				
+				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
+				for (var i = 0; i < configs.length; i++) {
+					storytellingv2Gui.tree.jstree().get_node(configs[i], true).show();
+				}
+				var snapshots = storytellingv2.findNodesByType(storytellingv2Gui.tree,'snapshot');
+				for (var i = 0; i < snapshots.length; i++) {
+					storytellingv2Gui.tree.jstree().set_type(snapshots[i], 'dataset');
+					snapshots[i].li_attr.snapshot_text = snapshots[i].text;
+					snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
+				}
+				
+				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
+				if (ind > -1) {
+					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
+				}
+				
 			}
 	};
 	
@@ -256,6 +312,7 @@ Storytellingv2Gui.prototype = {
 				storytellingv2.makeSimple();
 				
 			}
+			
 			storytellingv2.changeMode(storytellingv2Gui.mode_option_view);
 
 		},
@@ -366,26 +423,27 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.expertmodebutton = $('<input type="button" id="storytellingv2expertmode" name="expertmode" value="expert mode" />');
 			storytellingv2Gui.expertmodebutton.click($.proxy(function() {
-				storytellingv2Gui.expertmodebutton.hide();
-				storytellingv2Gui.simplemodebutton.show();
-				storytellingv2Gui.snapshotbutton.hide();
-				storytellingv2Gui.newnodebutton.show();
+//				storytellingv2Gui.expertmodebutton.hide();
+//				storytellingv2Gui.simplemodebutton.show();
+//				storytellingv2Gui.snapshotbutton.hide();
+//				storytellingv2Gui.newnodebutton.show();
 				storytellingv2Gui.parent.simplemode = false;
-				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
-				for (var i = 0; i < configs.length; i++) {
-					storytellingv2Gui.tree.jstree().get_node(configs[i], true).show();
-				}
-				var snapshots = storytellingv2.findNodesByType(storytellingv2Gui.tree,'snapshot');
-				for (var i = 0; i < snapshots.length; i++) {
-					storytellingv2Gui.tree.jstree().set_type(snapshots[i], 'dataset');
-					snapshots[i].li_attr.snapshot_text = snapshots[i].text;
-					snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
-				}
-				
-				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
-				if (ind > -1) {
-					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
-				}
+				storytellingv2.changeMode(storytellingv2Gui.mode_option_expert);
+//				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
+//				for (var i = 0; i < configs.length; i++) {
+//					storytellingv2Gui.tree.jstree().get_node(configs[i], true).show();
+//				}
+//				var snapshots = storytellingv2.findNodesByType(storytellingv2Gui.tree,'snapshot');
+//				for (var i = 0; i < snapshots.length; i++) {
+//					storytellingv2Gui.tree.jstree().set_type(snapshots[i], 'dataset');
+//					snapshots[i].li_attr.snapshot_text = snapshots[i].text;
+//					snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
+//				}
+//				
+//				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
+//				if (ind > -1) {
+//					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
+//				}
 				
 			}));
 			
@@ -399,12 +457,13 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.simplemodebutton = $('<input type="button" id="storytellingv2simplemode" name="simplemode" value="simple mode" />');
 			storytellingv2Gui.simplemodebutton.click($.proxy(function() {
-				storytellingv2Gui.simplemodebutton.hide();
-				storytellingv2Gui.expertmodebutton.show();
-				storytellingv2Gui.newnodebutton.hide();
-				storytellingv2Gui.snapshotbutton.show();
+//				storytellingv2Gui.simplemodebutton.hide();
+//				storytellingv2Gui.expertmodebutton.show();
+//				storytellingv2Gui.newnodebutton.hide();
+//				storytellingv2Gui.snapshotbutton.show();
 				storytellingv2Gui.parent.simplemode = true;
-				storytellingv2.makeSimple();
+				storytellingv2.changeMode(storytellingv2Gui.mode_option_simple);
+//				storytellingv2.makeSimple();
 			}));
 			
 		},
@@ -417,6 +476,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.viewmodebutton = $('<input type="button" id="storytellingv2viewmode" name="viewmode" value="view mode" />');
 			storytellingv2Gui.viewmodebutton.click($.proxy(function() {
+				storytellingv2.changeMode(storytellingv2Gui.mode_option_view);
 
 			}));
 			
@@ -430,7 +490,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.editmodebutton = $('<input type="button" id="storytellingv2editmode" name="editmode" value="edit mode" />');
 			storytellingv2Gui.editmodebutton.click($.proxy(function() {
-
+				storytellingv2.changeMode(storytellingv2Gui.mode_option_simple);
 			}));
 			
 		},
@@ -566,58 +626,59 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.activatebutton = $('<input type="button" id="storytellingv2activate" name="activate" value="activate" />');
-			var loadDataset = function(node) {
-				var datasets = node.li_attr.datasets;
-				if (datasets != undefined) {
-					GeoTemConfig.removeAllDatasets();
-					for (var i = 0; i < datasets.length; i++) {
-						var dataset = new Dataset(GeoTemConfig.loadJson(datasets[i].objects), datasets[i].label);
-						GeoTemConfig.addDataset(dataset);
-					}
-				}
-				
-			}
-			
-			var loadFilter = function(node) {
-				var configArray = node.li_attr.configs;
-				for (var i = 0; i < configArray.length; i++) {
-					Publisher.Publish('setConfig', configArray[i]);
-				}
-			}
-			
-			var loadSnapshot = function(node) {
-				loadDataset(node);
-				var childNode = node;
-				while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
-					childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
-					if (childNode.type == 'config') {
-						loadFilter(childNode);
-					}
-				}
-			}
-			
+//			var loadDataset = function(node) {
+//				var datasets = node.li_attr.datasets;
+//				if (datasets != undefined) {
+//					GeoTemConfig.removeAllDatasets();
+//					for (var i = 0; i < datasets.length; i++) {
+//						var dataset = new Dataset(GeoTemConfig.loadJson(datasets[i].objects), datasets[i].label);
+//						GeoTemConfig.addDataset(dataset);
+//					}
+//				}
+//				
+//			}
+//			
+//			var loadFilter = function(node) {
+//				var configArray = node.li_attr.configs;
+//				for (var i = 0; i < configArray.length; i++) {
+//					Publisher.Publish('setConfig', configArray[i]);
+//				}
+//			}
+//			
+//			var loadSnapshot = function(node) {
+//				loadDataset(node);
+//				var childNode = node;
+//				while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
+//					childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
+//					if (childNode.type == 'config') {
+//						loadFilter(childNode);
+//					}
+//				}
+//			}
+//			
 			storytellingv2Gui.activatebutton.click($.proxy(function() {
-				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
-				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
-					return;
-				}
-				if (selectedNode.type == 'snapshot') {
-					loadSnapshot(selectedNode);
-					return;
-				}
-				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
-					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
-					if (curNode.type == 'dataset') {
-						loadDataset(curNode);
-					} else if (curNode.type == 'config') {
-						loadFilter(curNode);
-					}
-				}
-				if (selectedNode.type == 'dataset') {
-					loadDataset(selectedNode);
-				} else if (selectedNode.type == 'config') {
-					loadFilter(selectedNode);
-				}
+//				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
+//				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
+//					return;
+//				}
+//				if (selectedNode.type == 'snapshot') {
+//					loadSnapshot(selectedNode);
+//					return;
+//				}
+//				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
+//					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
+//					if (curNode.type == 'dataset') {
+//						loadDataset(curNode);
+//					} else if (curNode.type == 'config') {
+//						loadFilter(curNode);
+//					}
+//				}
+//				if (selectedNode.type == 'dataset') {
+//					loadDataset(selectedNode);
+//				} else if (selectedNode.type == 'config') {
+//					loadFilter(selectedNode);
+//				}
+				storytellingv2Gui.activateNode(storytellingv2Gui);
 			}));
 			
 		},
@@ -693,6 +754,7 @@ Storytellingv2Gui.prototype = {
 				if (storytellingv2Gui.tree.jstree().get_next_dom(sel, true)) {
 					storytellingv2Gui.tree.jstree().deselect_node(sel);
 					storytellingv2Gui.tree.jstree().select_node(storytellingv2Gui.tree.jstree().get_next_dom(sel, true));
+					storytellingv2Gui.activateNode();
 				}
 				
 			}));
@@ -711,6 +773,7 @@ Storytellingv2Gui.prototype = {
 				if (storytellingv2Gui.tree.jstree().get_prev_dom(sel, true)) {
 					storytellingv2Gui.tree.jstree().deselect_node(sel);
 					storytellingv2Gui.tree.jstree().select_node(storytellingv2Gui.tree.jstree().get_prev_dom(sel, true));
+					storytellingv2Gui.activateNode();
 				}
 				
 			}));
@@ -754,8 +817,75 @@ Storytellingv2Gui.prototype = {
 						objectcount += this.length;
 					});
 				}
+				if (storytellingv2Gui.mode == "view") {
+					storytellingv2Gui.activateNode();
+				}
 //				$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
 			});
+			
+		},
+		
+		activateNode : function() {
+			return (function() {
+				
+				
+				var storytellingv2Widget = storytellingv2Gui.parent;
+				var storytellingv2 = storytellingv2Widget.storytellingv2;
+
+				var loadDataset = function(node) {
+					var datasets = node.li_attr.datasets;
+					if (datasets != undefined) {
+						GeoTemConfig.removeAllDatasets();
+						for (var i = 0; i < datasets.length; i++) {
+							var dataset = new Dataset(GeoTemConfig.loadJson(datasets[i].objects), datasets[i].label);
+							GeoTemConfig.addDataset(dataset);
+						}
+					}
+					
+				}
+				
+				var loadFilter = function(node) {
+					var configArray = node.li_attr.configs;
+					for (var i = 0; i < configArray.length; i++) {
+						Publisher.Publish('setConfig', configArray[i]);
+					}
+				}
+				
+				var loadSnapshot = function(node) {
+					loadDataset(node);
+					var childNode = node;
+					while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
+						childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
+						if (childNode.type == 'config') {
+							loadFilter(childNode);
+						}
+					}
+				}
+				
+				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
+				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
+					return;
+				}
+				if (selectedNode.type == 'snapshot') {
+					loadSnapshot(selectedNode);
+					return;
+				}
+				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
+					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
+					if (curNode.type == 'dataset') {
+						loadDataset(curNode);
+					} else if (curNode.type == 'config') {
+						loadFilter(curNode);
+					}
+				}
+				if (selectedNode.type == 'dataset') {
+					loadDataset(selectedNode);
+				} else if (selectedNode.type == 'config') {
+					loadFilter(selectedNode);
+				}
+				
+			})();
+
 			
 		}
 		
