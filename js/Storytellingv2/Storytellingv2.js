@@ -112,25 +112,7 @@ Storytellingv2.prototype = {
 			})(file);
 			reader.readAsText(file);
 		},
-		
-		
-		makeSimple : function() {
-			storytellingv2Gui = this.parent.gui;
-			
-			var configs = this.findNodesByType(storytellingv2Gui.tree,'config');
-			var datasets = this.findNodesByType(storytellingv2Gui.tree,'dataset');
-			for (var i = 0; i < datasets.length; i++) {
-				storytellingv2Gui.tree.jstree().set_type(datasets[i], 'snapshot');
-				datasets[i].li_attr.dataset_text = datasets[i].text;
-				datasets[i].text = datasets[i].li_attr.snapshot_text || datasets[i].text;
-			}			
-			for (var i = 0; i < configs.length; i++) {
-				var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
-				$(c).hide();
-			}
-			storytellingv2Gui.hiddenNodeTypes.push('config');
-		},
-		
+				
 	
 		defaultSession : function() {
 			storytellingv2Gui = this.parent.gui;

@@ -65,7 +65,16 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 					var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
 					$(c).hide();
 				}
-				storytellingv2Gui.hiddenNodeTypes.push('config');
+				
+				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
+				if (ind == -1) {
+					storytellingv2Gui.hiddenNodeTypes.push('config');
+				}
+				
+				//disable dnd
+				storytellingv2Gui.tree.jstree().settings.dnd.is_draggable = function(){
+					return false;
+				};
 				
 				
 			}
@@ -104,7 +113,16 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 					var c = storytellingv2Gui.tree.jstree().get_node(configs[i], true);
 					$(c).hide();
 				}
-				storytellingv2Gui.hiddenNodeTypes.push('config');
+				
+				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
+				if (ind == -1) {
+					storytellingv2Gui.hiddenNodeTypes.push('config');
+				}
+				
+				//enable dnd
+				storytellingv2Gui.tree.jstree().settings.dnd.is_draggable = function() {
+					return true;
+				};
 			}
 	};
 	
@@ -143,8 +161,17 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 				
 				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
 				if (ind > -1) {
-					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
+					for (var i = storytellingv2Gui.hiddenNodeTypes.length; i >= 0; i--) {
+						if (storytellingv2Gui.hiddenNodeTypes[i] == 'config') {
+							storytellingv2Gui.hiddenNodeTypes.splice(i, 1);
+						}
+					}
 				}
+				
+				//enable dnd
+				storytellingv2Gui.tree.jstree().settings.dnd.is_draggable = function() {
+					return true;
+				};
 				
 			}
 	};
@@ -180,6 +207,8 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.tree.jstree({
 				'core' : {
 					'check_callback' : true,
+					'multiple' : false,
+					'animation' : false
 				},
 				'plugins' : [ 'dnd', 'types' ],
 				'types' : {
@@ -204,14 +233,7 @@ Storytellingv2Gui.prototype = {
 				}
 			});
 			
-			storytellingv2Gui.tree.on('open_node.jstree', function(e, data) {
-				var node = data.node;
-				if (node.type == 'snapshot') {
-//					storytellingv2Gui.tree.jstree().close_node(node, false);
-				}
-				
-			});
-			
+		
 			storytellingv2Gui.menu = $('<div style="float: left;"></div>');
 			storytellingv2Gui.importexportsubmenu = $('<div style="border: 2px solid; margin: 2px; padding: 5px;"></div>');
 
@@ -263,6 +285,8 @@ Storytellingv2Gui.prototype = {
 			storytellingv2Gui.tree.hide();
 			storytellingv2Gui.metadata.hide();
 			
+			
+			//auto selecting node logic
 			storytellingv2Gui.tree.on('create_node.jstree delete_node.jstree', function(e, data) {
 				var root = storytellingv2Gui.tree.jstree().get_node('#');
 				if (root.children.length > 0) {
@@ -288,7 +312,21 @@ Storytellingv2Gui.prototype = {
 				}
 				
 			});
+			
+			//hide node logic
 			storytellingv2Gui.tree.on('open_node.jstree close_node.jstree create_node.jstree delete_node.jstree dnd_start.vakata dnd_stop.vakata dnd_move.vakata', function(e, data) {
+				for (var i = 0; i < storytellingv2Gui.hiddenNodeTypes.length; i++) {
+					var nodesToHide = storytellingv2.findNodesByType(storytellingv2Gui.tree, storytellingv2Gui.hiddenNodeTypes[i], '#');
+					for (var j = 0; j < nodesToHide.length; j++) {
+						var node = storytellingv2Gui.tree.jstree().get_node(nodesToHide[j], true);
+						$(node).hide();
+					}
+				}
+			
+			});
+						
+			//hide node logic for dnd
+			$(document).on('dnd_stop.vakata', function(e, data) {
 				for (var i = 0; i < storytellingv2Gui.hiddenNodeTypes.length; i++) {
 					var nodesToHide = storytellingv2.findNodesByType(storytellingv2Gui.tree, storytellingv2Gui.hiddenNodeTypes[i], '#');
 					for (var j = 0; j < nodesToHide.length; j++) {
@@ -298,6 +336,7 @@ Storytellingv2Gui.prototype = {
 				}				
 			});
 			
+			//restoring last snapshot
 			if (localStorage.getItem('PLATIN.storytellingv2.last_snapshot')) {
 				var lastSession = storytellingv2Gui.tree.jstree().create_node('#', {
 					'text' : 'Last Session',
@@ -309,10 +348,10 @@ Storytellingv2Gui.prototype = {
 				});
 				var nodes = JSON.parse(LZString.decompressFromUTF16(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
 				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
-				storytellingv2.makeSimple();
 				
 			}
 			
+			//start in view mode
 			storytellingv2.changeMode(storytellingv2Gui.mode_option_view);
 
 		},
@@ -372,15 +411,6 @@ Storytellingv2Gui.prototype = {
 						$(this).dialog("close");
 					}
 				})
-//				var blob = new Blob([tree_as_json], {type: "text/plain;charset=utf-8"});
-//				saveAs(blob, "Storytelling State(" + exportdate + ").json");
-
-				/*
-				var pom = document.createElement('a');
-				pom.setAttribute('href','data:application/json;charset=UTF-8, ' + encodeURIComponent(tree_as_json));
-				pom.setAttribute('download','Storytelling State(' + exportdate + ').json');
-				pom.click();
-				*/
 			}));
 		
 		},
@@ -423,27 +453,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.expertmodebutton = $('<input type="button" id="storytellingv2expertmode" name="expertmode" value="expert mode" />');
 			storytellingv2Gui.expertmodebutton.click($.proxy(function() {
-//				storytellingv2Gui.expertmodebutton.hide();
-//				storytellingv2Gui.simplemodebutton.show();
-//				storytellingv2Gui.snapshotbutton.hide();
-//				storytellingv2Gui.newnodebutton.show();
-				storytellingv2Gui.parent.simplemode = false;
 				storytellingv2.changeMode(storytellingv2Gui.mode_option_expert);
-//				var configs = storytellingv2.findNodesByType(storytellingv2Gui.tree,'config');
-//				for (var i = 0; i < configs.length; i++) {
-//					storytellingv2Gui.tree.jstree().get_node(configs[i], true).show();
-//				}
-//				var snapshots = storytellingv2.findNodesByType(storytellingv2Gui.tree,'snapshot');
-//				for (var i = 0; i < snapshots.length; i++) {
-//					storytellingv2Gui.tree.jstree().set_type(snapshots[i], 'dataset');
-//					snapshots[i].li_attr.snapshot_text = snapshots[i].text;
-//					snapshots[i].text = snapshots[i].li_attr.dataset_text || snapshots[i].text;
-//				}
-//				
-//				var ind = storytellingv2Gui.hiddenNodeTypes.indexOf('config');
-//				if (ind > -1) {
-//					storytellingv2Gui.hiddenNodeTypes.splice(ind, 1);
-//				}
 				
 			}));
 			
@@ -457,13 +467,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.simplemodebutton = $('<input type="button" id="storytellingv2simplemode" name="simplemode" value="simple mode" />');
 			storytellingv2Gui.simplemodebutton.click($.proxy(function() {
-//				storytellingv2Gui.simplemodebutton.hide();
-//				storytellingv2Gui.expertmodebutton.show();
-//				storytellingv2Gui.newnodebutton.hide();
-//				storytellingv2Gui.snapshotbutton.show();
-				storytellingv2Gui.parent.simplemode = true;
 				storytellingv2.changeMode(storytellingv2Gui.mode_option_simple);
-//				storytellingv2.makeSimple();
 			}));
 			
 		},
@@ -594,7 +598,11 @@ Storytellingv2Gui.prototype = {
 						'selected' : storytellingv2Widget.selected
 					}
 				});
-				Publisher.Publish('getConfig',storytellingv2Widget);
+				try {
+					Publisher.Publish('getConfig',storytellingv2Widget);					
+				} catch (err) {
+					console.log('There was an error getting widget configurations');
+				}
 				var newConfig = storytellingv2Gui.tree.jstree().create_node(newDataset, {
 					'text' : 'Snapshot #'+countSnapshots,
 					'type' : 'config',
@@ -606,14 +614,12 @@ Storytellingv2Gui.prototype = {
 				});
 				try {
 					snapshot_as_json = JSON.stringify(storytellingv2Gui.tree.jstree(true).get_json(newDataset));
-					console.log("Uncompressed: "+snapshot_as_json.length);
 					var compressed = LZString.compressToUTF16(snapshot_as_json);
-					console.log("Compressed: "+compressed.length);
 					localStorage.setItem("PLATIN.storytellingv2.last_snapshot",compressed);
 				} catch (err) {
 					console.log("LocalStorage Quota exceeded!");
 				}
-				storytellingv2.makeSimple();
+				storytellingv2Gui.mode_option_simple.execute();
 				
 			}));
 			
@@ -626,58 +632,7 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.activatebutton = $('<input type="button" id="storytellingv2activate" name="activate" value="activate" />');
-//			var loadDataset = function(node) {
-//				var datasets = node.li_attr.datasets;
-//				if (datasets != undefined) {
-//					GeoTemConfig.removeAllDatasets();
-//					for (var i = 0; i < datasets.length; i++) {
-//						var dataset = new Dataset(GeoTemConfig.loadJson(datasets[i].objects), datasets[i].label);
-//						GeoTemConfig.addDataset(dataset);
-//					}
-//				}
-//				
-//			}
-//			
-//			var loadFilter = function(node) {
-//				var configArray = node.li_attr.configs;
-//				for (var i = 0; i < configArray.length; i++) {
-//					Publisher.Publish('setConfig', configArray[i]);
-//				}
-//			}
-//			
-//			var loadSnapshot = function(node) {
-//				loadDataset(node);
-//				var childNode = node;
-//				while (storytellingv2Gui.tree.jstree().is_parent(childNode)) {
-//					childNode = storytellingv2Gui.tree.jstree().get_node(childNode.children[0]);
-//					if (childNode.type == 'config') {
-//						loadFilter(childNode);
-//					}
-//				}
-//			}
-//			
 			storytellingv2Gui.activatebutton.click($.proxy(function() {
-//				var selectedNode = storytellingv2Gui.tree.jstree().get_node(storytellingv2Gui.tree.jstree().get_selected()[0]);
-//				if (selectedNode == 'undefined' || selectedNode.type == 'session') {
-//					return;
-//				}
-//				if (selectedNode.type == 'snapshot') {
-//					loadSnapshot(selectedNode);
-//					return;
-//				}
-//				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
-//					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
-//					if (curNode.type == 'dataset') {
-//						loadDataset(curNode);
-//					} else if (curNode.type == 'config') {
-//						loadFilter(curNode);
-//					}
-//				}
-//				if (selectedNode.type == 'dataset') {
-//					loadDataset(selectedNode);
-//				} else if (selectedNode.type == 'config') {
-//					loadFilter(selectedNode);
-//				}
 				storytellingv2Gui.activateNode(storytellingv2Gui);
 			}));
 			
@@ -727,9 +682,6 @@ Storytellingv2Gui.prototype = {
 						storytellingv2Gui.tree.jstree().redraw();
 						$(editform).empty();
 					}));
-//					$(editform).focusout(function() {
-//						$(editform).empty();
-//					});
 					$(editform).append(nameinput);
 					$(editform).append(descriptioninput);
 					$(editform).append(savebutton);
@@ -820,7 +772,6 @@ Storytellingv2Gui.prototype = {
 				if (storytellingv2Gui.mode == "view") {
 					storytellingv2Gui.activateNode();
 				}
-//				$(metadataselected).empty().append($('<p>'+objectcount+' Selected Objects in '+datasetcount+' Datasets</p>'));
 			});
 			
 		},

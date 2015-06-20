@@ -44,8 +44,6 @@ Storytellingv2Widget = function(core, div, options) {
 	this.selected;
 	this.configArray = [];
 	
-	this.simplemode = true;
-	
 	this.initWidget();
 	
 }
