@@ -69,48 +69,44 @@ Storytellingv2.prototype = {
 		},
 		
 		
-		handleFileSelect : function(evt) {
-			
-//			var storytellingv2 = this;
-			
-			var file = evt.target.files[0];
-			var tree = $('#storytellingv2jstree');
-			
-			var reader = new FileReader();
-			
-			var deleteAllNodes = function(tree) {
-				var nodes = tree.jstree().get_children_dom('#');
-				nodes.each(function() {
-					tree.jstree().delete_node(this);
-				});
-			}
+		handleFileSelect : function() {
+			var stv2 = this;
+			return (function(evt) {
+				
+				var file = evt.target.files[0];
+				
+				var reader = new FileReader();
+				
+				var storytellingv2Gui = stv2.parent.gui;
+				
+				reader.onload = (function(f) {
+					return function(e) {
+						var treedata = JSON.parse(e.target.result);
+						stv2.deleteAllNodes(storytellingv2Gui.tree);
+						for (var i = 0; i < treedata.length; i++) {
+							if (treedata[i].type == 'dataset') {
+								storytellingv2Gui.tree.jstree().create_node(treedata[i].parent,treedata[i]);
+								var n = storytellingv2Gui.tree.jstree().get_node(treedata[i].id);
+								storytellingv2Gui.tree.jstree().set_type(n, 'snapshot');
+								$('#storytellingv2expert').show();
+								$('#storytellingv2simple').hide();
+							} else if (treedata[i].type == 'snapshot') {
+								treedata[i].type = 'dataset';
+								storytellingv2Gui.tree.jstree().create_node(treedata[i].parent,treedata[i]);
+								var n = storytellingv2Gui.tree.jstree().get_node(treedata[i].id);
+								storytellingv2Gui.tree.jstree().set_type(n, 'snapshot');
+								$('#storytellingv2expert').show();
+								$('#storytellingv2simple').hide();
+							} else {
+								storytellingv2Gui.tree.jstree().create_node(treedata[i].parent,treedata[i]);
+							}
+						};
 						
-			reader.onload = (function(f) {
-				return function(e) {
-					var treedata = JSON.parse(e.target.result);
-					deleteAllNodes(tree);
-					for (var i = 0; i < treedata.length; i++) {
-						if (treedata[i].type == 'dataset') {
-							tree.jstree().create_node(treedata[i].parent,treedata[i]);
-							var n = tree.jstree().get_node(treedata[i].id);
-							tree.jstree().set_type(n, 'snapshot');
-							$('#storytellingv2expert').show();
-							$('#storytellingv2simple').hide();
-						} else if (treedata[i].type == 'snapshot') {
-							treedata[i].type = 'dataset';
-							tree.jstree().create_node(treedata[i].parent,treedata[i]);
-							var n = tree.jstree().get_node(treedata[i].id);
-							tree.jstree().set_type(n, 'snapshot');
-							$('#storytellingv2expert').show();
-							$('#storytellingv2simple').hide();
-						} else {
-							tree.jstree().create_node(treedata[i].parent,treedata[i]);
-						}
-					};
-					
-				}
-			})(file);
-			reader.readAsText(file);
+					}
+				})(file);
+				reader.readAsText(file);
+				stv2.changeMode(storytellingv2Gui.mode_option_view);
+			});
 		},
 				
 	

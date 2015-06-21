@@ -364,9 +364,12 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.openbutton = $('<input type="button" id="storytellingv2open" name="open" value="open" />');
 			storytellingv2Gui.importfile = $('<input type="file" id="storytellingv2importfile" accept="application/json" style="display: block; visibility:hidden; width: 0; height: 0" />');
-			storytellingv2Gui.importfile.change(storytellingv2.handleFileSelect);
+			storytellingv2Gui.importfile.change(storytellingv2.handleFileSelect());
 			
 			storytellingv2Gui.openbutton.click($.proxy(function() {
+				//clear the inputfile and preserve the onChange handler
+				storytellingv2Gui.importfile.replaceWith(storytellingv2Gui.importfile = storytellingv2Gui.importfile.clone(true));
+				
 				storytellingv2Gui.importfile.click();
 			}));
 			
@@ -821,12 +824,14 @@ Storytellingv2Gui.prototype = {
 					loadSnapshot(selectedNode);
 					return;
 				}
-				for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
-					var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
-					if (curNode.type == 'dataset') {
-						loadDataset(curNode);
-					} else if (curNode.type == 'config') {
-						loadFilter(curNode);
+				if (selectedNode.parents != undefined) {
+					for (var i = selectedNode.parents.length - 1; i >= 0; i--) {
+						var curNode = storytellingv2Gui.tree.jstree().get_node(selectedNode.parents[i]);
+						if (curNode.type == 'dataset') {
+							loadDataset(curNode);
+						} else if (curNode.type == 'config') {
+							loadFilter(curNode);
+						}
 					}
 				}
 				if (selectedNode.type == 'dataset') {
