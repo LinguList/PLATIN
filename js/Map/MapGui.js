@@ -33,6 +33,7 @@
  */
 function MapGui(map, div, options, iid) {
 
+	var gui = this;
 	this.map = map;
 
 	this.container = div;
@@ -128,8 +129,45 @@ function MapGui(map, div, options, iid) {
 	var lockMapControl = new MapControl(this.map, lockButton, 'lock', activateLock, deactivateLock);
 	tools.appendChild(lockMapControl.button);
 
+	this.fullscreenTitle = document.createElement("td");
+	titles.appendChild(this.fullscreenTitle);
+	this.fullscreenIcon = document.createElement("td");
+	var fullscreenButton = document.createElement("div");
+	$(fullscreenButton).addClass('mapControl');
+	var prevWidth;
+	var prevHeight;
+	var prevParent;
+	var activateFullscreen = function() {
+		$div=$(div);
+		$window = $(window);
 
-	var gui = this;
+		prevWidth = $div.width();
+		prevHeight = $div.height();
+		prevParent = $div.parent();
+
+		$div.appendTo("body");
+		$div.css("position","absolute");
+		$div.css("top","0");
+		$div.css("left","0");
+		$div.css("z-Index","10000");
+	 	$div.width($window.width());
+		$div.height($window.height());
+
+		gui.resize();
+	}
+	var deactivateFullscreen = function() {
+		$div=$(div);
+
+		$div.appendTo(prevParent);
+		$div.css("position","relative");
+	 	$div.width(prevWidth);
+		$div.height(prevHeight);
+
+		gui.resize();
+	}
+	var fullscreenMapControl = new MapControl(this.map, fullscreenButton, 'fullscreen', activateFullscreen, deactivateFullscreen);
+	tools.appendChild(fullscreenMapControl.button);
+
 	if (navigator.geolocation && options.geoLocation) {
 		this.geoActive = false;
 		this.geoLocation = document.createElement("div");
