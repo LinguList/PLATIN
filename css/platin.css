@@ -2974,6 +2974,14 @@ filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
 	background-image: url("../images/lock-activated.png");
 }
 
+.fullscreenDeactivated {
+	background-image: url("../images/fullscreen-deactivated.png");
+}
+
+.fullscreenActivated {
+	background-image: url("../images/fullscreen-activated.png");
+}
+
 .dragControl {
 	display: inline-block;
 	height: 19px;
