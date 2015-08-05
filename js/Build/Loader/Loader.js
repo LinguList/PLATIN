@@ -188,7 +188,26 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'lib/lz-string/lz-string.min.js'
 		}];
 		
-		(new DynaJsLoader()).loadScripts(lzStringFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(lzStringFiles, GeoTemCoLoader.loadMarkItUp);
+	},
+
+	loadMarkItUp : function() {
+		var markItUpFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/markitup/jquery.markitup.js'
+		}];
+		
+		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/markitup/skin/style.css') );
+		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/markitup/style.css') );
+
+		(new DynaJsLoader()).loadScripts(markItUpFiles, GeoTemCoLoader.loadScripts);
+	},
+
+	loadMarkItUpSet : function() {
+		var markItUpSetFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/markitup/jquery.markitup.set.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(markItUpSetFiles, GeoTemCoLoader.loadScripts);
 	},
 
 	loadScripts : function() {

@@ -76,6 +76,13 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 					return false;
 				};
 				
+				//show correct metadata
+				storytellingv2Gui.metadata.metadatatype.hide();
+				storytellingv2Gui.metadata.metadatatimestamp.hide();
+				storytellingv2Gui.metadata.metadataname.hide();
+				storytellingv2Gui.metadata.metadatadescription.hide();
+				storytellingv2Gui.metadata.metadatasummary.show();
+				
 				
 			}
 	};
@@ -123,6 +130,13 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 				storytellingv2Gui.tree.jstree().settings.dnd.is_draggable = function() {
 					return true;
 				};
+
+				//show correct metadata
+				storytellingv2Gui.metadata.metadatatype.show();
+				storytellingv2Gui.metadata.metadatatimestamp.show();
+				storytellingv2Gui.metadata.metadataname.show();
+				storytellingv2Gui.metadata.metadatadescription.show();
+				storytellingv2Gui.metadata.metadatasummary.hide();
 			}
 	};
 	
@@ -172,6 +186,13 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 				storytellingv2Gui.tree.jstree().settings.dnd.is_draggable = function() {
 					return true;
 				};
+
+				//show correct metadata
+				storytellingv2Gui.metadata.metadatatype.show();
+				storytellingv2Gui.metadata.metadatatimestamp.show();
+				storytellingv2Gui.metadata.metadataname.show();
+				storytellingv2Gui.metadata.metadatadescription.show();
+				storytellingv2Gui.metadata.metadatasummary.hide();
 				
 			}
 	};
@@ -272,6 +293,7 @@ Storytellingv2Gui.prototype = {
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.editbutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.backwardbutton);
 			$(storytellingv2Gui.treemanipulationsubmenu).append(storytellingv2Gui.forwardbutton);		
+			storytellingv2Gui.treemanipulationsubmenu.append(storytellingv2Gui.editform);
 			
 			storytellingv2Gui.addMetadata();
 			
@@ -349,10 +371,42 @@ Storytellingv2Gui.prototype = {
 				var nodes = JSON.parse(LZString.decompressFromUTF16(localStorage.getItem('PLATIN.storytellingv2.last_snapshot')));
 				var last = storytellingv2Gui.tree.jstree().create_node(lastSession, nodes);
 				
+			} else {
+				storytellingv2Gui.newbutton.prop('disabled',true);
 			}
 			
 			//start in view mode
 			storytellingv2.changeMode(storytellingv2Gui.mode_option_view);
+
+			//set html markup for markitup description textarea
+			var markItUpSettings = {
+					onShiftEnter:	{keepDefault:false, replaceWith:'<br />\n'},
+					onCtrlEnter:	{keepDefault:false, openWith:'\n<p>', closeWith:'</p>\n'},
+					onTab:			{keepDefault:false, openWith:'	 '},
+					markupSet: [
+						{name:'Heading 1', key:'1', openWith:'<h1(!( class="[![Class]!]")!)>', closeWith:'</h1>', placeHolder:'Your title here...' },
+						{name:'Heading 2', key:'2', openWith:'<h2(!( class="[![Class]!]")!)>', closeWith:'</h2>', placeHolder:'Your title here...' },
+						{name:'Heading 3', key:'3', openWith:'<h3(!( class="[![Class]!]")!)>', closeWith:'</h3>', placeHolder:'Your title here...' },
+						{name:'Heading 4', key:'4', openWith:'<h4(!( class="[![Class]!]")!)>', closeWith:'</h4>', placeHolder:'Your title here...' },
+						{name:'Heading 5', key:'5', openWith:'<h5(!( class="[![Class]!]")!)>', closeWith:'</h5>', placeHolder:'Your title here...' },
+						{name:'Heading 6', key:'6', openWith:'<h6(!( class="[![Class]!]")!)>', closeWith:'</h6>', placeHolder:'Your title here...' },
+						{name:'Paragraph', openWith:'<p(!( class="[![Class]!]")!)>', closeWith:'</p>' },
+						{separator:'---------------' },
+						{name:'Bold', key:'B', openWith:'(!(<strong>|!|<b>)!)', closeWith:'(!(</strong>|!|</b>)!)' },
+						{name:'Italic', key:'I', openWith:'(!(<em>|!|<i>)!)', closeWith:'(!(</em>|!|</i>)!)' },
+						{name:'Stroke through', key:'S', openWith:'<del>', closeWith:'</del>' },
+						{separator:'---------------' },
+						{name:'Ul', openWith:'<ul>\n', closeWith:'</ul>\n' },
+						{name:'Ol', openWith:'<ol>\n', closeWith:'</ol>\n' },
+						{name:'Li', openWith:'<li>', closeWith:'</li>' },
+						{separator:'---------------' },
+						{name:'Picture', key:'P', replaceWith:'<img src="[![Source:!:http://]!]" alt="[![Alternative text]!]" />' },
+						{name:'Link', key:'L', openWith:'<a href="[![Link:!:http://]!]"(!( title="[![Title]!]")!)>', closeWith:'</a>', placeHolder:'Your text to link...' },
+						{separator:'---------------' },
+						{name:'Clean', className:'clean', replaceWith:function(markitup) { return markitup.selection.replace(/<(.*?)>/g, "") } }
+					]
+				}
+			$('#storytellingv2editdescription').markItUp(markItUpSettings);
 
 		},
 		
@@ -436,6 +490,7 @@ Storytellingv2Gui.prototype = {
 					'Yes': function() {
 						storytellingv2.deleteAllNodes(storytellingv2Gui.tree);			
 						$(this).dialog("close");
+						storytellingv2Gui.newbutton.prop('disabled',true);
 					},
 					Cancel: function() {
 						$(this).dialog("close");
@@ -565,6 +620,7 @@ Storytellingv2Gui.prototype = {
 				$(newform).append(addbutton);
 				$(storytellingv2Gui.treemanipulationsubmenu).append(newform);
 				$(nameinput).find(':input').focus();
+				storytellingv2Gui.newbutton.prop('disabled',false);
 			}));
 		
 		},
@@ -616,13 +672,16 @@ Storytellingv2Gui.prototype = {
 					}
 				});
 				try {
-					snapshot_as_json = JSON.stringify(storytellingv2Gui.tree.jstree(true).get_json(newDataset));
+					var node = storytellingv2Gui.tree.jstree(true).get_json(newDataset);
+					node.text = "Last Snapshot";
+					snapshot_as_json = JSON.stringify(node);
 					var compressed = LZString.compressToUTF16(snapshot_as_json);
 					localStorage.setItem("PLATIN.storytellingv2.last_snapshot",compressed);
 				} catch (err) {
 					console.log("LocalStorage Quota exceeded!");
 				}
 				storytellingv2Gui.mode_option_simple.execute();
+				storytellingv2Gui.newbutton.prop('disabled',false);
 				
 			}));
 			
@@ -662,34 +721,38 @@ Storytellingv2Gui.prototype = {
 			var storytellingv2 = storytellingv2Widget.storytellingv2;
 
 			storytellingv2Gui.editbutton = $('<input type="button" id="storytellingv2edit" name="edit" value="edit" />');
+			storytellingv2Gui.editform = $('<div></div>');
+			storytellingv2Gui.editform.nameinput = $('<p>Name: <input type="text" /></p>');
+			storytellingv2Gui.editform.descriptioninput = $('<p>Description: <textarea name="description" cols="60" rows="20" id="storytellingv2editdescription"></textarea></p>');
+			storytellingv2Gui.editform.savebutton = $('<p><input type="button" name="save" value="save" /></p>');
+			storytellingv2Gui.editform.append(storytellingv2Gui.editform.nameinput);
+			storytellingv2Gui.editform.append(storytellingv2Gui.editform.descriptioninput);
+			storytellingv2Gui.editform.append(storytellingv2Gui.editform.savebutton);
+			storytellingv2Gui.editform.hide();
 			storytellingv2Gui.editbutton.click($.proxy(function() {
 				var sel = storytellingv2Gui.tree.jstree().get_selected()[0];
 				if (sel != undefined ) {
 					sel = storytellingv2Gui.tree.jstree().get_node(sel);
-					var editform = $('<div></div>');
-					var nameinput = $('<p>Name: <input type="text" value="'+sel.text+'" /></p>');
-					var descriptioninput = $('<p>Description: <textarea name="description">'+sel.li_attr.description+'</textarea></p>');
-					var savebutton = $('<p><input type="button" name="save" value="save" /></p>');
-					editform.focusout(function() {
+					storytellingv2Gui.editform.nameinput.find(':text').first().val(sel.text);
+					storytellingv2Gui.editform.descriptioninput.find('textarea').val(sel.li_attr.description);
+					storytellingv2Gui.editform.show();
+					storytellingv2Gui.editform.focusout(function() {
 						var elem = $(this);
 						setTimeout(function() {
 							var hasFocus = !!(elem.find(':focus').length > 0);
 							if (! hasFocus) {
-								editform.empty();
+								storytellingv2Gui.editform.hide();
 							}
 						}, 10);
 					});
-					savebutton.click($.proxy(function() {
-						storytellingv2Gui.tree.jstree().rename_node(sel, $(nameinput).find(':text').first().val());
-						sel.li_attr.description = $(descriptioninput).find('textarea').first().val();
+					storytellingv2Gui.editform.savebutton.click($.proxy(function() {
+						storytellingv2Gui.tree.jstree().rename_node(sel, storytellingv2Gui.editform.nameinput.find(':text').first().val());
+						sel.li_attr.description = storytellingv2Gui.editform.descriptioninput.find('textarea').first().val();
 						storytellingv2Gui.tree.jstree().redraw();
-						$(editform).empty();
+						storytellingv2Gui.editform.hide();
+						storytellingv2Gui.metadata.update(sel);
 					}));
-					$(editform).append(nameinput);
-					$(editform).append(descriptioninput);
-					$(editform).append(savebutton);
-					storytellingv2Gui.treemanipulationsubmenu.append(editform);
-					nameinput.find(':input').focus();
+					storytellingv2Gui.editform.nameinput.find(':input').focus();
 				}
 				
 				
@@ -748,33 +811,45 @@ Storytellingv2Gui.prototype = {
 			var metadatatype = $('<p>Type:</p>');
 			var metadatatimestamp = $('<p>Timestamp:</p>');
 			var metadatadescription = $('<p>Description:</p>');
-			var metadataselected = $('<p></p>');
+			var metadatasummary = $('<p></p>');
 			$(metadatafieldset).append(metadataname);
 			$(metadatafieldset).append(metadatatype);
 			$(metadatafieldset).append(metadatatimestamp);
 			$(metadatafieldset).append(metadatadescription);
-			$(metadatafieldset).append(metadataselected);
+			$(metadatafieldset).append(metadatasummary);
 			$(storytellingv2Gui.metadata).append(metadatafieldset);
-			storytellingv2Gui.tree.on('changed.jstree rename_node.jstree', function(e, data) {
-				if (data.node == undefined) {
+			storytellingv2Gui.metadata.metadataname = metadataname;
+			storytellingv2Gui.metadata.metadatadescription = metadatadescription;
+			storytellingv2Gui.metadata.metadatatype = metadatatype;
+			storytellingv2Gui.metadata.metadatatimestamp = metadatatimestamp;
+			storytellingv2Gui.metadata.metadatasummary = metadatasummary;
+			
+			storytellingv2Gui.metadata.update = function(node) {
+				if (node == undefined) {
 					return;
 				}
-				$(metadataname).empty().append($('<p>Name: '+data.node.text+'</p>'));
-				$(metadatatype).empty().append($('<p>Type: '+data.node.type+'</p>'));
-				var tstamp = new Date(data.node.li_attr.timestamp);
+				$(metadataname).empty().append($('<p>Name: '+node.text+'</p>'));
+				$(metadatatype).empty().append($('<p>Type: '+node.type+'</p>'));
+				var tstamp = new Date(node.li_attr.timestamp);
 				$(metadatatimestamp).empty().append($('<p>Timestamp: '+tstamp.toUTCString()+'</p>'));
-				$(metadatadescription).empty().append($('<p>Description: '+data.node.li_attr.description+'</p>'));
+				$(metadatadescription).empty().append($('<p>Description: '+node.li_attr.description+'</p>'));
+				$(metadatasummary).empty().append($('<h2>'+node.text+'</h2><p>'+node.li_attr.description+'</p>'));
 				var objectcount = 0;
 				var datasetcount = 0;
-				if ($.isArray(data.node.li_attr.selected)) {
-					datasetcount = data.node.li_attr.selected.length;
-					$(data.node.li_attr.selected).each(function() {
+				if ($.isArray(node.li_attr.selected)) {
+					datasetcount = node.li_attr.selected.length;
+					$(node.li_attr.selected).each(function() {
 						objectcount += this.length;
 					});
 				}
 				if (storytellingv2Gui.mode == "view") {
 					storytellingv2Gui.activateNode();
 				}
+				
+			}
+			storytellingv2Gui.tree.on('changed.jstree rename_node.jstree set_text.jstree', function(e, data) {
+
+				storytellingv2Gui.metadata.update(data.node);
 			});
 			
 		},
