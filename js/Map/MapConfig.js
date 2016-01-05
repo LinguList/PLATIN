@@ -39,7 +39,7 @@ function MapConfig(options) {
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
 					type:'XYZ',
-					attribution: "<a href='http://pelagios.dme.ait.ac.at/maps/greco-roman/about.html'>Digital Atlas of the Roman Empire</a> (c) <a href='https://twitter.com/johanahlfeldt'>Johan Åhlfeldt</a>, <a href='http://pelagios.dme.ait.ac.at/maps/greco-roman/'>Pelagios</a>"
+					attribution: "<a href='http://pelagios.dme.ait.ac.at/maps/greco-roman/about.html'>Digital Atlas of the Roman Empire</a> (c) <a href='https://twitter.com/johanahlfeldt'>Johan Åhlfeldt</a>, <a href='http://pelagios-project.blogspot.de/'>Pelagios</a>"
 				},
 				{
 					name: 'Maps-for-Free Relief Map',
