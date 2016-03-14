@@ -199,7 +199,7 @@ GeoTemCoLoader = {
 		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/markitup/skin/style.css') );
 		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/markitup/style.css') );
 
-		(new DynaJsLoader()).loadScripts(markItUpFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(markItUpFiles, GeoTemCoLoader.loadMarkItUpSet);
 	},
 
 	loadMarkItUpSet : function() {
@@ -207,7 +207,20 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'lib/markitup/jquery.markitup.set.js'
 		}];
 		
-		(new DynaJsLoader()).loadScripts(markItUpSetFiles, GeoTemCoLoader.loadScripts);
+		(new DynaJsLoader()).loadScripts(markItUpSetFiles, GeoTemCoLoader.loadSimone);
+	},
+	
+	loadSimone : function() {
+		var simoneFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/simone/simone.js'
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'lib/simone/i18n/simone.custom.js'
+		}];
+		
+		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/simone/simone.css') );
+		
+		(new DynaJsLoader()).loadScripts(simoneFiles, GeoTemCoLoader.loadScripts);
+
 	},
 
 	loadScripts : function() {
@@ -365,6 +378,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2Widget.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/Storytellingv2/' + 'Storytellingv2.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'Window.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'WindowConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'Taskbar.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'TaskbarConfig.js'
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 

@@ -200,6 +200,7 @@ function Storytellingv2Gui(storytellingv2, div, options) {
 	storytellingv2Gui.storytellingv2Container = document.createElement('div');
 	$(div).append(storytellingv2Gui.storytellingv2Container);
 	storytellingv2Gui.storytellingv2Container.style.position = 'relative';
+//	storytellingv2Gui.storytellingv2Container.window();
 };
 
 Storytellingv2Gui.prototype = {

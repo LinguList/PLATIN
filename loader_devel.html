@@ -46,43 +46,44 @@
 				</div>
 			</td>
 		</tr>
+	</table>
+	<div id="utilityContainerDiv">
+	<table>
 		<tr >
-			<td width=50%>
-				<fieldset id="dataloaderContainerDiv" style="position:relative;">
-					<legend>Load Data</legend>
-				</fieldset>
+			<td width="75%" rowspan="3" valig="top">
+				<fieldset id="storytelling2ContainerDiv" style="position:relative;">
+					<legend>Storytelling</legend>
+				</fieldset>			
 			</td>
-			<td rowspan=3 width=50% valign=top>
+			<td width=25%>
 				<fieldset id="storytellingContainerDiv" style="position:relative;">
 					<legend>Data History</legend>
 				</fieldset>			
 			</td>
 		</tr>
 		<tr>
-			<td width=50%>
+			<td width=25%>
+				<fieldset id="dataloaderContainerDiv" style="position:relative;">
+					<legend>Load Data</legend>
+				</fieldset>
+			</td>
+		</tr>
+		<tr>
+			<td width=25%>
 				<fieldset id="overlayloaderContainerDiv" style="position:relative;">
 					<legend>Load Overlay</legend>
 				</fieldset>
 			</td>
-		</tr>
-		<tr>
-			<td width=50%>
-				<fieldset id="storytelling2ContainerDiv" style="position:relative;">
-					<legend>Storytelling</legend>
-				</fieldset>
-			</td>
 		</tr>	
-		<tr>
-			<td width=50%>
-			    <div id="mapContainerDiv" style="position:relative;"></div>
-			</td>
-			<td width=50%>
-				<div id="piechartContainerDiv" style="height:580px; position:relative;"></div>
-			</td>
-		</tr>
 	</table>
+	</div>
+	<div id="piechartContainerDiv" style="height:580px; position:relative;"></div>
     <div id="plotContainerDiv" style="position:relative;"></div>
     <div id="tableContainerDiv" style="position:relative;"></div>
+    <div id="taskbarDiv"></div>
+    <div id="statuswindowDiv"></div>
+ 	<div id="mapContainerDiv" ></div>
+    
 
     <script>
     Publisher.Subscribe( 'GeoTemCoReady', this, function(){
@@ -121,6 +122,20 @@
         var storytelling2Div = document.getElementById("storytelling2ContainerDiv");
         var storytelling2 = new WidgetWrapper();
         var storytellingv2Widget = new Storytellingv2Widget(storytelling2,storytelling2Div);
+        
+        var taskbarDiv = document.getElementById("taskbarDiv");
+        var taskbar = new Taskbar(taskbarDiv);
+        
+        var	statusWindowDiv = document.getElementById("statuswindowDiv");
+        
+        var utilityDiv = document.getElementById("utilityContainerDiv");
+        
+        var statusWindow = new StatusWindow(statusWindowDiv);
+        var mapWindow = new MapWindow(mapDiv);
+        var piechartWindow = new PieChartWindow(piechartDiv);
+        var utilityWindow = new UtilityWindow(utilityDiv);
+        var plotWindow = new PlotWindow(timeDiv);
+        var tableWindow = new TableWindow(tableDiv);
         
         dataloaderWidget.loadFromURL();
     });
