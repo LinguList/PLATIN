@@ -31,10 +31,10 @@ MapWindow.prototype = Object.create(Window.prototype, {
 		
 });
 
-StatusWindow = function(div, options) {
+StatusWindowW = function(div, options) {
 	
 	this.div = div;
-	this.options = (new StatusWindowConfig(options)).options;
+	this.options = (new StatusWindowWConfig(options)).options;
 	
 	this.init();
 //	$(this.div).prev(".ui-dialog-titlebar").css("display","none");
@@ -42,7 +42,7 @@ StatusWindow = function(div, options) {
 	
 }
 
-StatusWindow.prototype = Object.create(Window.prototype, {
+StatusWindowW.prototype = Object.create(Window.prototype, {
 	
 });
 
