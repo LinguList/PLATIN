@@ -2,7 +2,7 @@
  * 
  */
 
-function StatusWindowWConfig(options) {
+function StatusWindowConfig(options) {
 
 	this.options = {
 

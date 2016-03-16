@@ -2,15 +2,15 @@
  * 
  */
 
-StatusWindowWidget = function(core, div, options) {
+StatusWidget = function(core, div, options) {
 	
 	this.datasets;
 	this.core = core;
 	this.core.setWidget(this);
 	
-	this.options = (new StatusWindowConfig(options)).options;
-	this.gui = new StatusWindowGui(this, div, this.options);
-	this.statusWindow = new StatusWindow(this);
+	this.options = (new StatusConfig(options)).options;
+	this.gui = new StatusGui(this, div, this.options);
+	this.status = new Status(this);
 	
 	this.selected;
 	
@@ -18,7 +18,7 @@ StatusWindowWidget = function(core, div, options) {
 	
 }
 
-StatusWindowWidget.prototype = {
+StatusWidget.prototype = {
 		
 		initWidget : function(data) {
 			
@@ -37,6 +37,7 @@ StatusWindowWidget.prototype = {
 				selection.loadAllObjects();
 			}
 			this.selected = selection.objects;
+			this.gui.updateStatus();
 		}
 
 		

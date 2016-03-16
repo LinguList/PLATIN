@@ -2,10 +2,10 @@
  * 
  */
 
-function StatusWindow(parent) {
+function Status(parent) {
 	
 	this.index;
-	this.statusWindow = this;
+	this.status = this;
 	
 	this.parent = parent;
 	this.options = parent.options;
@@ -15,7 +15,7 @@ function StatusWindow(parent) {
 	
 }
 
-StatusWindow.prototype = {
+Status.prototype = {
 		
 		remove : function() {
 		},

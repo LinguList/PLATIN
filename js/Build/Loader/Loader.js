@@ -387,13 +387,13 @@ GeoTemCoLoader = {
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'TaskbarConfig.js'
 		}, {
-			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWindow.js',
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'Status.js',
 		}, {
-			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWindowGui.js',
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusGui.js',
 		}, {
-			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWindowConfig.js',
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusConfig.js',
 		}, {
-			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWindowWidget.js',
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWidget.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 
