@@ -37,7 +37,10 @@ function MapWindowConfig(options) {
 		title 			: "Map",
 		width 			: 1024,
 		height 			: 768,
-		embeddedContent	: true
+		embeddedContent	: true,
+		icons			: {
+			main		: "ui-icon-worldmap"
+		}
 	}
 
 	if (typeof options != 'undefined') {
@@ -53,7 +56,10 @@ function PieChartWindowConfig(options) {
 		close 			: null,
 		title 			: "Piecharts",
 		width 			: 640,
-		height 			: 800
+		height 			: 800,
+		icons			: {
+			main		: "ui-icon-piechart"
+		}
 	}
 
 	if (typeof options != 'undefined') {
@@ -69,7 +75,11 @@ function UtilityWindowConfig(options) {
 		close 			: null,
 		title 			: "Utils",
 		width 			: 1024,
-		height 			: 768
+		height 			: 768,
+		icons			: {
+			main		: "ui-icon-utility"
+		}
+
 	}
 
 	if (typeof options != 'undefined') {
@@ -85,7 +95,11 @@ function PlotWindowConfig(options) {
 		close 			: null,
 		title 			: "Plot",
 		width 			: 1024,
-		height 			: 768
+		height 			: 768,
+		icons			: {
+			main		: "ui-icon-plotchart"
+		}
+
 	}
 
 	if (typeof options != 'undefined') {
@@ -99,9 +113,14 @@ function TableWindowConfig(options) {
 
 		closable 		: false,
 		close 			: null,
-		title 			: "Table",
+		title 			: "none",
 		width 			: 1024,
-		height 			: 768
+		height 			: 768,
+		group			: "Tables",
+		icons			: {
+			main		: "ui-icon-table"
+		}
+
 	}
 
 	if (typeof options != 'undefined') {

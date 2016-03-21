@@ -1,0 +1,29 @@
+.ui-icon.ui-icon-piechart  {
+	background-image: url(piechart.png);
+	width: 16px;
+	height: 16px;
+}
+
+.ui-icon.ui-icon-plotchart {
+	background-image: url(plotchart.png);
+	width: 16px;
+	height: 16px;
+}
+
+.ui-icon.ui-icon-table {
+	background-image: url(table.png);
+	width: 16px;
+	height: 16px;
+}
+
+.ui-icon.ui-icon-utility {
+	background-image: url(utility.png);
+	width: 16px;
+	height: 16px;
+}
+
+.ui-icon.ui-icon-worldmap {
+	background-image: url(worldmap.png);
+	width: 16px;
+	height: 16px;
+}

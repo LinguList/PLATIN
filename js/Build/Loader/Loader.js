@@ -218,6 +218,7 @@ GeoTemCoLoader = {
 		}];
 		
 		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'lib/simone/simone.css') );
+		$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', GeoTemCoLoader.urlPrefix + 'js/WindowManager/icons/icons.css') );
 		
 		(new DynaJsLoader()).loadScripts(simoneFiles, GeoTemCoLoader.loadScripts);
 

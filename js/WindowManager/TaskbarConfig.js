@@ -9,7 +9,8 @@ function TaskbarConfig(options) {
 			orientation 		: "vertical",
 			verticalHeight		: "50%",
 			verticalStick		: "top left",
-			windowsContainment	: "visible"
+			windowsContainment	: "visible",
+			windowButtonsIconsOnly: true
 			
 	}
 	
