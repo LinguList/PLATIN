@@ -395,6 +395,14 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusConfig.js',
 		}, {
 			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'StatusWidget.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'WindowManager.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'WindowManagerGui.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'WindowManagerConfig.js',
+		}, {
+			url : GeoTemCoLoader.urlPrefix + 'js/WindowManager/' + 'WindowManagerWidget.js',
 		}];
 		(new DynaJsLoader()).loadScripts(geoTemCoFiles, GeoTemCoLoader.initGeoTemCo);
 

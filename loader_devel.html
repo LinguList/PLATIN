@@ -81,8 +81,9 @@
     <div id="plotContainerDiv" style="position:relative;"></div>
     <div id="tableContainerDiv" style="position:relative;"></div>
     <div id="taskbarDiv"></div>
-    <div id="statuswindowDiv"></div>
+    <div id="statusWindowDiv"></div>
  	<div id="mapWindowDiv"><div id="mapContainerDiv" ></div></div>
+ 	<div id="windowManagerDiv"></div>
     
 
     <script>
@@ -126,7 +127,7 @@
         var taskbarDiv = document.getElementById("taskbarDiv");
         var taskbar = new Taskbar(taskbarDiv);
         
-        var	statusWindowDiv = document.getElementById("statuswindowDiv");
+        var	statusWindowDiv = document.getElementById("statusWindowDiv");
         var statusWindow = new WidgetWrapper();
         var statusWindowWidget = new StatusWidget(statusWindow, statusWindowDiv);
         
@@ -134,13 +135,25 @@
         
         var mapWindowDiv = document.getElementById("mapWindowDiv");
         
-        var statusWindow = new StatusWindow(statusWindowDiv);
+        
+        var windowManagerDiv = document.getElementById("windowManagerDiv");
+        var windowManager = new WidgetWrapper();
+        var windowManagerWidget = new WindowManagerWidget(windowManager, windowManagerDiv);
+        
+/*         var statusWindow = new StatusWindow(statusWindowDiv);
         var mapWindow = new MapWindow(mapWindowDiv);
         var piechartWindow = new PieChartWindow(piechartDiv);
         var utilityWindow = new UtilityWindow(utilityDiv);
         var plotWindow = new PlotWindow(timeDiv);
         var tableWindow = new TableWindow(tableDiv);
-        
+ */		
+ 		windowManagerWidget.addStatusWindow(statusWindowDiv);
+ 		windowManagerWidget.addMapWindow(mapWindowDiv);
+ 		windowManagerWidget.addPieChartWindow(piechartDiv);
+ 		windowManagerWidget.addUtilityWindow(utilityDiv);
+ 		windowManagerWidget.addPlotWindow(timeDiv);
+ 		windowManagerWidget.addTableWindow(tableDiv);
+         
         dataloaderWidget.loadFromURL();
     });
     </script>
