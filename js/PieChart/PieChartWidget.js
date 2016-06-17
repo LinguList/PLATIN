@@ -40,7 +40,7 @@ PieChartWidget = function(core, div, options) {
 	
 	this.pieCharts = [];
 	
-	thist.status = {
+	this.status = {
 			widgetName	: "pieChart",
 			status		: []
 	}
