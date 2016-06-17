@@ -1,0 +1,15 @@
+ .ui-dialog-titlebar {
+ 	background : #99c9fa;
+ 	font-size: 0.8em
+ }
+ .ui-dialog-titlebar.ui-state-active {
+	background : #087cf3
+}
+
+[aria-describedby="statusWindowDiv"] > .ui-dialog-titlebar {
+	font-size: 0
+}
+
+.simone-taskbar-vertical.simone-taskbar-window-buttons-icons-only .simone-taskbar-window-buttons-container > .ui-button[data-window-id="statusWindowDiv"] {
+	display: none;
+}

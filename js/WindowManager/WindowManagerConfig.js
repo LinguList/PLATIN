@@ -2,12 +2,12 @@ function WindowManagerConfig(options) {
 	
 	this.options = {
 			
-			statusWindowDiv 	: "statusWindowDiv",
-			mapWindowDiv		: "mapWindowDiv",
-			piechartWindowDiv	: "piechartContainerDiv",
-			utilityWindowDiv	: "utilityContainerDiv",
-			plotWindowDiv		: "plotContainerDiv",
-			tableWindowDiv		: "tableContainerDiv"
+			statusWindowDiv 	: document.getElementById("statusWindowDiv"),
+			mapWindowDiv		: document.getElementById("mapWindowDiv"),
+			piechartWindowDiv	: document.getElementById("piechartContainerDiv"),
+			utilityWindowDiv	: document.getElementById("utilityContainerDiv"),
+			plotWindowDiv		: document.getElementById("plotContainerDiv"),
+			tableWindowDiv		: document.getElementById("tableContainerDiv")
 			
 			
 	}

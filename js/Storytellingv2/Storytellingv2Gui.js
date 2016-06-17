@@ -438,6 +438,7 @@ Storytellingv2Gui.prototype = {
 
 			storytellingv2Gui.savebutton = $('<input type="button" id="storytellingv2save" name="save" value="save" />');
 			var dialog = $('<div id="tree-export-filename" title="Save File As?"><p><input type="text" size="25" /></p></div>');
+			dialog.css("z-index", "12001");
 			storytellingv2Gui.savebutton.append(dialog);
 			dialog.dialog({
 				resizable: false,
@@ -662,6 +663,7 @@ Storytellingv2Gui.prototype = {
 					Publisher.Publish('getConfig',storytellingv2Widget);					
 				} catch (err) {
 					console.log('There was an error getting widget configurations');
+					console.log(err);
 				}
 				var newConfig = storytellingv2Gui.tree.jstree().create_node(newDataset, {
 					'text' : 'Snapshot #'+countSnapshots,

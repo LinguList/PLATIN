@@ -39,6 +39,11 @@ PieChartWidget = function(core, div, options) {
 	this.gui = new PieChartGui(this, div, this.options);
 	
 	this.pieCharts = [];
+	
+	thist.status = {
+			widgetName	: "pieChart",
+			status		: []
+	}
 }
 
 PieChartWidget.prototype = {

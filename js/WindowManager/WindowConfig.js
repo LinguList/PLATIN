@@ -14,10 +14,10 @@ function StatusWindowConfig(options) {
 		close 			: null,
 		title 			: "Statuswindow",
 		position 		: {
-			my : "center top",
-			at : "center top"
+			my : "right top",
+			at : "right top"
 		},
-		width 			: 1024,
+		width 			: "92%",
 		height 			: 60
 
 	}
@@ -37,7 +37,6 @@ function MapWindowConfig(options) {
 		title 			: "Map",
 		width 			: 1024,
 		height 			: 768,
-		embeddedContent	: true,
 		icons			: {
 			main		: "ui-icon-worldmap"
 		}
@@ -116,7 +115,6 @@ function TableWindowConfig(options) {
 		title 			: "none",
 		width 			: 1024,
 		height 			: 768,
-		group			: "Tables",
 		icons			: {
 			main		: "ui-icon-table"
 		}

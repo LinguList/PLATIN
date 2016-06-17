@@ -13,6 +13,21 @@ Window.prototype = {
 		
 		init : function() {
 			this.window = $(this.div).window(this.options);
+			
+			this.taskbar = $(this.div).window("taskbar");
+			
+			this.windowButton = $(this.taskbar).taskbar("button",$(this.window));
+			
+			var window = this.window;
+			var taskbar = this.taskbar;
+			var windowButton = this.windowButton;
+			
+			$(this.windowButton).on("click", function() {
+				if ($(window).window("shown") && !($(window).window("title") == "Statuswindow")) {
+					$(window).window("minimize");
+				}
+			});
+			
 		}
 }
 
@@ -23,6 +38,8 @@ MapWindow = function(div, options) {
 	
 	this.init();
 	$(this.div).window("minimize");
+	
+	
 	
 	
 }
@@ -37,6 +54,7 @@ StatusWindow = function(div, options) {
 	this.options = (new StatusWindowConfig(options)).options;
 	
 	this.init();
+	
 //	$(this.div).prev(".ui-dialog-titlebar").css("display","none");
 //	$(this.div).dialog('option', 'dialogClass', 'dialogWithoutTitlebar');
 	

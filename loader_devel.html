@@ -32,7 +32,7 @@
       </div>
     </noscript>
 
-	<table width=100%>
+<!-- <table width=100%>
 		<tr>
 			<td colspan=2 width=100% align="center">
 				<div style="width:100%; position:relative">
@@ -46,12 +46,12 @@
 				</div>
 			</td>
 		</tr>
-	</table>
+	</table>  -->
 	<div id="utilityContainerDiv">
 	<table>
 		<tr >
-			<td width="75%" rowspan="3" valig="top">
-				<fieldset id="storytelling2ContainerDiv" style="position:relative;">
+			<td width="75%" rowspan="3" valign="top">
+  				<fieldset id="storytelling2ContainerDiv" style="position:relative;">
 					<legend>Storytelling</legend>
 				</fieldset>			
 			</td>
@@ -94,7 +94,7 @@
 		var mapWidget = new MapWidget(map,mapDiv,{
 			mapTitle: "Publication Place"
 		});
-		var timeDiv = document.getElementById("plotContainerDiv");
+ 		var timeDiv = document.getElementById("plotContainerDiv");
 		var time = new WidgetWrapper();
 		var timeWidget = new FuzzyTimelineWidget(time,timeDiv,{
 			timeTitle: "Publication Date"
@@ -112,7 +112,7 @@
         var overlayloaderWidget = new OverlayloaderWidget(overlayloader,overlayloaderDiv);
         overlayloaderWidget.attachMapWidget(mapWidget);
 
-        var piechartDiv = document.getElementById("piechartContainerDiv");
+         var piechartDiv = document.getElementById("piechartContainerDiv");
         var piechart = new WidgetWrapper();
         var piechartWidget = new PieChartWidget(piechart,piechartDiv);
 
@@ -120,10 +120,10 @@
         var storytelling = new WidgetWrapper();
         var storytellingWidget = new StorytellingWidget(storytelling,storytellingDiv);
         
-        var storytelling2Div = document.getElementById("storytelling2ContainerDiv");
+         var storytelling2Div = document.getElementById("storytelling2ContainerDiv");
         var storytelling2 = new WidgetWrapper();
         var storytellingv2Widget = new Storytellingv2Widget(storytelling2,storytelling2Div);
-        
+         
         var taskbarDiv = document.getElementById("taskbarDiv");
         var taskbar = new Taskbar(taskbarDiv);
         
@@ -147,13 +147,13 @@
         var plotWindow = new PlotWindow(timeDiv);
         var tableWindow = new TableWindow(tableDiv);
  */		
- 		windowManagerWidget.addStatusWindow(statusWindowDiv);
+/*  		windowManagerWidget.addStatusWindow(statusWindowDiv);
  		windowManagerWidget.addMapWindow(mapWindowDiv);
  		windowManagerWidget.addPieChartWindow(piechartDiv);
  		windowManagerWidget.addUtilityWindow(utilityDiv);
  		windowManagerWidget.addPlotWindow(timeDiv);
  		windowManagerWidget.addTableWindow(tableDiv);
-         
+ */         
         dataloaderWidget.loadFromURL();
     });
     </script>

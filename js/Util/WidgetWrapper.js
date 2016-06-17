@@ -98,6 +98,30 @@ WidgetWrapper = function() {
 			}
 		}
 	});
+	
+	Publisher.Subscribe('statusUpdate', this, function(inquiringWidget) {
+		if (inquiringWidget == undefined) {
+			return;
+		}
+		if ( typeof wrapper.widget != 'undefined') {
+			if ( typeof wrapper.widget.statusUpdate != 'undefined') {
+				wrapper.widget.statusUpdate(inquiringWidget);
+			}
+		}
+		
+	});
+	
+	Publisher.Subscribe('updateStatus', this, function(status) {
+		if (status == undefined) {
+			return;
+		}
+		if ( typeof wrapper.widget != 'undefined') {
+			if ( typeof wrapper.widget.updateStatus != 'undefined') {
+				wrapper.widget.updateStatus(status);
+			}
+		}
+		
+	})
 
 
 	this.triggerRefining = function(datasets) {
