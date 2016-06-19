@@ -2,10 +2,14 @@
  * 
  */
 
-function StatusGui(status, div, options) {
+function StatusGui(parent, div, options) {
 	
-	this.parent = status;
+	this.parent = parent;
 	var statusGui = this;
+	
+	this.status = {
+			pieCharts	: []
+	};
 	
 	this.statusContainer = document.createElement('div');
 	$(div).append(statusGui.statusContainer);
@@ -50,7 +54,28 @@ StatusGui.prototype = {
 					count += statusWidget.selected[i].length;
 				}
 			}
-			$(statusGui.selectedObjectsDiv).text(count + " Objects selected");				
+			$(statusGui.selectedObjectsDiv).text(count + " Objects selected");		
+			
+			Publisher.Subscribe('statusUpdate', this.parent, function(status) {
+				
+				$.extend(statusGui.status, status);
+				$(statusGui.activePiechartsDiv).empty();
+				$(statusGui.activePiechartsDiv).text("Active Piechart(s): ");
+				$.each(statusGui.status.pieCharts, function(index, piechart) {
+					if (piechart != null) {
+						var pPar = document.createElement('span');
+						var color = [piechart.pieChart.watchedDatasetObject.color.r1, piechart.pieChart.watchedDatasetObject.color.g1, piechart.pieChart.watchedDatasetObject.color.b1];
+						$(pPar).css("color", "rgb("+color[0]+","+color[1]+","+color[2]+")" );
+						$(pPar).text(piechart.pieChart.watchedDatasetObject.label + " - " + piechart.pieChart.watchColumn);
+						$(statusGui.activePiechartsDiv).append(pPar);
+						if (index+1 < statusGui.status.pieCharts.length) {
+							var seperator = document.createElement('span');
+							$(seperator).text(", ");
+							$(statusGui.activePiechartsDiv).append(seperator);
+						}
+					}
+				});
+			});
 			
 		},
 

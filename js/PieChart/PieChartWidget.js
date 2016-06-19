@@ -41,9 +41,9 @@ PieChartWidget = function(core, div, options) {
 	this.pieCharts = [];
 	
 	this.status = {
-			widgetName	: "pieChart",
-			status		: []
+			pieCharts : []
 	}
+	
 }
 
 PieChartWidget.prototype = {
@@ -103,6 +103,10 @@ PieChartWidget.prototype = {
 				(GeoTemConfig.datasets.length > watchedDataset) )
 			newPieChart.initPieChart(GeoTemConfig.datasets);
 		this.redrawPieCharts(this.selected);
+		
+		//added to update status on add piechart
+		this.status.pieCharts = this.pieCharts;
+		Publisher.Publish('statusUpdate', this.status, this);
 	},
 
 	initWidget : function(data) {

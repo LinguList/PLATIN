@@ -65,6 +65,12 @@ PieChart.prototype = {
 		$(this.pieChartDiv).remove();
 		$(this.informationDIV).remove();
 		this.parent.redrawPieCharts();
+		
+		
+		//added to update status on remove piechart
+		this.parent.status.pieCharts = this.parent.pieCharts;
+		Publisher.Publish('statusUpdate', this.parent.status, this.parent);
+
 	},
 	
 	refreshLabel : function(){

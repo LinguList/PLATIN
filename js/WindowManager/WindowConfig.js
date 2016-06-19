@@ -55,7 +55,7 @@ function PieChartWindowConfig(options) {
 		close 			: null,
 		title 			: "Piecharts",
 		width 			: 640,
-		height 			: 800,
+		height 			: 480,
 		icons			: {
 			main		: "ui-icon-piechart"
 		}

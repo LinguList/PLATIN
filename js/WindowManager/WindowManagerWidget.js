@@ -27,6 +27,15 @@ WindowManagerWidget.prototype = {
 			this.addUtilityWindow(this.options.utilityWindowDiv);
 			this.addPlotWindow(this.options.plotWindowDiv);
 			this.addTableWindow(this.options.tableWindowDiv);
+			
+			$(this.piechartWindow.div).on("windowshow", function() {
+				$(this).css("height", "100%");
+				$(this).css("width", "100%");
+			});
+			$(this.mapWindow.div).on("windowshow", function() {
+				$(this).css("height", "100%");
+				$(this).css("width", "100%");
+			});
 
 		},
 		
@@ -112,17 +121,16 @@ WindowManagerWidget.prototype = {
 				this.setWindowState(this.plotWindow.window, config.plotWindow.minimized, config.plotWindow.maximized);
 
 //				$(this.tableWindow.window).window("option",config.tableWindow.simoneOptions);
-				console.log(config.tableWindow.simoneOptions);
 				var window = this.tableWindow.window;
-				$(this.tableWindow.window).on("windowshow", function() {
-					$(window).window("refreshPosition");
-					console.log("Height: "+$(window).window("option","height")+" Width: "+$(window).window("option","width"));
-				});
-				$(this.tableWindow.window).window("option", {
-					height : config.tableWindow.simoneOptions.height,
-					width : config.tableWindow.simoneOptions.width
-				});
-				$(this.tableWindow.window).window("refreshPosition");
+//				$(this.tableWindow.window).on("windowshow", function() {
+//					$(window).window("refreshPosition");
+//					console.log("Height: "+$(window).window("option","height")+" Width: "+$(window).window("option","width"));
+//				});
+//				$(this.tableWindow.window).window("option", {
+//					height : config.tableWindow.simoneOptions.height,
+//					width : config.tableWindow.simoneOptions.width
+//				});
+//				$(this.tableWindow.window).window("refreshPosition");
 				this.setWindowState(this.tableWindow.window, config.tableWindow.minimized, config.tableWindow.maximized);
 //				console.log(config.tableWindow.minimized);
 //				console.log(config.tableWindow.maximized);
