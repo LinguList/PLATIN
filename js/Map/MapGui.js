@@ -330,6 +330,10 @@ function MapGui(map, div, options, iid) {
 		var addMap = function(name, index) {
 			var setMap = function() {
 				gui.map.setMap(index);
+				
+				//added to update mapbase in statuswindow
+				Publisher.Publish("statusUpdate", { mapbase : gui.map.baseLayers[gui.map.baselayerIndex].name }, gui.map);
+
 			}
 			maps.push({
 				name : name,

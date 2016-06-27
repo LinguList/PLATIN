@@ -27,6 +27,7 @@ WindowManagerWidget.prototype = {
 			this.addUtilityWindow(this.options.utilityWindowDiv);
 			this.addPlotWindow(this.options.plotWindowDiv);
 			this.addTableWindow(this.options.tableWindowDiv);
+			this.addAboutWindow(this.options.aboutWindowDiv);
 			
 			$(this.piechartWindow.div).on("windowshow", function() {
 				$(this).css("height", "100%");
@@ -87,6 +88,11 @@ WindowManagerWidget.prototype = {
 						simoneOptions : $(windowManagerWidget.tableWindow.window).window("option"),
 						minimized : $(windowManagerWidget.tableWindow.window).window("minimized"),
 						maximized : $(windowManagerWidget.tableWindow.window).window("maximized"),
+					},
+					aboutWindow : {
+						simoneOptions : $(windowManagerWidget.aboutWindow.window).window("option"),
+						minimized : $(windowManagerWidget.aboutWindow.window).window("minimized"),
+						maximized : $(windowManagerWidget.aboutWindow.window).window("maximized"),
 					}
 			};
 			
@@ -135,6 +141,8 @@ WindowManagerWidget.prototype = {
 //				console.log(config.tableWindow.minimized);
 //				console.log(config.tableWindow.maximized);
 //				console.log(config);
+
+				this.setWindowState(this.aboutWindow.window, config.aboutWindow.minimized, config.aboutWindow.maximized);
 			}
 			
 		},
@@ -179,6 +187,13 @@ WindowManagerWidget.prototype = {
 			var windowManagerWidget = this;
 			
 			windowManagerWidget.tableWindow = new TableWindow(tableWindowDiv);
+		},
+		
+		addAboutWindow : function(aboutWindowDiv) {
+			
+			var windowManagerWidget = this;
+			
+			windowManagerWidget.aboutWindow = new AboutWindow(aboutWindowDiv);
 		},
 		
 		setWindowState : function(window, minimized, maximized) {

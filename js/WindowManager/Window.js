@@ -119,3 +119,18 @@ TableWindow = function(div, options) {
 TableWindow.prototype = Object.create(Window.prototype, {
 	
 });
+
+AboutWindow = function(div, options) {
+	
+	this.div = div;
+	this.options = (new AboutWindowConfig(options)).options;
+	
+	this.init();
+	$(this.div).window("minimize");
+	
+}
+
+AboutWindow.prototype = Object.create(Window.prototype, {
+	
+});
+

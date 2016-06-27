@@ -55,6 +55,7 @@ MapWidget = function(core, div, options) {
 	this.gui = new MapGui(this, this.div, this.options, this.iid);
 
 	this.initialize();
+	
 
 }
 

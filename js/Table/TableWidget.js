@@ -88,6 +88,9 @@ TableWidget.prototype = {
 					$(tableNameDiv).empty();
 					$(tableNameDiv).append(newname);
 					dataSet.label = newname;
+					
+					//added to update status Window information
+					Publisher.Publish("statusUpdate", { datasets : GeoTemConfig.datasets }, this);
 				});
 				$(nameInput).keypress(function(event) {
 					if (event.which == 13) {
@@ -95,9 +98,15 @@ TableWidget.prototype = {
 						$(tableNameDiv).empty();
 						$(tableNameDiv).append(newname);
 						dataSet.label = newname;
+						
+						//added to update status Window information
+						Publisher.Publish("statusUpdate", { datasets : GeoTemConfig.datasets }, this);
 					}
 				});
 			});
+						
+			//added to update status Window information
+			Publisher.Publish("statusUpdate", { datasets : GeoTemConfig.datasets }, this);
 			
 			if (typeof dataSet.url !== "undefined"){
 				var tableLinkDiv = document.createElement('a');
@@ -116,6 +125,10 @@ TableWidget.prototype = {
 				GeoTemConfig.removeDataset(index);
 				//don't let the event propagate to the DIV above			
 				e.stopPropagation();
+				
+				//added to update status Window information
+				Publisher.Publish("statusUpdate", { datasets : GeoTemConfig.datasets }, this);
+
 				//discard link click
 				return(false);
 			},{index:index});

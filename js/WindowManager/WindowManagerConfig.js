@@ -7,7 +7,8 @@ function WindowManagerConfig(options) {
 			piechartWindowDiv	: document.getElementById("piechartContainerDiv"),
 			utilityWindowDiv	: document.getElementById("utilityContainerDiv"),
 			plotWindowDiv		: document.getElementById("plotContainerDiv"),
-			tableWindowDiv		: document.getElementById("tableContainerDiv")
+			tableWindowDiv		: document.getElementById("tableContainerDiv"),
+			aboutWindowDiv		: document.getElementById("aboutContainerDiv")
 			
 			
 	}

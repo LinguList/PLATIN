@@ -15,12 +15,12 @@ function TaskbarConfig(options) {
 			resizable			: false,
 			resolveCollisions	: false,
 			buttons				: {
-				zoomin			: {
-					label		: "Z+"
-				},
-				zoomout			: {
-					label		: "Z-"
-				},
+//				zoomin			: {
+//					label		: "Z+"
+//				},
+//				zoomout			: {
+//					label		: "Z-"
+//				},
 				scalein			: {
 					label		: "S+"
 				},

@@ -126,6 +126,25 @@ function TableWindowConfig(options) {
 	}
 }
 
+function AboutWindowConfig(options) {
+
+	this.options = {
+
+		closable 		: false,
+		close 			: null,
+		title 			: "About",
+		width 			: 800,
+		height 			: 150,
+		icons			: {
+			main		: "ui-icon-plotchart"
+		}
+
+	}
+
+	if (typeof options != 'undefined') {
+		$.extend(this.options, options);
+	}
+}
 
 
 
