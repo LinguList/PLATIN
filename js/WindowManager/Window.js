@@ -4,6 +4,7 @@
 
 Window = function(div, options) {
 	this.div = div;
+	this.options = options;
 	
 	this.init();
 }
@@ -37,7 +38,6 @@ MapWindow = function(div, options) {
 	this.options = (new MapWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 	
 	
 	
@@ -70,7 +70,6 @@ PieChartWindow = function(div, options) {
 	this.options = (new PieChartWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 	
 }
 
@@ -84,7 +83,6 @@ UtilityWindow = function(div, options) {
 	this.options = (new UtilityWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 
 }
 
@@ -98,7 +96,6 @@ PlotWindow = function(div, options) {
 	this.options = (new PlotWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 
 }
 
@@ -112,7 +109,6 @@ TableWindow = function(div, options) {
 	this.options = (new TableWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 
 }
 
@@ -126,7 +122,6 @@ AboutWindow = function(div, options) {
 	this.options = (new AboutWindowConfig(options)).options;
 	
 	this.init();
-	$(this.div).window("minimize");
 	
 }
 

@@ -22,12 +22,12 @@ WindowManagerWidget.prototype = {
 			this.gui.initGui();
 			
 			this.addStatusWindow(this.options.statusWindowDiv);
-			this.addMapWindow(this.options.mapWindowDiv);
-			this.addPieChartWindow(this.options.piechartWindowDiv);
-			this.addUtilityWindow(this.options.utilityWindowDiv);
-			this.addPlotWindow(this.options.plotWindowDiv);
-			this.addTableWindow(this.options.tableWindowDiv);
-			this.addAboutWindow(this.options.aboutWindowDiv);
+			this.addMapWindow(this.options.mapWindowDiv, true);
+			this.addPieChartWindow(this.options.piechartWindowDiv, true);
+			this.addUtilityWindow(this.options.utilityWindowDiv, true);
+			this.addPlotWindow(this.options.plotWindowDiv, true);
+			this.addTableWindow(this.options.tableWindowDiv, true);
+			this.addAboutWindow(this.options.aboutWindowDiv, true);
 			
 			$(this.piechartWindow.div).on("windowshow", function() {
 				$(this).css("height", "100%");
@@ -109,40 +109,92 @@ WindowManagerWidget.prototype = {
 			if (configObj.widgetName === "windowManager"){
 				var config = configObj.config;
 				
-//				console.debug(config);
+////				console.debug(config);
+//				
+////				$(this.statusWindow.window).window("option",config.statusWindow.simoneOptions);
+//				this.setWindowState(this.statusWindow.window, config.statusWindow.minimized, config.statusWindow.maximized);
+//
+////				$(this.mapWindow.window).window("option",config.mapWindow.simoneOptions);
+//				this.setWindowState(this.mapWindow.window, config.mapWindow.minimized, config.mapWindow.maximized);
+//
+////				$(this.piechartWindow.window).window("option",config.piechartWindow.simoneOptions);
+//				this.setWindowState(this.piechartWindow.window, config.piechartWindow.minimized, config.piechartWindow.maximized);
+//
+////				$(this.utilityWindow.window).window("option",config.utilityWindow.simoneOptions);
+//				this.setWindowState(this.utilityWindow.window, config.utilityWindow.minimized, config.utilityWindow.maximized);
+//
+////				$(this.plotWindow.window).window("option",config.plotWindow.simoneOptions);
+//				this.setWindowState(this.plotWindow.window, config.plotWindow.minimized, config.plotWindow.maximized);
+//
+////				$(this.tableWindow.window).window("option",config.tableWindow.simoneOptions);
+//				var window = this.tableWindow.window;
+////				$(this.tableWindow.window).on("windowshow", function() {
+////					$(window).window("refreshPosition");
+////					console.log("Height: "+$(window).window("option","height")+" Width: "+$(window).window("option","width"));
+////				});
+////				$(this.tableWindow.window).window("option", {
+////					height : config.tableWindow.simoneOptions.height,
+////					width : config.tableWindow.simoneOptions.width
+////				});
+////				$(this.tableWindow.window).window("refreshPosition");
+//				this.setWindowState(this.tableWindow.window, config.tableWindow.minimized, config.tableWindow.maximized);
+////				console.log(config.tableWindow.minimized);
+////				console.log(config.tableWindow.maximized);
+////				console.log(config);
+//
+//				this.setWindowState(this.aboutWindow.window, config.aboutWindow.minimized, config.aboutWindow.maximized);
 				
-//				$(this.statusWindow.window).window("option",config.statusWindow.simoneOptions);
-				this.setWindowState(this.statusWindow.window, config.statusWindow.minimized, config.statusWindow.maximized);
+				windowManagerWidget.mapWindow.window.window("destroy");
+				windowManagerWidget.mapWindow = windowManagerWidget.addMapWindow(
+						windowManagerWidget.options.mapWindowDiv, 
+						config.mapWindow.minimized, 
+						config.mapWindow.maximized, 
+						windowManagerWidget.getOptions(config.mapWindow.simoneOptions));
+//						config.mapWindow.simoneOptions);
+//new MapWindow(windowManagerWidget.options.mapWindowDiv, config.mapWindow.simoneOptions);
+				
+				windowManagerWidget.piechartWindow.window.window("destroy");
+				windowManagerWidget.piechartWindow = windowManagerWidget.addPieChartWindow(
+						windowManagerWidget.options.piechartWindowDiv, 
+						config.piechartWindow.minimized, 
+						config.piechartWindow.maximized, 
+						windowManagerWidget.getOptions(config.piechartWindow.simoneOptions));
+//				new PieChartWindow(windowManagerWidget.options.piechartWindowDiv, config.piechartWindow.simoneOptions);
+				
+				windowManagerWidget.utilityWindow.window.window("destroy");
+				windowManagerWidget.utilityWindow = windowManagerWidget.addUtilityWindow(
+						windowManagerWidget.options.utilityWindowDiv, 
+						config.utilityWindow.minimized, 
+						config.utilityWindow.maximized, 
+						windowManagerWidget.getOptions(config.utilityWindow.simoneOptions));
+//new UtilityWindow(windowManagerWidget.options.utilityWindowDiv, config.utilityWindow.simoneOptions);
+//				windowManagerWidget.getOptions(config.utilityWindow.simoneOptions);
 
-//				$(this.mapWindow.window).window("option",config.mapWindow.simoneOptions);
-				this.setWindowState(this.mapWindow.window, config.mapWindow.minimized, config.mapWindow.maximized);
-
-//				$(this.piechartWindow.window).window("option",config.piechartWindow.simoneOptions);
-				this.setWindowState(this.piechartWindow.window, config.piechartWindow.minimized, config.piechartWindow.maximized);
-
-//				$(this.utilityWindow.window).window("option",config.utilityWindow.simoneOptions);
-				this.setWindowState(this.utilityWindow.window, config.utilityWindow.minimized, config.utilityWindow.maximized);
-
-//				$(this.plotWindow.window).window("option",config.plotWindow.simoneOptions);
-				this.setWindowState(this.plotWindow.window, config.plotWindow.minimized, config.plotWindow.maximized);
-
-//				$(this.tableWindow.window).window("option",config.tableWindow.simoneOptions);
-				var window = this.tableWindow.window;
-//				$(this.tableWindow.window).on("windowshow", function() {
-//					$(window).window("refreshPosition");
-//					console.log("Height: "+$(window).window("option","height")+" Width: "+$(window).window("option","width"));
-//				});
-//				$(this.tableWindow.window).window("option", {
-//					height : config.tableWindow.simoneOptions.height,
-//					width : config.tableWindow.simoneOptions.width
-//				});
-//				$(this.tableWindow.window).window("refreshPosition");
-				this.setWindowState(this.tableWindow.window, config.tableWindow.minimized, config.tableWindow.maximized);
-//				console.log(config.tableWindow.minimized);
-//				console.log(config.tableWindow.maximized);
-//				console.log(config);
-
-				this.setWindowState(this.aboutWindow.window, config.aboutWindow.minimized, config.aboutWindow.maximized);
+				windowManagerWidget.plotWindow.window.window("destroy");
+				windowManagerWidget.plotWindow = windowManagerWidget.addPlotWindow(
+						windowManagerWidget.options.plotWindowDiv, 
+						config.plotWindow.minimized, 
+						config.plotWindow.maximized, 
+						windowManagerWidget.getOptions(config.plotWindow.simoneOptions));
+//new PlotWindow(windowManagerWidget.options.plotWindowDiv, config.plotWindow.simoneOptions);
+				
+				windowManagerWidget.tableWindow.window.window("destroy");
+				windowManagerWidget.tableWindow = windowManagerWidget.addTableWindow(
+						windowManagerWidget.options.tableWindowDiv, 
+						config.tableWindow.minimized, 
+						config.tableWindow.maximized, 
+						windowManagerWidget.getOptions(config.tableWindow.simoneOptions));
+//new TableWindow(windowManagerWidget.options.tableWindowDiv, config.tableWindow.simoneOptions);
+				
+				windowManagerWidget.aboutWindow.window.window("destroy");
+				windowManagerWidget.aboutWindow = windowManagerWidget.addAboutWindow(
+						windowManagerWidget.options.aboutWindowDiv, 
+						config.aboutWindow.minimized, 
+						config.aboutWindow.maximized, 
+						windowManagerWidget.getOptions(config.aboutWindow.simoneOptions));
+//new AboutWindow(windowManagerWidget.options.aboutWindowDiv, config.aboutWindow.simoneOptions);
+				
+//				console.log($(windowManagerWidget.utilityWindow.div));
 			}
 			
 		},
@@ -150,50 +202,195 @@ WindowManagerWidget.prototype = {
 		addStatusWindow : function(statusWindowDiv) {
 			
 			var windowManagerWidget = this;
-			
+					
 			windowManagerWidget.statusWindow = new StatusWindow(statusWindowDiv);
 		},
 		
-		addMapWindow : function(mapWindowDiv) {
+		addMapWindow : function(mapWindowDiv, minimized, maximized, options) {
 			
-			var windowManagerWidget = this;
+			var windowManagerWidget = this;		
 			
-			windowManagerWidget.mapWindow = new MapWindow(mapWindowDiv);
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
+			windowManagerWidget.mapWindow = new MapWindow(mapWindowDiv, opt);
+			
+			if (min) {
+				windowManagerWidget.mapWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.mapWindow.window.window("maximize");				
+			}
 		},
 		
-		addPieChartWindow : function(piechartWindowDiv) {
+		addPieChartWindow : function(piechartWindowDiv, minimized, maximized, options) {
 			
 			var windowManagerWidget = this;
 			
-			windowManagerWidget.piechartWindow = new PieChartWindow(piechartWindowDiv);
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
+
+			windowManagerWidget.piechartWindow = new PieChartWindow(piechartWindowDiv, opt);
+
+			if (min) {
+				windowManagerWidget.piechartWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.piechartWindow.window.window("maximize");				
+			}
 		},
 		
-		addUtilityWindow : function(utilityWindowDiv) {
+		addUtilityWindow : function(utilityWindowDiv, minimized, maximized, options) {
 			
 			var windowManagerWidget = this;
 			
-			windowManagerWidget.utilityWindow = new UtilityWindow(utilityWindowDiv);
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
+			windowManagerWidget.utilityWindow = new UtilityWindow(utilityWindowDiv, opt);
+
+			if (min) {
+				windowManagerWidget.utilityWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.utilityWindow.window.window("maximize");				
+			}
 		},
 		
-		addPlotWindow : function(plotWindowDiv) {
+		addPlotWindow : function(plotWindowDiv, minimized, maximized, options) {
 			
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
 			var windowManagerWidget = this;
 			
-			windowManagerWidget.plotWindow = new PlotWindow(plotWindowDiv);
+			windowManagerWidget.plotWindow = new PlotWindow(plotWindowDiv, opt);
+
+			if (min) {
+				windowManagerWidget.plotWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.plotWindow.window.window("maximize");				
+			}
 		},
 		
-		addTableWindow : function(tableWindowDiv) {
+		addTableWindow : function(tableWindowDiv, minimized, maximized, options) {
 			
 			var windowManagerWidget = this;
 			
-			windowManagerWidget.tableWindow = new TableWindow(tableWindowDiv);
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
+			windowManagerWidget.tableWindow = new TableWindow(tableWindowDiv, opt);
+
+			if (min) {
+				windowManagerWidget.tableWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.tableWindow.window.window("maximize");				
+			}
 		},
 		
-		addAboutWindow : function(aboutWindowDiv) {
+		addAboutWindow : function(aboutWindowDiv, minimized, maximized, options) {
 			
 			var windowManagerWidget = this;
 			
-			windowManagerWidget.aboutWindow = new AboutWindow(aboutWindowDiv);
+			var min = false;
+			var max = false;
+			var opt = {};
+			
+			if (minimized != 'undefined') {
+				min = minimized;
+			}
+			
+			if (maximized != 'undefined') {
+				max = maximized;
+			}
+			
+			if (options != 'undefined') {
+				opt = options;
+			}
+
+			windowManagerWidget.aboutWindow = new AboutWindow(aboutWindowDiv, opt);
+
+			if (min) {
+				windowManagerWidget.aboutWindow.window.window("minimize");				
+			}
+			
+			if (max) {
+				windowManagerWidget.aboutWindow.window.window("maximize");				
+			}
 		},
 		
 		setWindowState : function(window, minimized, maximized) {
@@ -231,7 +428,7 @@ WindowManagerWidget.prototype = {
 //						console.log("maximizing after show: "+$(window).window("title"));
 					})
 				} else {
-					$(window).window(maximize, 0);
+					$(window).window("maximize", 0);
 //					console.log("maximizing: "+$(window).window("title"));
 				}
 			}
@@ -250,6 +447,21 @@ WindowManagerWidget.prototype = {
 //				console.log("is minimizing? "+$(window).window("minimizing"));
 //				console.log("is minimized? "+$(window).window("minimized"));
 			}
+		},
+		
+		getOptions : function(options) {
+			
+			var opt = {};
+			opt.height = options.height;
+			opt.width = options.width;
+			opt.position = {
+					my			: "left+"+options.position[1]+" top+"+options.position[0],
+					at			: "left top",
+					of			: ".simone-taskbar-window-copy",
+					collision	: "fit"
+			}
+			
+			return opt;
 		}
 
 		

@@ -99,7 +99,7 @@ StatusGui.prototype = {
 					});
 				}
 			});
-			
+						
 		},
 
 		updateStatus : function() {
