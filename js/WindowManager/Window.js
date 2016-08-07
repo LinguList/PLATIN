@@ -39,6 +39,13 @@ MapWindow = function(div, options) {
 	
 	this.init();
 	
+	var window = this.window;
+	this.window.one("windowshow", function() {
+		$(window).trigger("resize", {
+			caller: "taskbar-iframe"
+		});
+	});
+	
 	
 	
 	

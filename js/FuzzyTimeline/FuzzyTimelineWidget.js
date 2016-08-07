@@ -660,8 +660,14 @@ FuzzyTimelineWidget.prototype = {
 		
 		config.viewMode = fuzzyTimeline.viewMode;
 
-		config.rangeDropdownVal = $(fuzzyTimeline.rangeSlider.rangeDropdown).val();
-		config.rangeStartVal = $(fuzzyTimeline.rangeSlider.rangeStart).val();
+		//don't save if timeline is not initialized
+		if (typeof fuzzyTimeline.rangeSlider !== "undefined") {
+			config.rangeDropdownVal = $(fuzzyTimeline.rangeSlider.rangeDropdown).val();
+			config.rangeStartVal = $(fuzzyTimeline.rangeSlider.rangeStart).val();
+		} else {
+			config.rangeDropdownVal = null;
+			config.rangeStartVal = null;
+		}
 		
 		//send config to iquiring widget
 		if (typeof inquiringWidget.sendConfig !== "undefined"){
@@ -675,28 +681,32 @@ FuzzyTimelineWidget.prototype = {
 		if (configObj.widgetName === "fuzzyTimeline"){
 			var config = configObj.config;
 			
-			$(fuzzyTimeline.rangeSlider.rangeDropdown).val(config.rangeDropdownVal);
-			$(fuzzyTimeline.rangeSlider.rangeDropdown).change();
-			fuzzyTimeline.switchViewMode(config.viewMode);
-			
-			$(fuzzyTimeline.rangeSlider.rangeStart).val(config.rangeStartVal);
-			$(fuzzyTimeline.rangeSlider.rangeStart).change();
+			//don't load if timeline is not initialized
+			if (typeof fuzzyTimeline.rangeSlider !== "undefined") {
+				$(fuzzyTimeline.rangeSlider.rangeDropdown).val(config.rangeDropdownVal);
+				$(fuzzyTimeline.rangeSlider.rangeDropdown).change();
+				fuzzyTimeline.switchViewMode(config.viewMode);
+				
+				$(fuzzyTimeline.rangeSlider.rangeStart).val(config.rangeStartVal);
+				$(fuzzyTimeline.rangeSlider.rangeStart).change();
 
-			//clear handles
-			fuzzyTimeline.clearHandles();
-			
-			//create handle copy
-			var handleCopy = JSON.parse( JSON.stringify( config.handles ) );
-			fuzzyTimeline.handles = handleCopy;
+				//clear handles
+				fuzzyTimeline.clearHandles();
+				
+				//create handle copy
+				var handleCopy = JSON.parse( JSON.stringify( config.handles ) );
+				fuzzyTimeline.handles = handleCopy;
 
-			// redraw handles
-			fuzzyTimeline.drawHandles();
+				// redraw handles
+				fuzzyTimeline.drawHandles();
+				
+				// select elements
+				$(fuzzyTimeline.handles).each(function(){
+					var handle = this;
+					fuzzyTimeline.selectByX(handle.x1, handle.x2)
+				});
+			}
 			
-			// select elements
-			$(fuzzyTimeline.handles).each(function(){
-				var handle = this;
-				fuzzyTimeline.selectByX(handle.x1, handle.x2)
-			});
 		}
 	},
 };

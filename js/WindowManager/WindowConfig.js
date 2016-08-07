@@ -36,7 +36,7 @@ function MapWindowConfig(options) {
 		close 			: null,
 		title 			: "Map",
 		width 			: 1024,
-		height 			: 768,
+		height 			: 620,
 		icons			: {
 			main		: "ui-icon-worldmap"
 		}
