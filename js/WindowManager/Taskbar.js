@@ -6,7 +6,6 @@ Taskbar = function(div, options) {
 	this.div = div;
 	this.options = (new TaskbarConfig()).options;
 	
-	this.zoom = 1;
 	this.scale = 1;
 	
 	this.init();
@@ -42,9 +41,12 @@ Taskbar.prototype = {
 				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale /= 1.1;
 				$(windows).each(function(index,window) {
-					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
-					$(windowDiv).css('transform','scale('+taskbar.scale+')');
-					$(windowDiv).css('transform-origin', 'top left');
+					if ($(window).attr("id") != "statusWindowDiv") {
+						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+						$(windowDiv).css('transform','scale('+taskbar.scale+')');
+//						$(windowDiv).css('transform-origin', 'top left');
+						$(windowDiv).css('transform-origin', 'center center');
+					}
 				})
 				
 			});
@@ -52,10 +54,38 @@ Taskbar.prototype = {
 				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale *= 1.1;
 				$(windows).each(function(index,window) {
-					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
-					$(windowDiv).css('transform','scale('+taskbar.scale+')');
-					$(windowDiv).css('transform-origin', 'top left');
+					if ($(window).attr("id") != "statusWindowDiv") {
+						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+						$(windowDiv).css('transform','scale('+taskbar.scale+')');
+//						$(windowDiv).css('transform-origin', 'top left');
+						$(windowDiv).css('transform-origin', 'center center');						
+					}
 				})
 			});
+		},
+		
+		setScale : function(scale) {
+			
+			var taskbar = this;
+			taskbar.scale = scale;
+			var windows = $(taskbar.div).taskbar("windows");
+			$(windows).each(function(index, window) {
+				if ($(window).attr("id") != "statusWindowDiv") {
+					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+					$(windowDiv).css('transform','scale('+taskbar.scale+')');
+//					$(windowDiv).css('transform-origin', 'top left');
+					$(windowDiv).css('transform-origin', 'center center');
+				}
+			});
+		},
+		
+		setScaleForWindow : function(window, scale) {
+			var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+			$(windowDiv).css('transform','scale('+scale+')');
+		},
+		
+		setScaleOriginForWindow : function(window, origin) {
+			var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+			$(windowDiv).css('transform-origin', origin);			
 		}
 }

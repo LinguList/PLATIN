@@ -17,17 +17,17 @@ Window.prototype = {
 			
 			this.taskbar = $(this.div).window("taskbar");
 			
-			this.windowButton = $(this.taskbar).taskbar("button",$(this.window));
 			
 			var window = this.window;
 			var taskbar = this.taskbar;
+			
+			this.windowButton = $(this.taskbar).taskbar("button",$(this.window));
 			var windowButton = this.windowButton;
 			
-			$(this.windowButton).on("click", function() {
-				if ($(window).window("shown") && !($(window).window("title") == "Statuswindow")) {
-					$(window).window("minimize");
-				}
-			});
+			
+			
+			
+			
 			
 		}
 }
@@ -45,6 +45,7 @@ MapWindow = function(div, options) {
 			caller: "taskbar-iframe"
 		});
 	});
+	
 	
 	
 	

@@ -12,11 +12,15 @@ WindowManagerWidget = function(core, div, options) {
 	
 	this.initWidget();
 	
+	this.taskabar = null;
+	
 }
 
 WindowManagerWidget.prototype = {
 		
 		initWidget : function(data) {
+			
+			var windowManagerWidget = this;
 			
 			this.datasets = data;
 			this.gui.initGui();
@@ -37,6 +41,124 @@ WindowManagerWidget.prototype = {
 				$(this).css("height", "100%");
 				$(this).css("width", "100%");
 			});
+			
+			
+			var scaleFixWindows = [windowManagerWidget.mapWindow, windowManagerWidget.piechartWindow, windowManagerWidget.utilityWindow,
+			                       windowManagerWidget.plotWindow, windowManagerWidget.tableWindow, windowManagerWidget.aboutWindow];
+
+			$(scaleFixWindows).each(function(i, window) {
+				$(window.windowButton).unbind("click dblclick");
+				$(window.windowButton).on("click", function() {
+					if ($(window.window).window("shown") && !($(window.window).window("title") == "Statuswindow")) {
+						var windowDiv = $("div[aria-describedby='"+$(window.window).attr("id")+"']");
+						if (windowDiv.hasClass("simone-window-top")) {
+							$(window.window).window("minimize");
+						} else {
+							$(window.window).window("moveToTop");
+						}
+					} else {
+						$(window.window).window("show");
+					}
+				});
+				
+			});
+			function resizeFix(event, ui) {
+				var zoomScale = windowManagerWidget.taskbar.scale;
+			    var changeWidth = ui.size.width - ui.originalSize.width; // find change in width
+			    var newWidth = ui.originalSize.width + changeWidth / zoomScale; // adjust new width by our zoomScale
+			 
+			    var changeHeight = ui.size.height - ui.originalSize.height; // find change in height
+			    var newHeight = ui.originalSize.height + changeHeight / zoomScale; // adjust new height by our zoomScale
+			 
+			    ui.size.width = newWidth;
+			    ui.size.height = newHeight;
+			}
+			
+			function startFix(event, ui) {
+			    ui.position.left = 0;
+			    ui.position.top = 0;
+			}
+			 
+			function dragFix(event, ui) {
+				var zoomScale = windowManagerWidget.taskbar.scale;
+			    var changeLeft = ui.position.left - ui.originalPosition.left; // find change in left
+			    var newLeft = ui.originalPosition.left + changeLeft / zoomScale; // adjust new left by our zoomScale
+			 
+			    var changeTop = ui.position.top - ui.originalPosition.top; // find change in top
+			    var newTop = ui.originalPosition.top + changeTop / zoomScale; // adjust new top by our zoomScale
+			 
+			    ui.position.left = newLeft;
+			    ui.position.top = newTop;
+			}			
+			$(scaleFixWindows).each(function(index, window) {
+//				$(window.div).resizable({
+//				    minWidth: -($(window.div).width()) * 10,  // these need to be large and negative
+//				    minHeight: -($(window.div).height()) * 10, // so we can shrink our resizable while scaled
+//				    resize: resizeFix
+//				});
+//				$(window.div).draggable({
+//					start: startFix,
+//					drag: dragFix
+//				});
+				$(window.div).on("windowbeforeminimize", function() {
+					windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
+					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div),"top left");
+				});
+				$(window.div).on("windowshow", function() {
+					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");					
+				});
+				
+				$(window.div).on("windowbeforeshow", function() {
+					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");					
+				});
+				
+				$(window.div).on("windowdragstart", function() {
+					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");
+				});
+				
+				$(window.div).on("windowdragstop", function() {
+					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");
+				});
+				
+				$(window.div).on("windowresizestart", function() {
+					$(scaleFixWindows).each(function(i, w) {
+						windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
+						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "top left");
+					});
+				});
+				
+				$(window.div).on("windowresize", function() {
+					$(scaleFixWindows).each(function(i, w) {
+						windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "center center");
+					});
+				});
+			});
+			
+//			$(this.utilityWindow.div).on("windowbeforeminimize", function() {
+//				windowManagerWidget.taskbar.setScaleForWindow($(windowManagerWidget.utilityWindow.div), 1);
+//				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div),"top left");
+//			});
+//			$(this.utilityWindow.div).on("windowshow", function() {
+//				windowManagerWidget.taskbar.setScaleForWindow($(windowManagerWidget.utilityWindow.div), windowManagerWidget.taskbar.scale);					
+//				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div), "center center");					
+//			});
+//			
+//			$(this.utilityWindow.div).on("windowbeforeshow", function() {
+//				windowManagerWidget.taskbar.setScaleForWindow($(windowManagerWidget.utilityWindow.div), windowManagerWidget.taskbar.scale);					
+//				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div), "top left");					
+//			});
+//			
+//			$(this.utilityWindow.div).on("windowdragstart", function() {
+//				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div), "top left");
+//			});
+//			
+//			$(this.utilityWindow.div).on("windowdragstop", function() {
+//				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div), "center center");
+//			});
+			
 
 		},
 		
@@ -59,6 +181,7 @@ WindowManagerWidget.prototype = {
 			
 			
 			var config = {
+					scale		: windowManagerWidget.taskbar.scale,
 					statusWindow : {
 						simoneOptions : $(windowManagerWidget.statusWindow.window).window("option"),
 						minimized : $(windowManagerWidget.statusWindow.window).window("minimized"),
@@ -106,6 +229,7 @@ WindowManagerWidget.prototype = {
 			
 			var windowManagerWidget = this;
 			
+			
 			if (configObj.widgetName === "windowManager"){
 				var config = configObj.config;
 				
@@ -143,9 +267,8 @@ WindowManagerWidget.prototype = {
 ////				console.log(config);
 //
 //				this.setWindowState(this.aboutWindow.window, config.aboutWindow.minimized, config.aboutWindow.maximized);
-				
 				windowManagerWidget.mapWindow.window.window("destroy");
-				windowManagerWidget.mapWindow = windowManagerWidget.addMapWindow(
+				windowManagerWidget.addMapWindow(
 						windowManagerWidget.options.mapWindowDiv, 
 						config.mapWindow.minimized, 
 						config.mapWindow.maximized, 
@@ -154,7 +277,7 @@ WindowManagerWidget.prototype = {
 //new MapWindow(windowManagerWidget.options.mapWindowDiv, config.mapWindow.simoneOptions);
 				
 				windowManagerWidget.piechartWindow.window.window("destroy");
-				windowManagerWidget.piechartWindow = windowManagerWidget.addPieChartWindow(
+				windowManagerWidget.addPieChartWindow(
 						windowManagerWidget.options.piechartWindowDiv, 
 						config.piechartWindow.minimized, 
 						config.piechartWindow.maximized, 
@@ -162,7 +285,7 @@ WindowManagerWidget.prototype = {
 //				new PieChartWindow(windowManagerWidget.options.piechartWindowDiv, config.piechartWindow.simoneOptions);
 				
 				windowManagerWidget.utilityWindow.window.window("destroy");
-				windowManagerWidget.utilityWindow = windowManagerWidget.addUtilityWindow(
+				windowManagerWidget.addUtilityWindow(
 						windowManagerWidget.options.utilityWindowDiv, 
 						config.utilityWindow.minimized, 
 						config.utilityWindow.maximized, 
@@ -171,7 +294,7 @@ WindowManagerWidget.prototype = {
 //				windowManagerWidget.getOptions(config.utilityWindow.simoneOptions);
 
 				windowManagerWidget.plotWindow.window.window("destroy");
-				windowManagerWidget.plotWindow = windowManagerWidget.addPlotWindow(
+				windowManagerWidget.addPlotWindow(
 						windowManagerWidget.options.plotWindowDiv, 
 						config.plotWindow.minimized, 
 						config.plotWindow.maximized, 
@@ -179,7 +302,7 @@ WindowManagerWidget.prototype = {
 //new PlotWindow(windowManagerWidget.options.plotWindowDiv, config.plotWindow.simoneOptions);
 				
 				windowManagerWidget.tableWindow.window.window("destroy");
-				windowManagerWidget.tableWindow = windowManagerWidget.addTableWindow(
+				windowManagerWidget.addTableWindow(
 						windowManagerWidget.options.tableWindowDiv, 
 						config.tableWindow.minimized, 
 						config.tableWindow.maximized, 
@@ -187,7 +310,7 @@ WindowManagerWidget.prototype = {
 //new TableWindow(windowManagerWidget.options.tableWindowDiv, config.tableWindow.simoneOptions);
 				
 				windowManagerWidget.aboutWindow.window.window("destroy");
-				windowManagerWidget.aboutWindow = windowManagerWidget.addAboutWindow(
+				windowManagerWidget.addAboutWindow(
 						windowManagerWidget.options.aboutWindowDiv, 
 						config.aboutWindow.minimized, 
 						config.aboutWindow.maximized, 
@@ -195,6 +318,8 @@ WindowManagerWidget.prototype = {
 //new AboutWindow(windowManagerWidget.options.aboutWindowDiv, config.aboutWindow.simoneOptions);
 				
 //				console.log($(windowManagerWidget.utilityWindow.div));
+				
+				windowManagerWidget.taskbar.setScale(config.scale);
 			}
 			
 		},

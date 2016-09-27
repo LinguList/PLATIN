@@ -145,6 +145,7 @@
         var windowManagerDiv = document.getElementById("windowManagerDiv");
         var windowManager = new WidgetWrapper();
         var windowManagerWidget = new WindowManagerWidget(windowManager, windowManagerDiv);
+        windowManagerWidget.taskbar = taskbar;
         
 /*         var statusWindow = new StatusWindow(statusWindowDiv);
         var mapWindow = new MapWindow(mapWindowDiv);

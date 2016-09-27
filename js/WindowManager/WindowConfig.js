@@ -39,7 +39,14 @@ function MapWindowConfig(options) {
 		height 			: 620,
 		icons			: {
 			main		: "ui-icon-worldmap"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
+
 	}
 
 	if (typeof options != 'undefined') {
@@ -58,7 +65,14 @@ function PieChartWindowConfig(options) {
 		height 			: 480,
 		icons			: {
 			main		: "ui-icon-piechart"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
+
 	}
 
 	if (typeof options != 'undefined') {
@@ -77,6 +91,12 @@ function UtilityWindowConfig(options) {
 		height 			: 768,
 		icons			: {
 			main		: "ui-icon-utility"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
 
 	}
@@ -97,7 +117,14 @@ function PlotWindowConfig(options) {
 		height 			: 768,
 		icons			: {
 			main		: "ui-icon-plotchart"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
+
 
 	}
 
@@ -117,7 +144,14 @@ function TableWindowConfig(options) {
 		height 			: 768,
 		icons			: {
 			main		: "ui-icon-table"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
+
 
 	}
 
@@ -137,7 +171,14 @@ function AboutWindowConfig(options) {
 		height 			: 150,
 		icons			: {
 			main		: "ui-icon-plotchart"
+		},
+		durations		: {
+			maximize	: 10,
+			minimize	: 10,
+			restore		: 10,
+			show		: 10
 		}
+
 
 	}
 

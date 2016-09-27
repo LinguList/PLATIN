@@ -34,9 +34,11 @@ StatusWidget.prototype = {
 
 		selectionChanged : function(selection) {
 			if (!selection.valid()) {
-				selection.loadAllObjects();
+				this.selected = [];
+//				selection.loadAllObjects();
+			} else {
+				this.selected = selection.objects;
 			}
-			this.selected = selection.objects;
 			this.gui.updateStatus();
 		}
 
