@@ -13,7 +13,20 @@ Window.prototype = {
 		
 		
 		init : function() {
+			
 			this.window = $(this.div).window(this.options);
+			
+			this.window.window("option","appendTo",".simone-taskbar-windows-containment");
+			
+			if (!(this.options.title == "Statuswindow"))	 {
+				var windowDiv = $("div[aria-describedby='"+$(this.window).attr("id")+"']");
+				$(windowDiv).one('style', function(event) {
+					$(this).css("position","absolute");
+					$(this).one('style', function(event) {
+						$(this).css("position", "absolute");
+					});
+				});
+			}
 			
 			this.taskbar = $(this.div).window("taskbar");
 			
@@ -40,6 +53,7 @@ MapWindow = function(div, options) {
 	this.init();
 	
 	var window = this.window;
+	
 	this.window.one("windowshow", function() {
 		$(window).trigger("resize", {
 			caller: "taskbar-iframe"
@@ -62,6 +76,7 @@ StatusWindow = function(div, options) {
 	this.options = (new StatusWindowConfig(options)).options;
 	
 	this.init();
+
 	
 //	$(this.div).prev(".ui-dialog-titlebar").css("display","none");
 //	$(this.div).dialog('option', 'dialogClass', 'dialogWithoutTitlebar');
@@ -78,6 +93,8 @@ PieChartWindow = function(div, options) {
 	this.options = (new PieChartWindowConfig(options)).options;
 	
 	this.init();
+	
+	
 	
 }
 

@@ -19,6 +19,11 @@ Taskbar.prototype = {
 			var taskbar = this;
 			
 			$(this.div).taskbar(this.options);
+			this.copydiv = $(".simone-taskbar-window-copy");
+			this.containmentdiv = $(".simone-taskbar-windows-containment");
+			
+			var copydiv = this.copydiv;
+			var containmentdiv = this.containmentdiv;
 			
 //			$(this.div).taskbar("option", "buttons.zoomin").$element.on("click", function() {
 //				var windows = $(taskbar.div).taskbar("windows");
@@ -40,28 +45,61 @@ Taskbar.prototype = {
 			$(this.div).taskbar("option", "buttons.scalein").$element.on("click", function() {
 				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale /= 1.1;
-				$(windows).each(function(index,window) {
-					if ($(window).attr("id") != "statusWindowDiv") {
-						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
-						$(windowDiv).css('transform','scale('+taskbar.scale+')');
-//						$(windowDiv).css('transform-origin', 'top left');
-						$(windowDiv).css('transform-origin', 'center center');
-					}
-				})
+				containmentdiv.css('transform','scale('+taskbar.scale+')');
+				containmentdiv.css('transform-origin', 'top left');
+//				$(windows).each(function(index,window) {
+//					if ($(window).attr("id") != "statusWindowDiv") {
+//						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+//						$(windowDiv).css('transform','scale('+taskbar.scale+')');
+////						$(windowDiv).css('transform-origin', 'top left');
+//						$(windowDiv).css('transform-origin', 'center center');
+//					}
+//				})
 				
 			});
 			$(this.div).taskbar("option", "buttons.scaleout").$element.on("click", function() {
 				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale *= 1.1;
-				$(windows).each(function(index,window) {
-					if ($(window).attr("id") != "statusWindowDiv") {
-						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
-						$(windowDiv).css('transform','scale('+taskbar.scale+')');
-//						$(windowDiv).css('transform-origin', 'top left');
-						$(windowDiv).css('transform-origin', 'center center');						
-					}
-				})
+				containmentdiv.css('transform','scale('+taskbar.scale+')');
+				containmentdiv.css('transform-origin', 'top left');
+//				$(windows).each(function(index,window) {
+//					if ($(window).attr("id") != "statusWindowDiv") {
+//						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+//						$(windowDiv).css('transform','scale('+taskbar.scale+')');
+////						$(windowDiv).css('transform-origin', 'top left');
+//						$(windowDiv).css('transform-origin', 'center center');						
+//					}
+//				})
 			});
+			
+//			$(copy).detach();
+			$(copydiv).insertBefore($(containmentdiv));
+			
+			
+			var invdiv = "<div id='invdiv'></div>";
+			containmentdiv.append(invdiv);
+			$("#invdiv").css({
+				"min-height": "2000px",
+				"min-width": "4000px"
+			});
+			containmentdiv.css("overflow", "scroll");
+			var fixContainmentSize = function(event) {
+				$(this).css({
+					"width" : "100%",
+					"height": "100%"
+				});
+				var width = $(this).width();
+				width -= $("#taskbarDiv").width();
+				width /= taskbar.scale;
+				var height = $(this).height() / taskbar.scale;
+				$(this).css({
+					"width"	: width,
+					"height": height
+				});
+				$(this).one('style', fixContainmentSize);
+			}
+			$(containmentdiv).one('style', fixContainmentSize);
+			
 		},
 		
 		setScale : function(scale) {
@@ -69,14 +107,17 @@ Taskbar.prototype = {
 			var taskbar = this;
 			taskbar.scale = scale;
 			var windows = $(taskbar.div).taskbar("windows");
-			$(windows).each(function(index, window) {
-				if ($(window).attr("id") != "statusWindowDiv") {
-					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
-					$(windowDiv).css('transform','scale('+taskbar.scale+')');
-//					$(windowDiv).css('transform-origin', 'top left');
-					$(windowDiv).css('transform-origin', 'center center');
-				}
-			});
+			var containment = $(".simone-taskbar-window-copy");
+			containment.css('transform','scale('+taskbar.scale+')');
+			containment.css('transform-origin', 'center center');
+//			$(windows).each(function(index, window) {
+//				if ($(window).attr("id") != "statusWindowDiv") {
+//					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+//					$(windowDiv).css('transform','scale('+taskbar.scale+')');
+////					$(windowDiv).css('transform-origin', 'top left');
+//					$(windowDiv).css('transform-origin', 'center center');
+//				}
+//			});
 		},
 		
 		setScaleForWindow : function(window, scale) {

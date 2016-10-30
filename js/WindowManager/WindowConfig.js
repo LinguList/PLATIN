@@ -139,7 +139,7 @@ function TableWindowConfig(options) {
 
 		closable 		: false,
 		close 			: null,
-		title 			: "none",
+		title 			: "Table",
 		width 			: 1024,
 		height 			: 768,
 		icons			: {

@@ -25,6 +25,18 @@ WindowManagerWidget.prototype = {
 			this.datasets = data;
 			this.gui.initGui();
 			
+			if (typeof windowManagerWidget.statusWindow !== "undefined") {
+				return;
+			}
+			
+			(function () {
+				var ev = new $.Event('style');
+				var orig = $.fn.css;
+				$.fn.css = function() {
+					$(this).trigger(ev);
+					return orig.apply(this, arguments);
+				}
+			})();
 			this.addStatusWindow(this.options.statusWindowDiv);
 			this.addMapWindow(this.options.mapWindowDiv, true);
 			this.addPieChartWindow(this.options.piechartWindowDiv, true);
@@ -90,52 +102,52 @@ WindowManagerWidget.prototype = {
 			    ui.position.left = newLeft;
 			    ui.position.top = newTop;
 			}			
-			$(scaleFixWindows).each(function(index, window) {
-//				$(window.div).resizable({
-//				    minWidth: -($(window.div).width()) * 10,  // these need to be large and negative
-//				    minHeight: -($(window.div).height()) * 10, // so we can shrink our resizable while scaled
-//				    resize: resizeFix
+//			$(scaleFixWindows).each(function(index, window) {
+////				$(window.div).resizable({
+////				    minWidth: -($(window.div).width()) * 10,  // these need to be large and negative
+////				    minHeight: -($(window.div).height()) * 10, // so we can shrink our resizable while scaled
+////				    resize: resizeFix
+////				});
+////				$(window.div).draggable({
+////					start: startFix,
+////					drag: dragFix
+////				});
+//				$(window.div).on("windowbeforeminimize", function() {
+//					windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
+//					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div),"top left");
 //				});
-//				$(window.div).draggable({
-//					start: startFix,
-//					drag: dragFix
+//				$(window.div).on("windowshow", function() {
+//					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+//					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");					
 //				});
-				$(window.div).on("windowbeforeminimize", function() {
-					windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
-					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div),"top left");
-				});
-				$(window.div).on("windowshow", function() {
-					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
-					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");					
-				});
-				
-				$(window.div).on("windowbeforeshow", function() {
-					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
-					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");					
-				});
-				
-				$(window.div).on("windowdragstart", function() {
-					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");
-				});
-				
-				$(window.div).on("windowdragstop", function() {
-					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");
-				});
-				
-				$(window.div).on("windowresizestart", function() {
-					$(scaleFixWindows).each(function(i, w) {
-						windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
-						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "top left");
-					});
-				});
-				
-				$(window.div).on("windowresize", function() {
-					$(scaleFixWindows).each(function(i, w) {
-						windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
-						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "center center");
-					});
-				});
-			});
+//				
+//				$(window.div).on("windowbeforeshow", function() {
+//					windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+//					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");					
+//				});
+//				
+//				$(window.div).on("windowdragstart", function() {
+//					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "top left");
+//				});
+//				
+//				$(window.div).on("windowdragstop", function() {
+//					windowManagerWidget.taskbar.setScaleOriginForWindow($(window.div), "center center");
+//				});
+//				
+//				$(window.div).on("windowresizestart", function() {
+//					$(scaleFixWindows).each(function(i, w) {
+//						windowManagerWidget.taskbar.setScaleForWindow($(window.div), 1);
+//						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "top left");
+//					});
+//				});
+//				
+//				$(window.div).on("windowresize", function() {
+//					$(scaleFixWindows).each(function(i, w) {
+//						windowManagerWidget.taskbar.setScaleForWindow($(window.div), windowManagerWidget.taskbar.scale);					
+//						windowManagerWidget.taskbar.setScaleOriginForWindow($(w.div), "center center");
+//					});
+//				});
+//			});
 			
 //			$(this.utilityWindow.div).on("windowbeforeminimize", function() {
 //				windowManagerWidget.taskbar.setScaleForWindow($(windowManagerWidget.utilityWindow.div), 1);
