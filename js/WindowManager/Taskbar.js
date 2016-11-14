@@ -98,7 +98,24 @@ Taskbar.prototype = {
 				});
 				$(this).one('style', fixContainmentSize);
 			}
-			$(containmentdiv).one('style', fixContainmentSize);
+//			$(containmentdiv).one('style', fixContainmentSize);
+			$(containmentdiv).watch({
+				properties : "width, height",
+				callback : function(data, i) {
+					$(containmentdiv).css({
+						"width" : "100%",
+						"height": "100%"
+					});
+					var width = $(this).width();
+					width -= $("#taskbarDiv").width();
+					width /= taskbar.scale;
+					var height = $(this).height() / taskbar.scale;
+					$(containmentdiv).css({
+						"width"	: width,
+						"height": height
+					});
+				}
+			});
 			
 		},
 		

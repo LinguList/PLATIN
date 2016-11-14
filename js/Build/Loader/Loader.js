@@ -207,7 +207,16 @@ GeoTemCoLoader = {
 			url : GeoTemCoLoader.urlPrefix + 'lib/markitup/jquery.markitup.set.js'
 		}];
 		
-		(new DynaJsLoader()).loadScripts(markItUpSetFiles, GeoTemCoLoader.loadSimone);
+		(new DynaJsLoader()).loadScripts(markItUpSetFiles, GeoTemCoLoader.loadJqueryWatch);
+	},
+	
+	// Plugin that uses MutationObserver for Attribute/Style changes of DOMNodes
+	loadJqueryWatch : function() {
+		var jqueryWatchFiles = [{
+			url : GeoTemCoLoader.urlPrefix + 'lib/jquery-watch/jquery-watch.min.js'
+		}];
+		
+		(new DynaJsLoader()).loadScripts(jqueryWatchFiles, GeoTemCoLoader.loadSimone);
 	},
 	
 	loadSimone : function() {

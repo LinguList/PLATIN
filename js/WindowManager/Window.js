@@ -18,21 +18,83 @@ Window.prototype = {
 			
 			this.window.window("option","appendTo",".simone-taskbar-windows-containment");
 			
-			if (!(this.options.title == "Statuswindow"))	 {
-				var windowDiv = $("div[aria-describedby='"+$(this.window).attr("id")+"']");
-				$(windowDiv).one('style', function(event) {
-					$(this).css("position","absolute");
-					$(this).one('style', function(event) {
-						$(this).css("position", "absolute");
-					});
-				});
-			}
-			
 			this.taskbar = $(this.div).window("taskbar");
 			
+			this.windowDiv = $("div[aria-describedby='"+$(this.window).attr("id")+"']");
 			
 			var window = this.window;
 			var taskbar = this.taskbar;
+			var windowDiv = this.windowDiv;
+			if (!(this.options.title == "Statuswindow"))	 {
+				$(windowDiv).watch({
+					properties: "position",
+					
+					callback: function(data, i) {
+						if($.inArray("position",data.props) && $.inArray("fixed", data.vals)) {
+							$(windowDiv).css("position","absolute");
+						}
+					}
+				});
+				$(windowDiv).css("position","absolute");
+				
+//				$(windowDiv).one('style', function(event) {
+//					$(this).css("position","absolute");
+//					$(this).one('style', function(event) {
+//						$(this).css("position", "absolute");
+//					});
+//				});
+//				
+				
+				$(windowDiv).resizable({
+					minWidth	: -($(windowDiv).width()) * 10,
+					minHeight	: -($(windowDiv).height()) * 10,
+					resize		: function(event, ui) {
+						var scale = $(windowDiv)[0].getBoundingClientRect().width / $(windowDiv).outerWidth();
+						
+					    var changeWidth = ui.size.width - ui.originalSize.width; // find change in width
+					    var newWidth = ui.originalSize.width + changeWidth / scale; // adjust new width by our zoomScale
+					 
+					    var changeHeight = ui.size.height - ui.originalSize.height; // find change in height
+					    var newHeight = ui.originalSize.height + changeHeight / scale; // adjust new height by our zoomScale
+					 
+					    ui.size.width = newWidth;
+					    ui.size.height = newHeight;						
+					}
+				});
+				
+				$(windowDiv).draggable({
+					start	: function(event, ui) {
+						ui.position.left = 0;
+						ui.position.top = 0;
+					},
+					drag	: function(event, ui) {
+					    
+						var scale = $(windowDiv)[0].getBoundingClientRect().width / $(windowDiv).outerWidth();
+						
+						var changeLeft = ui.position.left - ui.originalPosition.left; // find change in left
+					    var newLeft = ui.originalPosition.left + changeLeft / scale; // adjust new left by our zoomScale
+					 
+					    var changeTop = ui.position.top - ui.originalPosition.top; // find change in top
+					    var newTop = ui.originalPosition.top + changeTop / scale; // adjust new top by our zoomScale
+					 
+					    ui.position.left = newLeft;
+					    ui.position.top = newTop;						
+					}
+				});
+			} else {
+				$(windowDiv).watch({
+					properties: "position",
+					
+					callback: function(data, i) {
+						if($.inArray("position",data.props) && $.inArray("fixed", data.vals)) {
+							$(windowDiv).css("position","fixed");
+						}
+					}
+				});
+				$(windowDiv).css("position","fixed");
+				
+			}
+			
 			
 			this.windowButton = $(this.taskbar).taskbar("button",$(this.window));
 			var windowButton = this.windowButton;
