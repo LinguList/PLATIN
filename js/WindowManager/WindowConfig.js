@@ -18,7 +18,7 @@ function StatusWindowConfig(options) {
 			at : "right top"
 		},
 		width 			: "92%",
-		height 			: 60
+		height 			: 45
 
 	}
 

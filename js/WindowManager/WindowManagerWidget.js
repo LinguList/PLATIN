@@ -170,7 +170,27 @@ WindowManagerWidget.prototype = {
 //			$(this.utilityWindow.div).on("windowdragstop", function() {
 //				windowManagerWidget.taskbar.setScaleOriginForWindow($(windowManagerWidget.utilityWindow.div), "center center");
 //			});
-			
+//			console.log($(this.utilityWindow.outerDiv).dialog("option", "position"));
+//			console.log(this.utilityWindow.outerDiv);
+//			console.log(windowManagerWidget.utilityWindow.window.window("option","position"));
+//			console.log(this.utilityWindow.window);
+//			$(this.utilityWindow.outerDiv).dialog("option", "position", {
+//			console.log(this.utilityWindow.window.window("maximized"));
+//			this.utilityWindow.window.window("option", {
+//				position : [0,0]
+////				{
+////					my : "left top",
+////					at : "left top",
+////					of : $(".simone-taskbar-windows-containment")
+//////					of : $(this.statusWindow.outerDiv).attr('id')
+////				
+////				}
+//			});
+			$(windowManagerWidget.utilityWindow.outerDiv).css({
+				top : "400px",
+				left : "400px"
+			});
+//			console.log($(windowManagerWidget.utilityWindow.outerDiv).css("top"));
 
 		},
 		
@@ -341,6 +361,7 @@ WindowManagerWidget.prototype = {
 			var windowManagerWidget = this;
 					
 			windowManagerWidget.statusWindow = new StatusWindow(statusWindowDiv);
+			windowManagerWidget.statusWindow.outerDiv = $("div[aria-describedby='statusWindowDiv']");
 		},
 		
 		addMapWindow : function(mapWindowDiv, minimized, maximized, options) {
@@ -364,6 +385,7 @@ WindowManagerWidget.prototype = {
 			}
 
 			windowManagerWidget.mapWindow = new MapWindow(mapWindowDiv, opt);
+			windowManagerWidget.mapWindow.outerDiv = $("div[aria-describedby='mapWindowDiv']");
 			
 			if (min) {
 				windowManagerWidget.mapWindow.window.window("minimize");				
@@ -427,6 +449,7 @@ WindowManagerWidget.prototype = {
 			}
 
 			windowManagerWidget.utilityWindow = new UtilityWindow(utilityWindowDiv, opt);
+			windowManagerWidget.utilityWindow.outerDiv = $("div[aria-describedby='utilityContainerDiv']");
 
 			if (min) {
 				windowManagerWidget.utilityWindow.window.window("minimize");				

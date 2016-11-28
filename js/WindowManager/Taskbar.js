@@ -22,9 +22,9 @@ Taskbar.prototype = {
 			this.copydiv = $(".simone-taskbar-window-copy");
 			this.containmentdiv = $(".simone-taskbar-windows-containment");
 			
+			
 			var copydiv = this.copydiv;
 			var containmentdiv = this.containmentdiv;
-			
 //			$(this.div).taskbar("option", "buttons.zoomin").$element.on("click", function() {
 //				var windows = $(taskbar.div).taskbar("windows");
 //				taskbar.zoom /= 1.1;
@@ -43,7 +43,6 @@ Taskbar.prototype = {
 //				})
 //			});
 			$(this.div).taskbar("option", "buttons.scalein").$element.on("click", function() {
-				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale /= 1.1;
 				containmentdiv.css('transform','scale('+taskbar.scale+')');
 				containmentdiv.css('transform-origin', 'top left');
@@ -58,7 +57,6 @@ Taskbar.prototype = {
 				
 			});
 			$(this.div).taskbar("option", "buttons.scaleout").$element.on("click", function() {
-				var windows = $(taskbar.div).taskbar("windows");
 				taskbar.scale *= 1.1;
 				containmentdiv.css('transform','scale('+taskbar.scale+')');
 				containmentdiv.css('transform-origin', 'top left');
@@ -83,8 +81,32 @@ Taskbar.prototype = {
 				"min-width": "4000px"
 			});
 			containmentdiv.css("overflow", "scroll");
-			var fixContainmentSize = function(event) {
-				$(this).css({
+//			var fixContainmentSize = function(event) {
+//				$(this).css({
+//					"width" : "100%",
+//					"height": "100%"
+//				});
+//				var width = $(this).width();
+//				width -= $("#taskbarDiv").width();
+//				width /= taskbar.scale;
+//				var height = $(this).height() / taskbar.scale;
+//				$(this).css({
+//					"width"	: width,
+//					"height": height
+//				});
+//				$(this).one('style', fixContainmentSize);
+//			}
+//			$(containmentdiv).one('style', fixContainmentSize);
+			var getScrollBarWidth = function() {
+			    var $outer = $('<div>').css({visibility: 'hidden', width: 100, overflow: 'scroll'}).appendTo('body'),
+			        widthWithScroll = $('<div>').css({width: '100%'}).appendTo($outer).outerWidth();
+			    $outer.remove();
+			    return 100 - widthWithScroll;
+			};
+			
+			
+			var addjustContainment = function() {
+				$(containmentdiv).css({
 					"width" : "100%",
 					"height": "100%"
 				});
@@ -92,41 +114,49 @@ Taskbar.prototype = {
 				width -= $("#taskbarDiv").width();
 				width /= taskbar.scale;
 				var height = $(this).height() / taskbar.scale;
-				$(this).css({
+				$(containmentdiv).css({
 					"width"	: width,
 					"height": height
 				});
-				$(this).one('style', fixContainmentSize);
-			}
-//			$(containmentdiv).one('style', fixContainmentSize);
+				var statusDiv = $("div[aria-describedby='statusWindowDiv']");
+				$(statusDiv).css({
+					"width" : width-getScrollBarWidth()-15
+				});
+			};
 			$(containmentdiv).watch({
-				properties : "width, height",
+				properties : "width, height,transform",
 				callback : function(data, i) {
-					$(containmentdiv).css({
-						"width" : "100%",
-						"height": "100%"
-					});
-					var width = $(this).width();
-					width -= $("#taskbarDiv").width();
-					width /= taskbar.scale;
-					var height = $(this).height() / taskbar.scale;
-					$(containmentdiv).css({
-						"width"	: width,
-						"height": height
-					});
+					addjustContainment();
 				}
 			});
 			
+			$(containmentdiv).on("resize", function() {
+				addjustContainment();
+			});
+			
+			$(containmentdiv).scroll(function(event) {
+				var top = $(containmentdiv).scrollTop();
+				var left = $(containmentdiv).scrollLeft();
+				var statusDiv = $("div[aria-describedby='statusWindowDiv']");
+				$(statusDiv).css({
+					"top" : top+3,
+					"left" : left+3
+				});
+			});
+			
+			this.setScale(0.75);
+			
+			
+
 		},
 		
 		setScale : function(scale) {
 			
 			var taskbar = this;
+			var containmentdiv = this.containmentdiv;
 			taskbar.scale = scale;
-			var windows = $(taskbar.div).taskbar("windows");
-			var containment = $(".simone-taskbar-window-copy");
-			containment.css('transform','scale('+taskbar.scale+')');
-			containment.css('transform-origin', 'center center');
+			containmentdiv.css('transform','scale('+taskbar.scale+')');
+			containmentdiv.css('transform-origin', 'top left');
 //			$(windows).each(function(index, window) {
 //				if ($(window).attr("id") != "statusWindowDiv") {
 //					var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");

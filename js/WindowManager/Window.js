@@ -16,16 +16,23 @@ Window.prototype = {
 			
 			this.window = $(this.div).window(this.options);
 			
-			this.window.window("option","appendTo",".simone-taskbar-windows-containment");
+			
 			
 			this.taskbar = $(this.div).window("taskbar");
 			
 			this.windowDiv = $("div[aria-describedby='"+$(this.window).attr("id")+"']");
 			
+			
+			
 			var window = this.window;
 			var taskbar = this.taskbar;
 			var windowDiv = this.windowDiv;
+			var containmentDiv = $(".simone-taskbar-windows-containment");
+			
+			
+		
 			if (!(this.options.title == "Statuswindow"))	 {
+				this.window.window("option","appendTo",containmentDiv);
 				$(windowDiv).watch({
 					properties: "position",
 					
@@ -45,9 +52,18 @@ Window.prototype = {
 //				});
 //				
 				
+				var top = $(windowDiv).css("top");
+				var left = $(windowDiv).css("left");
+				var width = $(windowDiv).css("width");
+				var height = $(windowDiv).css("height");
+				var isResizing = false;
+
 				$(windowDiv).resizable({
 					minWidth	: -($(windowDiv).width()) * 10,
 					minHeight	: -($(windowDiv).height()) * 10,
+					start		: function(event, ui) {
+						isResizing = true;
+					},
 					resize		: function(event, ui) {
 						var scale = $(windowDiv)[0].getBoundingClientRect().width / $(windowDiv).outerWidth();
 						
@@ -58,7 +74,15 @@ Window.prototype = {
 					    var newHeight = ui.originalSize.height + changeHeight / scale; // adjust new height by our zoomScale
 					 
 					    ui.size.width = newWidth;
-					    ui.size.height = newHeight;						
+					    ui.size.height = newHeight;	
+					    
+					    top = $(windowDiv).css("top");
+					    left = $(windowDiv).css("left");
+					},
+					stop		: function(event, ui) {
+						width = $(windowDiv).css("width");
+						height = $(windowDiv).css("height");
+						isResizing = false;
 					}
 				});
 				
@@ -79,20 +103,63 @@ Window.prototype = {
 					 
 					    ui.position.left = newLeft;
 					    ui.position.top = newTop;						
+					},
+					stop : function(event, ui) {
+						top = $(windowDiv).css("top");
+						left = $(windowDiv).css("left");
 					}
 				});
-			} else {
+
+				$(window).on("windowbeforeminimize", function() {
+					top = $(windowDiv).css("top");
+					left = $(windowDiv).css("left");
+					width = $(windowDiv).css("width");
+					height = $(windowDiv).css("height");
+				});
+				
+				$(window).on("windowshow", function() {
+					$(windowDiv).css("top", top);
+					$(windowDiv).css("left", left);
+					$(windowDiv).css("width", width);
+					$(windowDiv).css("height", height);
+				});
+				
+				$(containmentDiv).on("resize", function(event) {
+					$(windowDiv).css("top",top);
+					$(windowDiv).css("left",left);
+					if (!isResizing) {
+						$(windowDiv).css("width", width);
+						$(windowDiv).css("height", height);
+					}
+				});
 				$(windowDiv).watch({
-					properties: "position",
+					properties: "top,left",
+					
+					callback: function(data,i) {
+					}
+				});
+				
+				
+			} else {
+				this.window.window("option","appendTo",containmentDiv);
+				$(windowDiv).watch({
+					properties: "position,left",
 					
 					callback: function(data, i) {
 						if($.inArray("position",data.props) && $.inArray("fixed", data.vals)) {
-							$(windowDiv).css("position","fixed");
+							$(windowDiv).css("position","absolute");
 						}
 					}
 				});
-				$(windowDiv).css("position","fixed");
+				$(windowDiv).css("position","absolute");
+				$(windowDiv).css({
+					"left" : "3px",
+					"top" : "3px"
+				});
 				
+				
+//				$(windowDiv).css("position","fixed");
+	
 			}
 			
 			
