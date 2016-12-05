@@ -35,7 +35,7 @@ function MapWindowConfig(options) {
 		closable 		: false,
 		close 			: null,
 		title 			: "Map",
-		width 			: 1024,
+		width 			: 640,
 		height 			: 620,
 		icons			: {
 			main		: "ui-icon-worldmap"
@@ -62,7 +62,7 @@ function PieChartWindowConfig(options) {
 		close 			: null,
 		title 			: "Piecharts",
 		width 			: 640,
-		height 			: 480,
+		height 			: 550,
 		icons			: {
 			main		: "ui-icon-piechart"
 		},
@@ -87,8 +87,8 @@ function UtilityWindowConfig(options) {
 		closable 		: false,
 		close 			: null,
 		title 			: "Utils",
-		width 			: 1024,
-		height 			: 768,
+		width 			: 1280,
+		height 			: 380,
 		icons			: {
 			main		: "ui-icon-utility"
 		},
@@ -113,8 +113,8 @@ function PlotWindowConfig(options) {
 		closable 		: false,
 		close 			: null,
 		title 			: "Plot",
-		width 			: 1024,
-		height 			: 768,
+		width 			: 1280,
+		height 			: 380,
 		icons			: {
 			main		: "ui-icon-plotchart"
 		},
@@ -140,8 +140,8 @@ function TableWindowConfig(options) {
 		closable 		: false,
 		close 			: null,
 		title 			: "Table",
-		width 			: 1024,
-		height 			: 768,
+		width 			: 1280,
+		height 			: 400,
 		icons			: {
 			main		: "ui-icon-table"
 		},
@@ -167,8 +167,8 @@ function AboutWindowConfig(options) {
 		closable 		: false,
 		close 			: null,
 		title 			: "About",
-		width 			: 800,
-		height 			: 150,
+		width 			: 1930,
+		height 			: 220,
 		icons			: {
 			main		: "ui-icon-plotchart"
 		},

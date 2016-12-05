@@ -132,6 +132,26 @@ Taskbar.prototype = {
 			
 			$(containmentdiv).on("resize", function() {
 				addjustContainment();
+				
+				var windows = $(taskbar.div).taskbar("windows");
+				$(windows).each(function(index, window) {
+					if ($(window).window("maximized")) {
+						
+						var sTop = $(containmentdiv).scrollTop();
+						var sLeft = $(containmentdiv).scrollLeft();
+						var scrollBarWidth = getScrollBarWidth();
+						var nWidth = parseInt($(containmentdiv).css("width")) - scrollBarWidth;
+						var nHeight = parseInt($(containmentdiv).css("height")) - scrollBarWidth;
+						var windowDiv = $("div[aria-describedby='"+$(window).attr("id")+"']");
+						$(windowDiv).css({
+							"top" : sTop,
+							"left": sLeft,
+							"width" : nWidth,
+							"height": nHeight
+						});
+
+					}
+				});
 			});
 			
 			$(containmentdiv).scroll(function(event) {

@@ -58,6 +58,13 @@ Window.prototype = {
 				var height = $(windowDiv).css("height");
 				var isResizing = false;
 
+				var getScrollBarWidth = function() {
+				    var $outer = $('<div>').css({visibility: 'hidden', width: 100, overflow: 'scroll'}).appendTo('body'),
+				        widthWithScroll = $('<div>').css({width: '100%'}).appendTo($outer).outerWidth();
+				    $outer.remove();
+				    return 100 - widthWithScroll;
+				};
+				
 				$(windowDiv).resizable({
 					minWidth	: -($(windowDiv).width()) * 10,
 					minHeight	: -($(windowDiv).height()) * 10,
@@ -122,14 +129,60 @@ Window.prototype = {
 					$(windowDiv).css("left", left);
 					$(windowDiv).css("width", width);
 					$(windowDiv).css("height", height);
+				});			
+				
+				$(window).on("windowrestore", function() {
+					$(windowDiv).css("top", top);
+					$(windowDiv).css("left", left);
+					$(windowDiv).css("width", width);
+					$(windowDiv).css("height", height);
+				});
+				
+				$(window).on("windowbeforemaximize", function() {
+					top = $(windowDiv).css("top");
+					left = $(windowDiv).css("left");
+					width = $(windowDiv).css("width");
+					height = $(windowDiv).css("height");
+				});
+				
+				$(window).on("windowmaximize", function() {
+//					console.log($(containmentDiv).css("width")+" "+$(containmentDiv).css("height"));
+//					console.log($(containmentDiv).scrollTop());
+//					console.log("TOP: "+top+" LEFT: "+" WIDTH: "+width+" HEIGHT: "+height);
+					var sTop = $(containmentDiv).scrollTop();
+					var sLeft = $(containmentDiv).scrollLeft();
+					var scrollBarWidth = getScrollBarWidth();
+					var nWidth = parseInt($(containmentDiv).css("width")) - scrollBarWidth;
+					var nHeight = parseInt($(containmentDiv).css("height")) - scrollBarWidth;
+					
+					$(windowDiv).css({
+						"top" : sTop,
+						"left": sLeft,
+						"width" : nWidth,
+						"height": nHeight
+					});
+				});
+				
+				$(containmentDiv).on("scroll", function(event) {
+					if ($(window).window("maximized")) {
+						var sTop = $(containmentDiv).scrollTop();
+						var sLeft = $(containmentDiv).scrollLeft();
+						$(windowDiv).css({
+							"top" : sTop,
+							"left": sLeft
+						});
+						
+					}
 				});
 				
 				$(containmentDiv).on("resize", function(event) {
-					$(windowDiv).css("top",top);
-					$(windowDiv).css("left",left);
-					if (!isResizing) {
-						$(windowDiv).css("width", width);
-						$(windowDiv).css("height", height);
+					if (!$(window).window("maximized")) {
+						$(windowDiv).css("top",top);
+						$(windowDiv).css("left",left);
+						if (!isResizing) {
+							$(windowDiv).css("width", width);
+							$(windowDiv).css("height", height);
+						}
 					}
 				});
 				$(windowDiv).watch({

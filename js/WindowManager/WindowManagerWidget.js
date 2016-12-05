@@ -37,13 +37,56 @@ WindowManagerWidget.prototype = {
 					return orig.apply(this, arguments);
 				}
 			})();
+			
+			$(this.options.utilityWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.utilityWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "162px",
+					"left": "0px"
+				});
+			});
+			$(this.options.plotWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.plotWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "552px",
+					"left": "0px"
+				});
+			});
+			$(this.options.tableWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.tableWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "942px",
+					"left": "0px"
+				});
+			});
+			$(this.options.mapWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.mapWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "162px",
+					"left": "1290px"
+				});
+			});
+			$(this.options.piechartWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.piechartWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "792px",
+					"left": "1290px"
+				});
+			});
+			$(this.options.aboutWindowDiv).on("windowcreate", function() {
+				var windowDiv = $("div[aria-describedby='"+$(windowManagerWidget.options.aboutWindowDiv).attr("id")+"']");
+				$(windowDiv).css({
+					"top" : "1352px",
+					"left": "0px"
+				});
+			});
 			this.addStatusWindow(this.options.statusWindowDiv);
-			this.addMapWindow(this.options.mapWindowDiv, true);
-			this.addPieChartWindow(this.options.piechartWindowDiv, true);
-			this.addUtilityWindow(this.options.utilityWindowDiv, true);
-			this.addPlotWindow(this.options.plotWindowDiv, true);
-			this.addTableWindow(this.options.tableWindowDiv, true);
-			this.addAboutWindow(this.options.aboutWindowDiv, true);
+			this.addMapWindow(this.options.mapWindowDiv, false);
+			this.addPieChartWindow(this.options.piechartWindowDiv, false);
+			this.addUtilityWindow(this.options.utilityWindowDiv, false);
+			this.addPlotWindow(this.options.plotWindowDiv, false);
+			this.addTableWindow(this.options.tableWindowDiv, false);
+			this.addAboutWindow(this.options.aboutWindowDiv, false);
 			
 			$(this.piechartWindow.div).on("windowshow", function() {
 				$(this).css("height", "100%");
@@ -74,6 +117,7 @@ WindowManagerWidget.prototype = {
 				});
 				
 			});
+			
 			function resizeFix(event, ui) {
 				var zoomScale = windowManagerWidget.taskbar.scale;
 			    var changeWidth = ui.size.width - ui.originalSize.width; // find change in width
@@ -447,7 +491,6 @@ WindowManagerWidget.prototype = {
 			if (options != 'undefined') {
 				opt = options;
 			}
-
 			windowManagerWidget.utilityWindow = new UtilityWindow(utilityWindowDiv, opt);
 			windowManagerWidget.utilityWindow.outerDiv = $("div[aria-describedby='utilityContainerDiv']");
 
