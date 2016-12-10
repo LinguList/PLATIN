@@ -304,7 +304,7 @@ Overlayloader.prototype = {
 		$(this.RomanEmpireLoaderTab).append(this.loadRomanEmpireButton);
 
 		$(this.loadRomanEmpireButton).click($.proxy(function(){
-			this.distributeXYZ("http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png",1);
+			this.distributeXYZ("http://pelagios.org/tilesets/imperium/${z}/${x}/${y}.png",1);
 		},this));
 
 		$(this.parent.gui.loaders).append(this.RomanEmpireLoaderTab);
