@@ -42,6 +42,11 @@ function MapConfig(options) {
 					attribution: "<a href='http://pelagios.org/maps/greco-roman/about.html'>Digital Atlas of the Roman Empire</a> (c) <a href='https://twitter.com/johanahlfeldt'>Johan Åhlfeldt</a>, <a href='http://pelagios-project.blogspot.de/'>Pelagios</a>"
 				},
 				{
+					name: 'China 1997',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/China_Monograph_Project/wms',
+					layer: 'China_Monograph_Project:v5_1997_prov_pgn_utf'
+				},
+				{
 					name: 'Maps-for-Free Relief Map',
 					url: 'http://maps-for-free.com/layer/relief/z${z}/row${y}/${z}_${x}-${y}.jpg',
 					type:'XYZ',
@@ -197,6 +202,12 @@ function MapConfig(options) {
 					layer: 'historic:cntry2000bc',
 					attribution: "(c) <a href='http://webcache.googleusercontent.com/search?q=cache:NbaEeiehhzQJ:library.thinkquest.org/C006628/citations.html&client=ubuntu&hl=de&gl=de&strip=1'> ThinkQuest Team C006628</a>"
 				},
+				{
+					name: 'BEHIND Proposition to Register',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/wms',
+					layer: 'TOPOI:Werning.BEHIND.prepositions',
+					attribution: "(c) Daniel Werning"
+				}
 		],
 		legend : true, // if a legend at the bottom of the map should be shown or not
 		mapMerge : false, // if the elements of distinct datasets should be merged into one set or not
