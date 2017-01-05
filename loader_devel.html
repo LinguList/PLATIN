@@ -144,9 +144,8 @@
         
         var windowManagerDiv = document.getElementById("windowManagerDiv");
         var windowManager = new WidgetWrapper();
-        var windowManagerWidget = new WindowManagerWidget(windowManager, windowManagerDiv);
-        windowManagerWidget.taskbar = taskbar;
-        
+        var windowManagerWidget = new WindowManagerWidget(windowManager, windowManagerDiv, taskbar);
+       
 /*         var statusWindow = new StatusWindow(statusWindowDiv);
         var mapWindow = new MapWindow(mapWindowDiv);
         var piechartWindow = new PieChartWindow(piechartDiv);

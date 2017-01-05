@@ -6,29 +6,36 @@ function TaskbarConfig(options) {
 	
 	this.options = {
 			
-			orientation 		: "vertical",
-			verticalHeight		: "100%",
-			verticalStick		: "top left",
-			verticalColumnWidth	: "7%",
-			windowsContainment	: "visible",
-			windowButtonsIconsOnly: true,
-			resizable			: false,
-			resolveCollisions	: false,
-			buttons				: {
-//				zoomin			: {
-//					label		: "Z+"
-//				},
-//				zoomout			: {
-//					label		: "Z-"
-//				},
-				scalein			: {
-					label		: "S+"
+			simoneOptions		: {
+				
+				orientation 		: "vertical",
+				verticalHeight		: "100%",
+				verticalStick		: "top left",
+				verticalColumnWidth	: "7%",
+				windowsContainment	: "visible",
+				windowButtonsIconsOnly: true,
+				resizable			: false,
+				resolveCollisions	: false,
+				buttons				: {
+					scalein			: {
+						label		: "S+"
+					},
+					scaleout		: {
+						label		: "S-"
+					}
 				},
-				scaleout		: {
-					label		: "S-"
-				}
-			},
-			systemButtonsOrder	: ["zoomin","zoomout","scalein", "scaleout", "languageselect","networkMonitor","toggleFullscreen","clock","minimizeAll"]
+				systemButtonsOrder	: ["scalein", "scaleout", "languageselect","networkMonitor","toggleFullscreen","clock","minimizeAll"],
+				
+			},			
+			defaultScale		: 0.75,
+			copyDivSelector				: ".simone-taskbar-window-copy",
+			containmentDivSelector		: ".simone-taskbar-windows-containment",
+			
+			workspace			: {
+				divId				: "invdiv",
+				height				: "2000px",
+				width				: "4000px"
+			}
 			
 	}
 	
