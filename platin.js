@@ -30208,11 +30208,11 @@ GeoTemConfig = {
 	selectionEvents : true, // if updates after selection events
 	tableExportDataset : true, // export dataset to KML 
 	allowCustomColoring : false, // if DataObjects can have an own color (useful for weighted coloring)
-	allowUserShapeAndColorChange: false, // if the user can change the shapes and color of datasets 
+	allowUserShapeAndColorChange: true, // if the user can change the shapes and color of datasets 
 										// this turns MapConfig.useGraphics auto-on, but uses circles as default
 	loadColorFromDataset : false, // if DataObject color should be loaded automatically (from column "color")
 	allowColumnRenaming : true,
-	//proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
+	proxy : 'php/proxy.php?address=', //set this if a HTTP proxy shall be used (e.g. to bypass X-Domain problems)
 	//colors for several datasets; rgb1 will be used for selected objects, rgb0 for unselected
 	colors : [{
 		r1 : 255,
@@ -32422,6 +32422,12 @@ function MapConfig(options) {
 		mapIndex : 0, // index = position in location array; for multiple locations the 2nd map refers to index 1
 		alternativeMap :  [
 				{
+					name: 'China 1997 test',
+					url: 'http://geoserver.mpiwg-berlin.mpg.de/geoserver/China_Monograph_Project/wms',
+					layer: 'China_Monograph_Project:v5_1997_prov_pgn_utf',
+					attribution: "(c) <a href='http://epp.eurostat.ec.europa.eu/portal/page/portal/gisco_Geographical_information_maps/popups/references/administrative_units_statistical_units_1'>EuroStat</a>"
+				},                
+				{
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium/${z}/${x}/${y}.png',
 					type:'XYZ',
@@ -32664,7 +32670,7 @@ function MapConfig(options) {
 		mapSelectionTools : true, // show/hide map selector tools
 		dataInformation : true, // show/hide data information
 		overlayVisibility : false, // initial visibility of additional overlays
-		//proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
+		proxyHost : 'php/proxy.php?address=',	//required for selectCountry feature, if the requested GeoServer and GeoTemCo are NOT on the same server
 		placenameTagsStyle : 'value' // the style of the placenames "surrounding" a circle on hover. 'zoom' for tags based on zoom level (old behaviour), 'value' for new value-based
 
 	};
@@ -33217,24 +33223,14 @@ MapWidget.prototype = {
 			this.map.setCenter(newCenter, this.map.zoom + 1);
 			map.drawObjectLayer(false);
 			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
+				map.zoomSlider.setValue(map.getZoom());
 			}
 		}
 		this.navigation.wheelUp = function(evt) {
 			this.wheelChange(evt, 1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 		this.navigation.wheelDown = function(evt) {
 			this.wheelChange(evt, -1);
-			map.drawObjectLayer(false);
-			if (map.zoomSlider) {
-				map.zoomSlider.setValue(map.openlayersMap.getZoom());
-			}
-			map.core.triggerHighlight([]);
 		}
 
 		this.resolutions = [78271.516953125, 39135.7584765625, 19567.87923828125, 9783.939619140625, 4891.9698095703125, 2445.9849047851562, 1222.9924523925781, 611.4962261962891, 305.74811309814453, 152.87405654907226, 76.43702827453613, 38.218514137268066, 19.109257068634033, 9.554628534317017, 4.777314267158508, 2.388657133579254, 1.194328566789627, 0.5971642833948135, 0.29858214169740677];
@@ -33253,7 +33249,16 @@ MapWidget.prototype = {
 		}
 		//add attribution control
 		this.openlayersMap.addControl(new OpenLayers.Control.Attribution());
-		this.mds = new MapDataSource(this.openlayersMap, this.options);
+		this.mds = new MapDataSource(this, this.options);
+
+        //on zoomend, redraw objects and set slider (if it exists) accordingly (zoom by mouse wheel)
+        this.openlayersMap.events.register("zoomend", map, function(){
+            map.drawObjectLayer(false);
+			if (map.zoomSlider) {
+				map.zoomSlider.setValue(map.getZoom());
+			}
+			map.core.triggerHighlight([]);
+        });
 
 		if (map.options.olNavigation) {
 			var zoomPanel = new OpenLayers.Control.PanZoom();
@@ -33628,7 +33633,7 @@ MapWidget.prototype = {
 
 		if (this.zoomSlider) {
 			this.zoomSlider.setMaxAndLevels(1000, this.openlayersMap.getNumZoomLevels());
-			this.zoomSlider.setValue(this.openlayersMap.getZoom());
+			this.zoomSlider.setValue(this.getZoom());
 		}
 		
 		Publisher.Subscribe('mapChanged', this, function(mapName) {
@@ -33636,6 +33641,56 @@ MapWidget.prototype = {
 			this.client.gui.setMap();
 		});
 
+		$.ajax({
+			url: GeoTemConfig.proxy+"http://geoserver.mpiwg-berlin.mpg.de/geoserver/China_Monograph_Project/wfs",
+			dataType: "xml",
+			contentType: "text/html; charset=UTF-8",
+			data:{
+				"service":"wfs",
+				"srsName":"epsg:4326",
+				"version":"2.0.0",
+				"request":"GetFeature",
+				"typeName":"China_Monograph_Project:v5_1997_prov_pgn_utf",
+				//"featureID":"v5_1997_prov_pgn_utf.1",
+			}
+		}).done(function(result) {
+			
+			var wfsMembers = $(result).find("wfs\\:member,member");
+
+			var xmlSerializer = new XMLSerializer();
+			
+			var gmlOptions = {
+					'internalProjection': new OpenLayers.Projection("EPSG:900913"),
+					'externalProjection': new OpenLayers.Projection("EPSG:4326"),
+			};
+			var format = new OpenLayers.Format.GML.v3(gmlOptions);
+			
+			GeoTemConfig.shapeColorTestLayer = new OpenLayers.Layer.Vector("Simple Geometry");
+			map.openlayersMap.addLayer(GeoTemConfig.shapeColorTestLayer);
+			GeoTemConfig.shapeColorTest = {};
+			
+            $(wfsMembers).each(function(){
+				var theGeom_String = xmlSerializer.serializeToString( this );
+				theGeom_String=theGeom_String.replace('<wfs:member xmlns:wfs="http://www.opengis.net/wfs/2.0">','<gml:featureMember xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/gmlsfProfile/1.0.0/gmlsf.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">');
+				theGeom_String=theGeom_String.replace("</wfs:member>","</gml:featureMember>");
+				theGeom_String=theGeom_String.replace('xmlns:gml="http://www.opengis.net/gml/3.2"','');
+
+				var features = format.read(theGeom_String);
+				for (var featureID in features){
+					var feature = features[featureID];
+					//reduce vertices of shape to speed up coloring
+					//as a redraw will be performed on each select/hightlight
+					var originalLinearRing = feature.geometry.components[0].components[0];
+					//this could/should be a function of zoom level
+					var simplifiedLinearRing = originalLinearRing.simplify(1000);
+					feature.geometry.components[0].components[0] = simplifiedLinearRing;
+				}
+								
+				GeoTemConfig.shapeColorTest[features[0].data["GBCODE90"]] = features;
+				GeoTemConfig.shapeColorTestLayer.addFeatures(features);
+			});
+		}).fail(function(result) {
+		});
 	},
 
 	shift : function(shiftX, shiftY) {
@@ -33665,15 +33720,22 @@ MapWidget.prototype = {
 								}
 			            );
 				} else {
+				    var options = {
+						projection : "EPSG:4326",
+						layers : layers[i].layer,
+						transparent : "true",
+						format : "image/png"
+					};
+					
+					if (typeof layers[i].sld !== "undefined"){
+					    options.sld_body = layers[i].sld;
+					}
+
 					layer = new OpenLayers.Layer.WMS(
-							layers[i].name, layers[i].url, 
+							layers[i].name, layers[i].url,
+							options,
 							{
-								projection : "EPSG:4326",
-								layers : layers[i].layer,
-								transparent : "true",
-								format : "image/png"
-							}, 
-							{
+							    tileOptions: {maxGetUrlLength: 2048},
 				                attribution: layers[i].attribution,
 								isBaseLayer : true
 							}
@@ -33897,10 +33959,10 @@ MapWidget.prototype = {
 				var gapY1 = 0.1 * (maxLat - minLat );
 				var gapY2 = (this.gui.headerHeight / this.gui.mapWindow.offsetHeight + 0.1 ) * (maxLat - minLat );
 				this.openlayersMap.zoomToExtent(new OpenLayers.Bounds(minLon - gapX, minLat - gapY1, maxLon + gapX, maxLat + gapY2));
-				this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+				this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 			}
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
 		var displayPoints = this.mds.getObjectsByZoom();
@@ -33920,7 +33982,7 @@ MapWidget.prototype = {
 				this.objectLayer.addFeatures([p.olFeature]);
 			}
 		}
-		var zoomLevel = this.openlayersMap.getZoom();
+		var zoomLevel = this.getZoom();
 		/*
 		 for (var i = 0; i < this.bins[zoomLevel].length; i++) {
 		 var p = this.bins[zoomLevel][i];
@@ -34196,6 +34258,70 @@ MapWidget.prototype = {
 			}
 		}
 		this.displayConnections();
+		this.colorMap(mapObjects);
+	},
+	
+	colorMap : function(mapObjects){
+		
+        if (typeof GeoTemConfig.shapeColorTestLayer === "undefined"){
+        	return;
+        }
+		
+		var map = this;
+		
+		//credits: Pimp Trizkit @ http://stackoverflow.com/a/13542669
+        function shadeColor2(color, percent) {   
+            var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
+            return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
+        }
+
+        var color = "#0000FF";
+        var unselectColor = shadeColor2(color,1);
+        var layer_style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
+        layer_style.fillOpacity = 0.7;
+        layer_style.graphicOpacity = 1;
+        layer_style.strokeColor = color;
+
+        //reset all
+        var style = OpenLayers.Util.extend({}, layer_style);
+        style.fillColor = unselectColor;
+        for (var shapeName in GeoTemConfig.shapeColorTest){
+        	var shape = GeoTemConfig.shapeColorTest[shapeName];
+        	for (var x in shape){
+        		shape[x].style = style;
+        	}
+        }
+        
+        if ((typeof mapObjects==="undefined")||(mapObjects.length==0)){
+        	GeoTemConfig.shapeColorTestLayer.redraw();
+        	return;
+	    }
+
+        var max = 137;
+        var shapeCount = {};
+        for (var i = 0; i < mapObjects[0].length; i++){
+            var object = mapObjects[0][i];
+            var shapeName = object.tableContent["Level 1 code"];
+            if (typeof shapeCount[shapeName]==="undefined"){
+                shapeCount[shapeName] = 1;
+            } else {
+                shapeCount[shapeName] += 1;
+            }
+        }
+
+        for (var shapeName in shapeCount){
+            var count = shapeCount[shapeName];
+            var fillColor = shadeColor2(color,(max-count)/max);
+            var style = OpenLayers.Util.extend({}, layer_style);
+            style.fillColor = fillColor;
+            
+        	var shape = GeoTemConfig.shapeColorTest[shapeName];
+        	for (var x in shape){
+        		shape[x].style = style;
+        	}
+        }
+        
+        GeoTemConfig.shapeColorTestLayer.redraw();
 	},
 
 	selectionChanged : function(selection) {
@@ -34397,16 +34523,15 @@ MapWidget.prototype = {
 	 * @param {int} delta the change of zoom levels
 	 */
 	zoom : function(delta) {
-		var zoom = this.openlayersMap.getZoom() + delta;
+		var zoom = this.getZoom() + delta;
 		if (this.openlayersMap.baseLayer instanceof OpenLayers.Layer.WMS) {
 			this.openlayersMap.zoomTo(zoom);
 		} else {
 			this.openlayersMap.zoomTo(Math.round(zoom));
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 		}
-		this.drawObjectLayer(false);
 		return true;
 	},
 
@@ -34447,7 +34572,7 @@ MapWidget.prototype = {
 				this.countrySelectionControl.disable();
 			}
 		}
-		this.openlayersMap.zoomTo(Math.floor(this.openlayersMap.getZoom()));
+		this.openlayersMap.zoomTo(Math.floor(this.getZoom()));
 		this.openlayersMap.setBaseLayer(this.baseLayers[index]);
 		if (this.baseLayers[index].name == 'Open Street Map') {
 			this.gui.osmLink.style.visibility = 'visible';
@@ -34523,7 +34648,21 @@ MapWidget.prototype = {
 	},
 
 	getZoom : function() {
-		return this.openlayersMap.getZoom();
+    	//calculate zoom from active resolution
+        var resolution = this.openlayersMap.getResolution();
+        var zoom = this.resolutions.indexOf(resolution);
+        if (zoom == -1){
+            //fractional zoom
+            for (zoom = 0; zoom < this.resolutions.length; zoom++){
+                if (resolution>=this.resolutions[zoom]){
+                    break;
+                }
+            }
+            if (zoom == this.resolutions.length){
+                zoom--;
+            }
+        }
+        return(zoom);
 	},
 
 	setMarker : function(lon, lat) {
@@ -34572,7 +34711,7 @@ MapWidget.prototype = {
 				if (xDist / resolution < x_s && yDist / resolution < y_s) {
 					this.openlayersMap.zoomTo(zoomLevels - i - 1);
 					if (this.zoomSlider) {
-						this.zoomSlider.setValue(this.openlayersMap.getZoom());
+						this.zoomSlider.setValue(this.getZoom());
 					}
 					this.drawObjectLayer(false);
 					break;
@@ -34582,7 +34721,7 @@ MapWidget.prototype = {
 			//if there are no points on the map, zoom to max 
 			this.openlayersMap.zoomTo(0);
 			if (this.zoomSlider) {
-				this.zoomSlider.setValue(this.openlayersMap.getZoom());
+				this.zoomSlider.setValue(this.getZoom());
 			}
 			this.drawObjectLayer(false);
 		}
@@ -34593,7 +34732,7 @@ MapWidget.prototype = {
 	},
 
 	getLevelOfDetail : function() {
-		var zoom = Math.floor(this.openlayersMap.getZoom());
+		var zoom = Math.floor(this.getZoom());
 		if (zoom <= 1) {
 			return 0;
 		} else if (zoom <= 3) {
@@ -44751,14 +44890,15 @@ Binning.prototype = {
  * @release date: 2012-07-27
  * @version date: 2012-07-27
  *
- * @param {OpenLayers.Map} olMap openlayers map object of the map widget
+ * @param {MapWidget} parent Widget
  * @param {JSON} options map configuration
  */
-function MapDataSource(olMap, options) {
+function MapDataSource(parent, options) {
 
-	this.olMap = olMap;
+    this.parent = parent;
+	this.olMap = parent.openlayersMap;
 	this.circleSets = [];
-	this.binning = new Binning(olMap, options);
+	this.binning = new Binning(this.olMap, options);
 
 };
 
@@ -44784,7 +44924,7 @@ MapDataSource.prototype = {
 	},
 
 	getObjectsByZoom : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		if (this.circleSets.length < zoom) {
 			return null;
 		}
@@ -44806,7 +44946,7 @@ MapDataSource.prototype = {
 	},
 
 	clearOverlay : function() {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		var circles = this.circleSets[zoom];
 		for (var i in circles ) {
 			for (var j in circles[i] ) {
@@ -44816,7 +44956,7 @@ MapDataSource.prototype = {
 	},
 
 	setOverlay : function(mapObjects) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		for (var j in mapObjects ) {
 			for (var k in mapObjects[j] ) {
 				var o = mapObjects[j][k];
@@ -44836,7 +44976,7 @@ MapDataSource.prototype = {
 	},
 
 	getCircle : function(index, id) {
-		var zoom = Math.floor(this.olMap.getZoom());
+		var zoom = Math.floor(this.parent.getZoom());
 		return this.hashMapping[zoom][index][id];
 	}
 };
@@ -45996,7 +46136,7 @@ function MapZoomSlider(parent, orientation) {
 		this.slider.setMaximum(max);
 	}
 	//	this.setMaxAndLevels(1000,parent.openlayersMap.getNumZoomLevels());
-	//	this.setValue(parent.openlayersMap.getZoom());
+	//	this.setValue(parent.getZoom());
 
 	this.setLanguage = function() {
 		zoomIn.title = GeoTemConfig.getString('zoomIn');
