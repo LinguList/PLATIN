@@ -34064,10 +34064,136 @@ function MapConfig(options) {
 		mapIndex : 0, // index = position in location array; for multiple locations the 2nd map refers to index 1
 		alternativeMap :  [
 				{
+					name: 'ISAW Modern Terrain',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.map-p75u7mnj/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2014 <a href='http://isaw.nyu.edu/' target='_blank'>ISAW</a>" +
+" <a href='http://creativecommons.org/licenses/by/3.0/deed.en_US' target='_blank'>CC-BY 3.0</a>"
+				},
+				{
 					name: 'Barrington Roman Empire',
 					url: 'http://pelagios.org/tilesets/imperium/${z}/${x}/${y}.png',
 					type:'XYZ',
 					attribution: "<a href='http://pelagios.org/maps/greco-roman/about.html'>Digital Atlas of the Roman Empire</a> (c) <a href='https://twitter.com/johanahlfeldt'>Johan Åhlfeldt</a>, <a href='http://pelagios-project.blogspot.de/'>Pelagios</a>"
+				},
+				{
+					name: 'AWMC Base Map',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.map-knmctlkh/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Coast Outline',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.eoupu8fr/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Roads',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.awmc-roads/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Benthos Water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.s5l5l8fr/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Inland Water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.awmc-inland-water/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC River Polygons',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.9e3lerk9/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Water Course Center Lines',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.awmc-water-courses/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Base Open Water Polygons',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.h0rdaemi/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Archaic water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.yyuba9k9/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Classical water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.l5xc4n29/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Hellenistic water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.gq0ssjor/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Roman water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.ymnrvn29/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
+				},
+				{
+					name: 'AWMC Late Antiquity water',
+					url: 'http://{a-d}.tiles.mapbox.com/v3/isawnyu.t12it3xr/${z}/${x}/${y}.png',
+					type:'XYZ',
+					attribution: "Tiles &copy; <a href='http://mapbox.com/' target='_blank'>MapBox</a> | " +
+"Data &copy; <a href='http://www.openstreetmap.org/' target='_blank'>OpenStreetMap</a> and contributors, CC-BY-SA |"+
+" Tiles and Data &copy; 2013 <a href='http://www.awmc.unc.edu' target='_blank'>AWMC</a>" +
+" <a href='http://creativecommons.org/licenses/by-nc/3.0/deed.en_US' target='_blank'>CC-BY-NC 3.0</a>"
 				},
 				{
 					name: 'China 1997',
@@ -34262,7 +34388,7 @@ function MapConfig(options) {
 		bingMaps : false, // enable/disable Bing maps (you need to set the Bing Maps API key below)
 		bingApiKey : 'none', // bing maps api key, see informations at http://bingmapsportal.com/
 		osmMaps : true, // enable/disable OSM maps
-		osmMapsMapQuest : true, // enable/disable OSM maps with MapQuest tiles
+		osmMapsMapQuest : false, // enable/disable OSM maps with MapQuest tiles
 		baseLayer : 'Open Street Map', // initial layer to show (e.g. 'Google Streets')
 		resetMap : true, // show/hide map reset button
 		countrySelect : true, // show/hide map country selection control button
@@ -35353,11 +35479,19 @@ MapWidget.prototype = {
 			for (var i in layers ) {
 				var layer;
 				if (layers[i].type === "XYZ"){
+					var layerURL = layers[i].url;
+					var layerURLArray = [];
+					if (layerURL.indexOf("{a-d}") != -1){
+						layerURLArray.push(layerURL.replace("{a-d}","a"));
+						layerURLArray.push(layerURL.replace("{a-d}","b"));
+						layerURLArray.push(layerURL.replace("{a-d}","c"));
+						layerURLArray.push(layerURL.replace("{a-d}","d"));
+					} else {
+						layerURLArray.push(layerURL);
+					}
 			        layer = new OpenLayers.Layer.XYZ(
 			        			layers[i].name,
-				                [
-				                 	layers[i].url
-				                ], 
+				                layerURLArray, 
 				                {
 					                sphericalMercator: true,
 					                transitionEffect: "resize",
