@@ -558,11 +558,19 @@ MapWidget.prototype = {
 			for (var i in layers ) {
 				var layer;
 				if (layers[i].type === "XYZ"){
+					var layerURL = layers[i].url;
+					var layerURLArray = [];
+					if (layerURL.indexOf("{a-d}") != -1){
+						layerURLArray.push(layerURL.replace("{a-d}","a"));
+						layerURLArray.push(layerURL.replace("{a-d}","b"));
+						layerURLArray.push(layerURL.replace("{a-d}","c"));
+						layerURLArray.push(layerURL.replace("{a-d}","d"));
+					} else {
+						layerURLArray.push(layerURL);
+					}
 			        layer = new OpenLayers.Layer.XYZ(
 			        			layers[i].name,
-				                [
-				                 	layers[i].url
-				                ], 
+				                layerURLArray, 
 				                {
 					                sphericalMercator: true,
 					                transitionEffect: "resize",
