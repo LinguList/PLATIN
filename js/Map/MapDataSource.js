@@ -69,7 +69,12 @@ MapDataSource.prototype = {
 					var newCircle = {};
 					newCircle["elements"] = [];
 					for (var element in circle["elements"]){
-						newCircle["elements"].push(circle["elements"][element]["tableContent"]["id"]);
+						var thisElement = circle["elements"][element];
+						var id = thisElement["tableContent"]["id"];
+						if (typeof id === "undefined"){
+							id = thisElement["id"];
+						}
+						newCircle["elements"].push(id);
 					} 
 					newCircle.originX = circle.originX;
 					newCircle.originY = circle.originY;
