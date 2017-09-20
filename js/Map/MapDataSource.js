@@ -58,6 +58,28 @@ MapDataSource.prototype = {
 		this.binSets = set.binSets;
 		this.hashMapping = set.hashMaps;
 
+		//if a textarea with id "jsonOutput" exists, output binning as json into it
+		if ($("#jsonOutput").length > 0){
+			var circleClone = jQuery.extend(true, {}, set.circleSets);
+			for (var zoomLvl in circleClone){
+				circleClone[zoomLvl] = circleClone[zoomLvl][0];
+				circles = circleClone[zoomLvl];
+				for (var circleName in circles){
+					var circle=circles[circleName];
+					var newCircle = {};
+					newCircle["elements"] = [];
+					for (var element in circle["elements"]){
+						newCircle["elements"].push(circle["elements"][element]["tableContent"]["id"]);
+					} 
+					newCircle.originX = circle.originX;
+					newCircle.originY = circle.originY;
+					newCircle.radius = circle.radius;
+					circles[circleName] = newCircle;
+				}
+			}
+
+			$("#jsonOutput").append(JSON.stringify(circleClone, null, 4));
+		}
 	},
 
 	getObjectsByZoom : function() {
